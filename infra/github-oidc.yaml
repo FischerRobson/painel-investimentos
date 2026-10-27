@@ -4,13 +4,25 @@ Description: >-
   e o papel que o CloudFormation usa para criar os recursos do stack painel-investimentos.
   Deploy único, feito à mão:
     aws cloudformation deploy --template-file infra/github-oidc.yaml --stack-name painel-github-oidc \
-      --capabilities CAPABILITY_NAMED_IAM --parameter-overrides GitHubRepo=<dono>/<repo>
+      --capabilities CAPABILITY_NAMED_IAM --parameter-overrides \
+      GitHubOwner=<dono> GitHubOwnerId=<id do dono> GitHubRepoName=<repo> GitHubRepoId=<id do repo>
+  IDs: gh api repos/<dono>/<repo> --jq '.owner.id, .id'
 
 Parameters:
-  GitHubRepo:
+  GitHubOwner:
     Type: String
-    Description: Repositório no formato dono/nome
-    AllowedPattern: "[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+"
+    AllowedPattern: "[A-Za-z0-9_.-]+"
+  GitHubOwnerId:
+    Type: String
+    Description: ID numérico (imutável) do dono do repositório
+    AllowedPattern: "[0-9]+"
+  GitHubRepoName:
+    Type: String
+    AllowedPattern: "[A-Za-z0-9_.-]+"
+  GitHubRepoId:
+    Type: String
+    Description: ID numérico (imutável) do repositório
+    AllowedPattern: "[0-9]+"
   GitHubEnvironment:
     Type: String
     Default: production
@@ -45,7 +57,8 @@ Resources:
             Condition:
               StringEquals:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
-                token.actions.githubusercontent.com:sub: !Sub "repo:${GitHubRepo}:environment:${GitHubEnvironment}"
+                # O GitHub envia o sub com IDs imutáveis: um repositório recriado com o mesmo nome não é aceito
+                token.actions.githubusercontent.com:sub: !Sub "repo:${GitHubOwner}@${GitHubOwnerId}/${GitHubRepoName}@${GitHubRepoId}:environment:${GitHubEnvironment}"
       Policies:
         - PolicyName: deploy
           PolicyDocument:
@@ -108,6 +121,10 @@ Resources:
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
+              - Sid: TransformacaoDoSam
+                Effect: Allow
+                Action: cloudformation:CreateChangeSet
+                Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:aws:transform/Serverless-2016-10-31"
               - Sid: Lambda
                 Effect: Allow
                 Action: lambda:*

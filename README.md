@@ -80,8 +80,12 @@ O GitHub acessa a AWS por OIDC (credenciais temporárias, sem chave guardada). C
 
 ```bash
 aws cloudformation deploy --template-file infra/github-oidc.yaml --stack-name painel-github-oidc \
-  --capabilities CAPABILITY_NAMED_IAM --parameter-overrides GitHubRepo=<dono>/<repositório>
+  --capabilities CAPABILITY_NAMED_IAM --parameter-overrides \
+  GitHubOwner=<dono> GitHubOwnerId=<id do dono> GitHubRepoName=<repositório> GitHubRepoId=<id do repositório>
 ```
+
+Os IDs saem de `gh api repos/<dono>/<repositório> --jq '.owner.id, .id'`. O GitHub manda no token OIDC o
+`sub` com esses IDs imutáveis (`repo:dono@id/repo@id:environment:production`).
 
 O cliente OAuth do Google precisa ter como URI de redirecionamento
 `https://painel-<id da conta AWS>.auth.<região>.amazoncognito.com/oauth2/idpresponse` (output `GoogleRedirectUri`).
