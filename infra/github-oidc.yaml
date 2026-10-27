@@ -168,6 +168,10 @@ Resources:
                 Effect: Allow
                 Action: s3:GetObject
                 Resource: !Sub "arn:${AWS::Partition}:s3:::aws-sam-cli-managed-default-samclisourcebucket-*/*"
+              - Sid: CacheDoApp
+                Effect: Allow
+                Action: dynamodb:*
+                Resource: !Sub "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${AppStackName}-*"
               - Sid: Login
                 Effect: Allow
                 Action: cognito-idp:*
@@ -194,6 +198,7 @@ Resources:
                   - ssm:DescribeParameters
                   - lambda:GetAccountSettings
                   - lambda:ListFunctions
+                  - dynamodb:DescribeLimits
                 Resource: "*"
 
 Outputs:

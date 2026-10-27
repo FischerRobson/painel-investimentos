@@ -1,5 +1,8 @@
 package br.com.painel.service;
 
+import br.com.painel.cache.CacheService;
+import br.com.painel.cache.Cached;
+import br.com.painel.cache.Ttl;
 import br.com.painel.client.YahooClient;
 import br.com.painel.dto.Dividend;
 import br.com.painel.dto.Point;
@@ -7,8 +10,8 @@ import br.com.painel.dto.YahooChart;
 import br.com.painel.dto.YahooHistory;
 import br.com.painel.util.Numbers;
 import br.com.painel.util.PriceCleaner;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
-import io.quarkus.cache.CacheResult;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 
@@ -24,20 +27,34 @@ public class YahooService {
 
     private static final long YEAR_MS = 365L * 86_400_000;
 
-    private final YahooClient client;
+    private static final TypeReference<YahooChart> CHART = new TypeReference<>() {
+    };
+    private static final TypeReference<YahooHistory> HISTORY = new TypeReference<>() {
+    };
 
-    public YahooService(@RestClient YahooClient client) {
+    private final YahooClient client;
+    private final CacheService cache;
+
+    public YahooService(@RestClient YahooClient client, CacheService cache) {
         this.client = client;
+        this.cache = cache;
     }
 
-    @CacheResult(cacheName = "yahoo-chart")
-    public YahooChart chart(String symbol, String range) {
+    public Cached<YahooChart> chart(String symbol, String range, boolean refresh) {
+        return cache.get("yahoo-chart:" + symbol + ":" + range, Ttl.cotacao(), CHART, refresh, () -> fetchChart(symbol, range));
+    }
+
+    // traz também a cotação dos ativos do exterior (meta), por isso segue a validade da cotação
+    public Cached<YahooHistory> history(String symbol, boolean refresh) {
+        return cache.get("yahoo-history:" + symbol, Ttl.cotacao(), HISTORY, refresh, () -> fetchHistory(symbol));
+    }
+
+    private YahooChart fetchChart(String symbol, String range) {
         JsonNode res = result(client.chart(symbol, range, RANGES.get(range), "div"));
         return new YahooChart(res.path("meta"), points(res));
     }
 
-    @CacheResult(cacheName = "yahoo-history")
-    public YahooHistory history(String symbol) {
+    private YahooHistory fetchHistory(String symbol) {
         JsonNode res = result(client.chart(symbol, "2y", "1d", "div"));
 
         List<Dividend> dividends = new ArrayList<>();

@@ -27,13 +27,15 @@ public class CryptoController {
 
     @GET
     @RunOnVirtualThread
-    public CryptoResponse prices(@QueryParam("coins") @DefaultValue("") String coins) {
+    public CryptoResponse prices(@QueryParam("coins") @DefaultValue("") String coins,
+                                 @QueryParam("refresh") @DefaultValue("false") boolean refresh) {
         List<String> symbols = Arrays.stream(coins.split(","))
                 .map(c -> c.strip().toUpperCase(Locale.ROOT)).filter(c -> !c.isEmpty()).toList();
         try {
-            return new CryptoResponse(crypto.prices(symbols), crypto.available(), null);
+            var prices = crypto.prices(symbols, refresh);
+            return new CryptoResponse(prices.value(), crypto.available(), null, prices.fetchedAt(), prices.stale());
         } catch (RuntimeException e) {
-            return new CryptoResponse(Map.of(), crypto.available(), e.getMessage());
+            return new CryptoResponse(Map.of(), crypto.available(), e.getMessage(), null, null);
         }
     }
 }

@@ -1,11 +1,13 @@
 package br.com.painel.service;
 
+import br.com.painel.cache.Cached;
 import br.com.painel.dto.BrapiQuote;
 import br.com.painel.dto.DataResponse;
 import br.com.painel.dto.Dividend;
 import br.com.painel.dto.Fundamentals;
 import br.com.painel.dto.Point;
 import br.com.painel.dto.StockItem;
+import br.com.painel.dto.YahooChart;
 import br.com.painel.dto.YahooHistory;
 import br.com.painel.util.Tickers;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -54,11 +56,15 @@ public class StockService {
         return BRAPI_RANGES.contains(range) || YahooService.RANGES.containsKey(range);
     }
 
-    public DataResponse data(List<String> tickers, String range) {
-        return new DataResponse(range, tickers.isEmpty() ? List.of() : build(tickers, range), brapi.info());
+    public DataResponse data(List<String> tickers, String range, boolean refresh) {
+        List<StockItem> items = tickers.isEmpty() ? List.of() : build(tickers, range, refresh);
+        // a página mostra a hora da cotação mais antiga e avisa se alguma está vencida
+        Long oldest = items.stream().map(i -> i.fetchedAt).filter(java.util.Objects::nonNull).min(Long::compare).orElse(null);
+        boolean stale = items.stream().anyMatch(i -> i.stale);
+        return new DataResponse(range, items, brapi.info(), oldest, stale);
     }
 
-    private List<StockItem> build(List<String> tickers, String range) {
+    private List<StockItem> build(List<String> tickers, String range, boolean refresh) {
         Map<String, Fundamentals> fund;
         try {
             fund = fundamentus.all();
@@ -68,7 +74,7 @@ public class StockService {
         }
         Map<String, Fundamentals> f = fund;
         try (ExecutorService ex = Executors.newVirtualThreadPerTaskExecutor()) {
-            List<Future<StockItem>> futures = tickers.stream().map(t -> ex.submit(() -> one(t, range, f))).toList();
+            List<Future<StockItem>> futures = tickers.stream().map(t -> ex.submit(() -> one(t, range, refresh, f))).toList();
             List<StockItem> items = new ArrayList<>();
             for (int i = 0; i < futures.size(); i++) {
                 try {
@@ -84,26 +90,34 @@ public class StockService {
         }
     }
 
-    private StockItem one(String ticker, String range, Map<String, Fundamentals> fund) {
+    private StockItem one(String ticker, String range, boolean refresh, Map<String, Fundamentals> fund) {
         boolean b3 = Tickers.isB3(ticker);
         String ysym = b3 ? ticker + ".SA" : ticker;
         StockItem item = new StockItem(ticker, ysym);
 
-        BrapiQuote bq = null;
+        Cached<BrapiQuote> bqc = null;
         if (brapi.enabled() && b3) {
-            try {
-                bq = brapi.quote(ticker);
-            } catch (RuntimeException e) {
-                item.warnings.add(e.getMessage());
+            if (brapi.quotaLow()) {
+                bqc = brapi.lastKnown(ticker).orElse(null);
+                item.warnings.add("Cota mensal da brapi quase no fim: usando a última cotação salva ou o Yahoo.");
+            } else {
+                try {
+                    bqc = brapi.quote(ticker, refresh);
+                } catch (RuntimeException e) {
+                    item.warnings.add(e.getMessage());
+                }
             }
         }
+        BrapiQuote bq = bqc != null ? bqc.value() : null;
 
-        YahooHistory hist = null;
+        Cached<YahooHistory> hc = null;
         try {
-            hist = yahoo.history(ysym);
+            hc = yahoo.history(ysym, refresh);
         } catch (RuntimeException e) {
             LOG.debugf("Yahoo sem histórico para %s: %s", ysym, e.getMessage());
         }
+        YahooHistory hist = hc != null ? hc.value() : null;
+        boolean stale = (bqc != null && bqc.stale()) || (hc != null && hc.stale());
 
         long now = System.currentTimeMillis();
         if (BRAPI_RANGES.contains(range) && bq != null && !bq.points().isEmpty()) {
@@ -112,7 +126,9 @@ public class StockService {
         } else {
             String yr = YahooService.RANGES.containsKey(range) ? range : (BRAPI_RANGES.contains(range) ? "6mo" : "1y");
             try {
-                List<Point> pts = yahoo.chart(ysym, yr).points();
+                Cached<YahooChart> chart = yahoo.chart(ysym, yr, refresh);
+                stale |= chart.stale();
+                List<Point> pts = chart.value().points();
                 if ("1mo".equals(range)) {
                     pts = since(pts, now - 31 * DAY_MS);
                 } else if ("3mo".equals(range)) {
@@ -136,6 +152,8 @@ public class StockService {
         Fundamentals f = fund.get(ticker);
         Double price = or(num(q, "regularMarketPrice"), num(meta, "regularMarketPrice"));
         item.sources.put("cotacao", bq != null ? "brapi" : "Yahoo");
+        item.fetchedAt = bqc != null ? Long.valueOf(bqc.fetchedAt()) : (hc != null ? Long.valueOf(hc.fetchedAt()) : null);
+        item.stale = stale;
         item.sources.put("indicadores", f != null ? "Fundamentus" : null);
 
         List<Dividend> divs = hist != null ? hist.dividends() : List.of();

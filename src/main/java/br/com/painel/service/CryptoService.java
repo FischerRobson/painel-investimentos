@@ -1,12 +1,16 @@
 package br.com.painel.service;
 
+import br.com.painel.cache.CacheService;
+import br.com.painel.cache.Cached;
+import br.com.painel.cache.Ttl;
 import br.com.painel.client.CoinGeckoClient;
 import br.com.painel.dto.CryptoPrice;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
-import io.quarkus.cache.CacheResult;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,22 +24,30 @@ public class CryptoService {
             "BTC", "bitcoin", "ETH", "ethereum", "SOL", "solana", "USDT", "tether", "USDC", "usd-coin",
             "XRP", "ripple", "BNB", "binancecoin", "ADA", "cardano", "DOGE", "dogecoin", "LINK", "chainlink");
 
-    private final CoinGeckoClient client;
+    private static final TypeReference<JsonNode> JSON = new TypeReference<>() {
+    };
 
-    public CryptoService(@RestClient CoinGeckoClient client) {
+    private final CoinGeckoClient client;
+    private final CacheService cache;
+
+    public CryptoService(@RestClient CoinGeckoClient client, CacheService cache) {
         this.client = client;
+        this.cache = cache;
     }
 
     public List<String> available() {
         return List.copyOf(COINS.keySet());
     }
 
-    public Map<String, CryptoPrice> prices(List<String> symbols) {
+    public Cached<Map<String, CryptoPrice>> prices(List<String> symbols, boolean refresh) {
         TreeSet<String> ids = new TreeSet<>(symbols.stream().map(COINS::get).filter(Objects::nonNull).toList());
         if (ids.isEmpty()) {
-            return Map.of();
+            return new Cached<>(Map.of(), System.currentTimeMillis(), false);
         }
-        JsonNode data = fetch(String.join(",", ids));
+        String key = String.join(",", ids);
+        Cached<JsonNode> cached = cache.get("crypto:" + key, Ttl.of(Duration.ofMinutes(5)), JSON, refresh,
+                () -> client.price(key, "brl", true));
+        JsonNode data = cached.value();
         Map<String, CryptoPrice> out = new LinkedHashMap<>();
         for (String sym : symbols) {
             JsonNode d = data.path(COINS.getOrDefault(sym, ""));
@@ -44,12 +56,7 @@ public class CryptoService {
                 out.put(sym, new CryptoPrice(d.path("brl").asDouble(), chg.isNumber() ? chg.asDouble() : null));
             }
         }
-        return out;
-    }
-
-    @CacheResult(cacheName = "crypto")
-    public JsonNode fetch(String ids) {
-        return client.price(ids, "brl", true);
+        return new Cached<>(out, cached.fetchedAt(), cached.stale());
     }
 
     private static Map<String, String> linked(String... kv) {

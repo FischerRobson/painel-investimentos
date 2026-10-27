@@ -22,10 +22,11 @@ public class FxController {
 
     @GET
     @RunOnVirtualThread
-    public Object fx(@QueryParam("days") @DefaultValue("30") String days) {
+    public Object fx(@QueryParam("days") @DefaultValue("30") String days,
+                     @QueryParam("refresh") @DefaultValue("false") boolean refresh) {
         int d = days.matches("\\d{1,3}") && Integer.parseInt(days) >= 2 && Integer.parseInt(days) <= 360 ? Integer.parseInt(days) : 30;
         try {
-            return fx.fx(d);
+            return fx.fx(d, refresh);
         } catch (RuntimeException e) {
             return new ErrorResponse("Câmbio indisponível agora: " + e.getMessage());
         }

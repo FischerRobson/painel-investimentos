@@ -6,5 +6,5 @@ import java.util.List;
 import java.util.Map;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public record CryptoResponse(Map<String, CryptoPrice> prices, List<String> available, String error) {
+public record CryptoResponse(Map<String, CryptoPrice> prices, List<String> available, String error, Long fetchedAt, Boolean stale) {
 }

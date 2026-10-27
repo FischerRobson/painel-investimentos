@@ -1,13 +1,16 @@
 package br.com.painel.service;
 
+import br.com.painel.cache.CacheService;
+import br.com.painel.cache.Ttl;
 import br.com.painel.client.FipeClient;
 import br.com.painel.dto.FipeMonth;
 import br.com.painel.dto.FipePrice;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
-import io.quarkus.cache.CacheResult;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -24,10 +27,20 @@ public class FipeService {
     // o plano grátis libera o mês atual e os 2 anteriores
     private static final int PREVIOUS_MONTHS = 3;
 
-    private final FipeClient client;
+    private static final TypeReference<JsonNode> JSON = new TypeReference<>() {
+    };
+    private static final TypeReference<FipePrice> PRICE = new TypeReference<>() {
+    };
+    private static final Ttl LISTAS = Ttl.of(Duration.ofDays(7));
+    // a tabela FIPE muda uma vez por mês
+    private static final Ttl DIARIO = Ttl.of(Duration.ofDays(1));
 
-    public FipeService(@RestClient FipeClient client) {
+    private final FipeClient client;
+    private final CacheService cache;
+
+    public FipeService(@RestClient FipeClient client, CacheService cache) {
         this.client = client;
+        this.cache = cache;
     }
 
     public Object query(String kind, String type, String brand, String model, String year) {
@@ -43,28 +56,29 @@ public class FipeService {
         };
     }
 
-    @CacheResult(cacheName = "fipe-lists")
     public JsonNode brands(String type) {
-        return client.brands(type);
+        return cache.get("fipe:brands:" + type, LISTAS, JSON, false, () -> client.brands(type)).value();
     }
 
-    @CacheResult(cacheName = "fipe-lists")
     public JsonNode models(String type, String brand) {
-        return client.models(type, brand);
+        return cache.get("fipe:models:" + type + ":" + brand, LISTAS, JSON, false, () -> client.models(type, brand)).value();
     }
 
-    @CacheResult(cacheName = "fipe-lists")
     public JsonNode years(String type, String brand, String model) {
-        return client.years(type, brand, model);
+        return cache.get("fipe:years:" + type + ":" + brand + ":" + model, LISTAS, JSON, false,
+                () -> client.years(type, brand, model)).value();
     }
 
-    @CacheResult(cacheName = "fipe-refs")
     public JsonNode references() {
-        return client.references();
+        return cache.get("fipe:refs", DIARIO, JSON, false, client::references).value();
     }
 
-    @CacheResult(cacheName = "fipe-price")
     public FipePrice price(String type, String brand, String model, String year) {
+        return cache.get("fipe:price:" + String.join(":", type, brand, model, year), DIARIO, PRICE, false,
+                () -> fetchPrice(type, brand, model, year)).value();
+    }
+
+    private FipePrice fetchPrice(String type, String brand, String model, String year) {
         JsonNode cur = client.price(type, brand, model, year, null);
         if (!cur.has("price")) {
             throw new IllegalStateException(cur.path("error").asText("veículo não encontrado"));

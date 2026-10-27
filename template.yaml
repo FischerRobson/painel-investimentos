@@ -69,6 +69,22 @@ Resources:
               Bool:
                 aws:SecureTransport: "false"
 
+  # Cache compartilhado das fontes externas (brapi, Yahoo, Fundamentus…) entre instâncias e usuários.
+  # Os itens expiram sozinhos pelo atributo expiraEm (TTL do DynamoDB).
+  CacheTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: k
+          AttributeType: S
+      KeySchema:
+        - AttributeName: k
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expiraEm
+        Enabled: true
+
   # ------------------------------------------------------------------ login
   PreSignUpFunction:
     Type: AWS::Serverless::Function
@@ -194,6 +210,7 @@ Resources:
           QUARKUS_PROFILE: lambda
           PAINEL_STORAGE_TYPE: s3
           PAINEL_STORAGE_BUCKET: !Ref DataBucket
+          PAINEL_CACHE_TABLE: !Ref CacheTable
           PAINEL_AUTH_CONFIG_PARAM: /painel/auth-config
           COGNITO_USER_POOL_ID: !Ref UserPool
           BRAPI_TOKEN: !Ref BrapiToken
@@ -211,6 +228,10 @@ Resources:
               Effect: Allow
               Action: s3:ListBucket
               Resource: !GetAtt DataBucket.Arn
+            - Sid: CacheCompartilhado
+              Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:PutItem]
+              Resource: !GetAtt CacheTable.Arn
             - Sid: ConfigDoLogin
               Effect: Allow
               Action: ssm:GetParameter

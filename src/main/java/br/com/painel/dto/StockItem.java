@@ -42,6 +42,10 @@ public class StockItem {
     public Double pvp;
     public Fundamentals fund;
 
+    // hora (ms) da cotação usada e se alguma fonte está vencida (fonte fora do ar)
+    public Long fetchedAt;
+    public boolean stale;
+
     public StockItem(String ticker, String symbol) {
         this.ticker = ticker;
         this.symbol = symbol;

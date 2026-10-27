@@ -14,8 +14,15 @@ public interface PainelConfig {
 
     Auth auth();
 
+    Cache cache();
+
     @WithDefault("cache_taxas.json")
     String ratesCacheFile();
+
+    interface Cache {
+        // tabela DynamoDB do cache compartilhado; ausente = cache só em memória (desenvolvimento local)
+        Optional<String> table();
+    }
 
     interface Auth {
         Optional<String> configParam();

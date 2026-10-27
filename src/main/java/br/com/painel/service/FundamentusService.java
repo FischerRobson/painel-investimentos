@@ -1,8 +1,10 @@
 package br.com.painel.service;
 
+import br.com.painel.cache.CacheService;
+import br.com.painel.cache.Ttl;
 import br.com.painel.client.FundamentusClient;
 import br.com.painel.dto.Fundamentals;
-import io.quarkus.cache.CacheResult;
+import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jsoup.Jsoup;
@@ -10,6 +12,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -21,14 +24,22 @@ import static br.com.painel.util.Numbers.parseBr;
 @ApplicationScoped
 public class FundamentusService {
 
-    private final FundamentusClient client;
+    private static final TypeReference<Map<String, Fundamentals>> ALL = new TypeReference<>() {
+    };
 
-    public FundamentusService(@RestClient FundamentusClient client) {
+    private final FundamentusClient client;
+    private final CacheService cache;
+
+    public FundamentusService(@RestClient FundamentusClient client, CacheService cache) {
         this.client = client;
+        this.cache = cache;
     }
 
-    @CacheResult(cacheName = "fundamentus")
     public Map<String, Fundamentals> all() {
+        return cache.get("fundamentus", Ttl.of(Duration.ofHours(6)), ALL, false, this::fetchAll).value();
+    }
+
+    private Map<String, Fundamentals> fetchAll() {
         Map<String, Fundamentals> data = new HashMap<>();
         for (Map<String, String> r : table("resultado.php")) {
             data.put(r.get("Papel"), Fundamentals.acao(

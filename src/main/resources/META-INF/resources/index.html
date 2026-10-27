@@ -114,6 +114,9 @@ details summary { cursor: pointer; color: var(--text-2); font-size: 12px; font-w
 .err { color: var(--bad); font-size: 13px; }
 .logo { width: 22px; height: 22px; border-radius: 5px; object-fit: contain; background: #fff; }
 .status { color: var(--text-3); font-size: 12px; }
+.status-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.status.stale { color: var(--bad); font-weight: 600; }
+.link-btn { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; font-size: 12px; color: var(--accent); cursor: pointer; }
 #save-state.erro { color: var(--bad); font-weight: 600; }
 .head-r { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .nav { display: flex; gap: 4px; margin: 0 0 18px; border-bottom: 1px solid var(--border); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
@@ -256,7 +259,8 @@ body.busy #topbar { opacity: 1; }
       <div class="sub">Cotação: brapi.dev · Indicadores: Fundamentus · Histórico e proventos: Yahoo Finance · Cripto: CoinGecko · Taxas: Banco Central</div>
     </div>
     <div class="head-r">
-      <div class="status" id="status"></div>
+      <div class="status-line"><span class="status" id="status"></span><button type="button" id="refresh-btn" class="link-btn" hidden
+        title="Busca dados novos nas fontes (só os que têm mais de 2 minutos)">↻ Atualizar</button></div>
       <div class="status" id="save-state" aria-live="polite"></div>
       <div class="status" id="user-box" hidden><span id="user-email"></span> · <a href="#" id="logout">Sair</a></div>
       <label class="status"><input type="checkbox" id="auto"> atualizar a cada 15 min</label>
@@ -339,10 +343,22 @@ function periodReturn(it) {
 const PAGE = { "/projecao": "projecao", "/ativos": "ativos", "/moedas": "moedas", "/bens": "bens" }[location.pathname.replace(/\/$/, "")] || "carteira";
 const renderPage = () => ({ carteira: renderWallet, projecao: renderProjection, ativos: render, moedas: renderMoedas, bens: renderBens })[PAGE]();
 
+// Hora e situação dos dados exibidos: cada fonte (cotações, cripto, câmbio) registra aqui o que recebeu
+let fontes = {};
+const registraFonte = (nome, j) => { if (j && j.fetchedAt) fontes[nome] = { fetchedAt: j.fetchedAt, stale: !!j.stale }; };
+const horaDado = ms => {
+  const d = new Date(ms), hoje = new Date().toDateString() === d.toDateString();
+  return (hoje ? "" : d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + " ") + d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+};
 function setStatus(brapiInfo) {
-  const b = brapiInfo || {};
-  $("#status").textContent = "Atualizado às " + new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) +
+  const b = brapiInfo || {}, lista = Object.values(fontes), el = $("#status");
+  const maisAntigo = lista.length ? Math.min(...lista.map(f => f.fetchedAt)) : null;
+  const vencido = lista.some(f => f.stale);
+  el.textContent = (maisAntigo ? `Cotações de ${horaDado(maisAntigo)}` : "Atualizado às " + horaDado(Date.now())) +
+    (vencido ? " · desatualizadas (fonte fora do ar)" : "") +
     (b.enabled && b.remaining != null ? ` · brapi: ${b.remaining.toLocaleString("pt-BR")} de ${b.limit.toLocaleString("pt-BR")} consultas restantes (30 dias)` : "");
+  el.classList.toggle("stale", vencido);
+  el.title = maisAntigo ? "Os dados ficam em cache: cotações por 30 min com a B3 aberta (até a próxima abertura com ela fechada), cripto por 5 min e câmbio por 10 min." : "";
 }
 
 // ---------- Skeleton loading ----------
@@ -372,7 +388,9 @@ function skeletonHtml(page) {
   return `<div class="skel" aria-hidden="true">${html}</div>`;
 }
 
-async function load() {
+async function load(opts = {}) {
+  const atualizar = opts.refresh ? "&refresh=true" : "";
+  fontes = {};
   const main = $("#" + { carteira: "wallet", projecao: "projection", ativos: "app", moedas: "moedas", bens: "bens" }[PAGE]);
   const first = !main.children.length || main.querySelector(".skel");
   if (first) main.innerHTML = skeletonHtml(PAGE);
@@ -387,7 +405,8 @@ async function load() {
       history.replaceState(null, "", "#" + encodeURIComponent(list.replace(/\s+/g, "")));
       document.querySelectorAll("#ranges button").forEach(b => b.classList.toggle("on", b.dataset.r === range));
       const shown = parseTickers(list);
-      const j = await (await fetch(`/api/data?range=${range}&symbols=${encodeURIComponent(shown.join(","))}`)).json();
+      const j = await (await fetch(`/api/data?range=${range}&symbols=${encodeURIComponent(shown.join(","))}${atualizar}`)).json();
+      registraFonte("cotacoes", j);
       byTicker = Object.fromEntries(j.items.map(it => [it.ticker, it]));
       data = shown.filter(t => byTicker[t]).map((t, i) => ({ ...byTicker[t], idx: i, ret: periodReturn(byTicker[t]) }));
       render();
@@ -395,16 +414,17 @@ async function load() {
     } else if (PAGE === "carteira") {
       let info = null;
       if (wallet.length) { // 1M usa só a brapi para o gráfico, a consulta mais barata
-        const j = await (await fetch(`/api/data?range=1mo&symbols=${encodeURIComponent(wallet.map(w => w.t).join(","))}`)).json();
+        const j = await (await fetch(`/api/data?range=1mo&symbols=${encodeURIComponent(wallet.map(w => w.t).join(","))}${atualizar}`)).json();
+        registraFonte("cotacoes", j);
         byTicker = Object.fromEntries(j.items.map(it => [it.ticker, it]));
         info = j.brapi;
       }
       const needFx = moedasW.length || Object.values(byTicker).some(it => it.currency && it.currency !== "BRL");
-      await Promise.all([loadExtras(), needFx ? loadFx(30) : null, bensW.length ? loadBensPrices() : null]);
+      await Promise.all([loadExtras({ refresh: opts.refresh }), needFx ? loadFx(30, opts.refresh) : null, bensW.length ? loadBensPrices() : null]);
       renderWallet();
       setStatus(info);
     } else if (PAGE === "moedas") {
-      await loadFx(fxDays);
+      await loadFx(fxDays, opts.refresh);
       renderMoedas();
       setStatus(null);
     } else if (PAGE === "bens") {
@@ -418,8 +438,8 @@ async function load() {
       setStatus(null);
     }
   } catch (e) {
-    $("#status").textContent = "Erro ao carregar. O servidor (server.py) está rodando?";
-    if (main.querySelector(".skel")) main.innerHTML = `<div class="panel err">Não consegui carregar os dados. Confira se o servidor (server.py) está rodando e recarregue a página.</div>`;
+    $("#status").textContent = "Erro ao carregar. Verifique sua conexão.";
+    if (main.querySelector(".skel")) main.innerHTML = `<div class="panel err">Não consegui carregar os dados. Verifique sua conexão e recarregue a página.</div>`;
   }
   main.classList.remove("loading");
   document.body.classList.remove("busy");
@@ -445,9 +465,10 @@ const accOpen = k => store.get("acc_" + k, "1") === "1";
 const todayISO = () => new Date().toLocaleDateString("sv-SE"); // AAAA-MM-DD no fuso local
 const isoBR = d => d ? d.split("-").reverse().join("/") : "—";
 
-async function loadExtras({ crypto = true } = {}) {
+async function loadExtras({ crypto = true, refresh = false } = {}) {
   const jobs = [];
-  if (crypto && cryptoW.length) jobs.push(fetch(`/api/crypto?coins=${cryptoW.map(c => c.t).join(",")}`).then(r => r.json()).then(j => {
+  if (crypto && cryptoW.length) jobs.push(fetch(`/api/crypto?coins=${cryptoW.map(c => c.t).join(",")}${refresh ? "&refresh=true" : ""}`).then(r => r.json()).then(j => {
+    registraFonte("cripto", j);
     cryptoPrices = { ...cryptoPrices, ...j.prices }; cryptoErr = j.error ? "Não consegui o preço das criptos agora (CoinGecko)." : null;
   }).catch(() => cryptoErr = "Não consegui o preço das criptos agora (CoinGecko)."));
   if (rfW.length) {
@@ -685,10 +706,11 @@ const fxDec = c => (fx?.quotes?.[c]?.bid ?? 1) < 0.1 ? 5 : 4;
 const mesKey = m => { const [nome, , ano] = m.split(" "); return Number(ano) * 12 + MESES.indexOf(nome); };
 const mesCurto = m => { const [nome, , ano] = m.split(" "); return nome.slice(0, 3) + "/" + String(ano).slice(2); };
 
-async function loadFx(days = 30) {
+async function loadFx(days = 30, refresh = false) {
   try {
-    const j = await (await fetch(`/api/fx?days=${days}`)).json();
+    const j = await (await fetch(`/api/fx?days=${days}${refresh ? "&refresh=true" : ""}`)).json();
     if (j.error) { fxErr = j.error; return; }
+    registraFonte("cambio", j);
     fx = j; fxErr = null;
   } catch { fxErr = "Não consegui as cotações das moedas agora."; }
 }
@@ -1553,7 +1575,7 @@ function renderCards(ok) {
       <div class="stats">${stats.map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("")}</div>
       ${divs.length ? `<details class="divs"><summary>Proventos (últimos 2 anos · ${divs.length} pagamentos)</summary><div class="divbox"><canvas></canvas></div></details>` : ""}
       ${it.summary ? `<details><summary>${isFII ? "Sobre o fundo" : "Sobre a empresa"}</summary><div class="about">${esc(it.summary)}</div></details>` : ""}
-      <div class="range52">Gráfico: ${esc(it.sources?.grafico || "—")} · cotação: ${esc(it.sources?.cotacao || "—")} · indicadores: ${esc(it.sources?.indicadores || "—")}</div>`;
+      <div class="range52">Gráfico: ${esc(it.sources?.grafico || "—")} · cotação: ${esc(it.sources?.cotacao || "—")}${it.fetchedAt ? ` de ${horaDado(it.fetchedAt)}` : ""}${it.stale ? ' <b class="down">(desatualizada)</b>' : ""} · indicadores: ${esc(it.sources?.indicadores || "—")}</div>`;
     wrap.appendChild(el);
 
     // Gráfico de preço
@@ -1821,6 +1843,8 @@ document.querySelectorAll(".nav a").forEach(a => a.classList.toggle("on", a.data
 document.title = { carteira: "Carteira", projecao: "Projeção", ativos: "Ativos", moedas: "Moedas", bens: "Bens" }[PAGE] + " · Meus Investimentos";
 const pageEls = { carteira: ["#wallet"], projecao: ["#projection"], ativos: ["#ativos-controls", "#app"], moedas: ["#moedas"], bens: ["#bens"] };
 for (const [pg, sels] of Object.entries(pageEls)) sels.forEach(sel => $(sel).hidden = pg !== PAGE);
+$("#refresh-btn").hidden = !["carteira", "ativos", "moedas"].includes(PAGE);
+$("#refresh-btn").onclick = () => load({ refresh: true });
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 (async () => {
   try {

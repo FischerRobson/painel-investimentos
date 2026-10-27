@@ -24,7 +24,8 @@ public class DataController {
     @GET
     @RunOnVirtualThread
     public DataResponse data(@QueryParam("symbols") @DefaultValue("") String symbols,
-                             @QueryParam("range") @DefaultValue("1y") String range) {
-        return stocks.data(Tickers.parse(symbols), StockService.validRange(range) ? range : "1y");
+                             @QueryParam("range") @DefaultValue("1y") String range,
+                             @QueryParam("refresh") @DefaultValue("false") boolean refresh) {
+        return stocks.data(Tickers.parse(symbols), StockService.validRange(range) ? range : "1y", refresh);
     }
 }
