@@ -91,3 +91,33 @@ O cliente OAuth do Google precisa ter como URI de redirecionamento
 `https://painel-<id da conta AWS>.auth.<região>.amazoncognito.com/oauth2/idpresponse` (output `GoogleRedirectUri`).
 
 Deploy manual (sem o GitHub), com `deploy.env` preenchido a partir de `deploy.env.example`: `./deploy.sh`.
+
+## Próximos passos
+
+Ideias para o futuro, em nível macro. Ordem sugerida: **1 → 2 → 3**, que mais mudam o uso do dia a dia;
+**11 a 13** quando o app for aberto para outras pessoas.
+
+**Funcionalidades**
+1. **Registro de operações** (compras e vendas com data e preço): preço médio, lucro/prejuízo e rentabilidade real.
+2. **Importar da B3**: posição e movimentações da Área do Investidor, sem digitação.
+3. **Imposto de Renda**: apuração mensal (DARF) e relatório anual de bens e direitos.
+4. **Tesouro Direto a preço de mercado**: valor de venda real dos títulos, além do valor na curva.
+5. **Calendário de proventos**: recebidos por mês e próximos pagamentos.
+6. **Rebalanceamento**: metas por classe de ativo e quanto aportar em cada uma.
+7. **Notificações no iPhone**: preço-alvo, provento anunciado, vencimento de título.
+
+**Abrir para outras pessoas**
+8. **Criptografia de ponta a ponta** dos dados de cada usuário.
+9. **Lista de convidados** sem deploy, **limite de uso por pessoa** e **"apagar minha conta"**.
+10. **Publicar o app OAuth** no Google e **página de privacidade**.
+
+**Infraestrutura e operação**
+11. **Domínio próprio**, com CloudFront e HTTPS.
+12. **Aumentar a concorrência do Lambda** (hoje: 5 execuções simultâneas).
+13. **Alertas de custo e de erro**: orçamento da AWS e alarmes no CloudWatch.
+14. **Fixar a versão do SAM CLI** e atualizar dependências automaticamente (Dependabot).
+15. **Ambiente de homologação**: stack separado para testar antes de produção.
+
+**Qualidade de código**
+16. **Testes de ponta a ponta do frontend** (Playwright) no CI.
+17. **Modularizar o `index.html`** (quase 2.000 linhas) ou migrar para um framework leve.
