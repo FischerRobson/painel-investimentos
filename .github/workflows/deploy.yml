@@ -1,0 +1,65 @@
+name: Deploy
+
+# Manual: Actions → Deploy → Run workflow (só a partir da master)
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write   # OIDC: credenciais temporárias da AWS, sem chave guardada
+  contents: read
+
+concurrency:
+  group: deploy-producao
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy na AWS
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      AWS_REGION: us-east-1
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Testes
+        run: ./mvnw -B verify
+
+      - name: Instala o SAM CLI
+        run: |
+          curl -sSL -o /tmp/sam.zip https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip
+          unzip -q /tmp/sam.zip -d /tmp/sam
+          sudo /tmp/sam/install --update
+          sam --version
+
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy
+        run: ./deploy.sh
+        env:
+          SAM_CLI_TELEMETRY: "0"
+          CFN_EXEC_ROLE_ARN: ${{ vars.AWS_CFN_EXEC_ROLE_ARN }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          ALLOWED_EMAILS: ${{ secrets.ALLOWED_EMAILS }}
+          BRAPI_TOKEN: ${{ secrets.BRAPI_TOKEN }}
+
+      - name: Verificação pós-deploy
+        run: |
+          URL=$(aws cloudformation describe-stacks --stack-name painel-investimentos \
+            --query "Stacks[0].Outputs[?OutputKey=='Url'].OutputValue" --output text)
+          pagina=$(curl -s -o /dev/null -w "%{http_code}" "${URL}carteira")
+          api=$(curl -s -o /dev/null -w "%{http_code}" "${URL}api/carteira")
+          echo "página: $pagina (esperado 200) · API sem login: $api (esperado 401)"
+          [[ "$pagina" == "200" && "$api" == "401" ]]
+          echo "### Publicado: ${URL}" >> "$GITHUB_STEP_SUMMARY"

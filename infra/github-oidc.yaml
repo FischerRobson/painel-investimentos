@@ -1,0 +1,188 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Acesso do GitHub Actions à AWS sem chaves fixas (OIDC). Cria o papel que o workflow de deploy assume
+  e o papel que o CloudFormation usa para criar os recursos do stack painel-investimentos.
+  Deploy único, feito à mão:
+    aws cloudformation deploy --template-file infra/github-oidc.yaml --stack-name painel-github-oidc \
+      --capabilities CAPABILITY_NAMED_IAM --parameter-overrides GitHubRepo=<dono>/<repo>
+
+Parameters:
+  GitHubRepo:
+    Type: String
+    Description: Repositório no formato dono/nome
+    AllowedPattern: "[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+"
+  GitHubEnvironment:
+    Type: String
+    Default: production
+    Description: Só jobs deste environment do GitHub podem assumir o papel de deploy
+  AppStackName:
+    Type: String
+    Default: painel-investimentos
+
+Resources:
+  GitHubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+        - 1c58a3a8518e8759bf075b76b750d4f2df264fcd
+
+  # Assumido pelo workflow de deploy: só consegue mexer no stack do app e passar o papel abaixo ao CloudFormation
+  GitHubDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: painel-github-deploy        # fora do padrão ${AppStackName}-*, que o papel abaixo pode alterar
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Ref GitHubOidcProvider
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub "repo:${GitHubRepo}:environment:${GitHubEnvironment}"
+      Policies:
+        - PolicyName: deploy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: StackDoApp
+                Effect: Allow
+                Action:
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:DeleteChangeSet
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:DescribeStackResource
+                  - cloudformation:DescribeStackResources
+                  - cloudformation:GetTemplateSummary
+                  - cloudformation:ListStackResources
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AppStackName}/*"
+                  - !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/aws-sam-cli-managed-default/*"
+                  - !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:aws:transform/Serverless-2016-10-31"
+              - Sid: Leitura
+                Effect: Allow
+                Action:
+                  - cloudformation:ValidateTemplate
+                  - cloudformation:ListStacks
+                Resource: "*"
+              - Sid: ArtefatosDoSam
+                Effect: Allow
+                Action: [s3:GetObject, s3:PutObject, s3:ListBucket, s3:GetBucketLocation]
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::aws-sam-cli-managed-default-samclisourcebucket-*"
+                  - !Sub "arn:${AWS::Partition}:s3:::aws-sam-cli-managed-default-samclisourcebucket-*/*"
+              - Sid: PassarPapelAoCloudFormation
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !GetAtt CloudFormationExecRole.Arn
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: cloudformation.amazonaws.com
+
+  # Assumido pelo CloudFormation ao criar/atualizar o stack do app; restrito aos recursos dele
+  CloudFormationExecRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: painel-cfn-exec
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+      Policies:
+        - PolicyName: recursos-do-app
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: Lambda
+                Effect: Allow
+                Action: lambda:*
+                Resource: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${AppStackName}-*"
+              - Sid: PapeisDasFuncoes
+                Effect: Allow
+                Action:
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:GetRole
+                  - iam:UpdateRole
+                  - iam:TagRole
+                  - iam:UntagRole
+                  - iam:PutRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:GetRolePolicy
+                  - iam:AttachRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:ListRolePolicies
+                  - iam:ListAttachedRolePolicies
+                  - iam:UpdateAssumeRolePolicy
+                  - iam:PassRole
+                Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AppStackName}-*"
+              - Sid: BucketDeDados
+                Effect: Allow
+                Action:
+                  - s3:CreateBucket
+                  - s3:DeleteBucket
+                  - s3:GetBucket*
+                  - s3:PutBucket*
+                  - s3:DeleteBucketPolicy
+                  - s3:GetEncryptionConfiguration
+                  - s3:PutEncryptionConfiguration
+                  - s3:GetLifecycleConfiguration
+                  - s3:PutLifecycleConfiguration
+                  - s3:GetAccelerateConfiguration
+                  - s3:GetReplicationConfiguration
+                  - s3:ListBucket
+                Resource: !Sub "arn:${AWS::Partition}:s3:::${AppStackName}-*"
+              - Sid: CodigoDasFuncoes
+                Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub "arn:${AWS::Partition}:s3:::aws-sam-cli-managed-default-samclisourcebucket-*/*"
+              - Sid: Login
+                Effect: Allow
+                Action: cognito-idp:*
+                Resource: "*"
+              - Sid: ParametroDoLogin
+                Effect: Allow
+                Action:
+                  - ssm:PutParameter
+                  - ssm:DeleteParameter
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                  - ssm:AddTagsToResource
+                  - ssm:RemoveTagsFromResource
+                  - ssm:ListTagsForResource
+                Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/painel/*"
+              - Sid: Logs
+                Effect: Allow
+                Action: logs:*
+                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${AppStackName}-*"
+              - Sid: LeiturasGlobais
+                Effect: Allow
+                Action:
+                  - logs:DescribeLogGroups
+                  - ssm:DescribeParameters
+                  - lambda:GetAccountSettings
+                  - lambda:ListFunctions
+                Resource: "*"
+
+Outputs:
+  DeployRoleArn:
+    Description: Variável AWS_DEPLOY_ROLE_ARN do environment production no GitHub
+    Value: !GetAtt GitHubDeployRole.Arn
+  CloudFormationExecRoleArn:
+    Description: Variável AWS_CFN_EXEC_ROLE_ARN do environment production no GitHub
+    Value: !GetAtt CloudFormationExecRole.Arn

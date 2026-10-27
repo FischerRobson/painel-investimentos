@@ -1,0 +1,233 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  Painel de investimentos: Quarkus no Lambda (Function URL + SnapStart), dados no S3,
+  login com Google via Cognito restrito a e-mails permitidos.
+
+Parameters:
+  GoogleClientId:
+    Type: String
+    Description: Client ID do OAuth do Google (Google Cloud Console > APIs e serviços > Credenciais)
+  GoogleClientSecret:
+    Type: String
+    NoEcho: true
+    Description: Client secret do OAuth do Google
+  AllowedEmails:
+    Type: String
+    Description: E-mails que podem criar conta, separados por vírgula
+  BrapiToken:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Token da brapi.dev (vazio = cotações só pelo Yahoo)
+
+Resources:
+  # ------------------------------------------------------------------ dados
+  DataBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain          # apagar o stack não apaga seus dados
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled             # cada gravação guarda a versão anterior (backup de graça)
+      LifecycleConfiguration:
+        Rules:
+          - Id: limpa-versoes-antigas
+            Status: Enabled
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 90
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+
+  DataBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref DataBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: SomenteHttps
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt DataBucket.Arn
+              - !Sub "${DataBucket.Arn}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+
+  # ------------------------------------------------------------------ login
+  PreSignUpFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Recusa cadastro de e-mails fora da lista permitida
+      Runtime: python3.13
+      Handler: index.handler
+      Timeout: 5
+      MemorySize: 128
+      LoggingConfig:
+        LogGroup: !Ref PreSignUpLogGroup
+      Environment:
+        Variables:
+          ALLOWED_EMAILS: !Ref AllowedEmails
+      InlineCode: |
+        import os
+
+        def handler(event, context):
+            allowed = {e.strip().lower() for e in os.environ["ALLOWED_EMAILS"].split(",") if e.strip()}
+            email = (event["request"].get("userAttributes", {}).get("email") or "").strip().lower()
+            if email not in allowed:
+                raise Exception("Acesso não autorizado para este e-mail")
+            return event
+
+  PreSignUpLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 14
+
+  PreSignUpPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt PreSignUpFunction.Arn
+      Principal: cognito-idp.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !GetAtt UserPool.Arn
+
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: painel-investimentos
+      UserPoolTier: LITE
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true   # sem cadastro por usuário/senha; só entra via Google
+      LambdaConfig:
+        PreSignUp: !GetAtt PreSignUpFunction.Arn
+
+  GoogleIdentityProvider:
+    Type: AWS::Cognito::UserPoolIdentityProvider
+    Properties:
+      UserPoolId: !Ref UserPool
+      ProviderName: Google
+      ProviderType: Google
+      ProviderDetails:
+        client_id: !Ref GoogleClientId
+        client_secret: !Ref GoogleClientSecret
+        authorize_scopes: openid email profile
+      AttributeMapping:
+        email: email
+        name: name
+
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      UserPoolId: !Ref UserPool
+      Domain: !Sub "painel-${AWS::AccountId}"
+
+  # Cliente público (sem secret): a página faz o fluxo authorization code com PKCE
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn: GoogleIdentityProvider
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: painel-web
+      GenerateSecret: false
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows: [code]
+      AllowedOAuthScopes: [openid, email, profile]
+      SupportedIdentityProviders: [Google]
+      CallbackURLs: [!GetAtt PainelFunctionUrl.FunctionUrl]
+      LogoutURLs: [!GetAtt PainelFunctionUrl.FunctionUrl]
+      AccessTokenValidity: 60
+      IdTokenValidity: 60
+      RefreshTokenValidity: 30
+      TokenValidityUnits:
+        AccessToken: minutes
+        IdToken: minutes
+        RefreshToken: days
+      EnableTokenRevocation: true
+      PreventUserExistenceErrors: ENABLED
+
+  # Lido pela função em tempo de execução (passar o client id por variável de ambiente criaria um ciclo:
+  # função → client → URL da função → função)
+  AuthConfigParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /painel/auth-config
+      Type: String
+      Description: Configuração pública do login do painel
+      Value: !Sub '{"clientId":"${UserPoolClient}","domain":"https://${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com","region":"${AWS::Region}"}'
+
+  # ------------------------------------------------------------------ aplicação
+  PainelFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Painel de investimentos (Quarkus)
+      Runtime: java21
+      Architectures: [x86_64]
+      Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
+      CodeUri: target/function.zip
+      MemorySize: 512                # limite de contas novas; pedir aumento em Service Quotas se precisar
+      Timeout: 60                    # 1ª consulta ao Banco Central pode levar ~12 s
+      AutoPublishAlias: live         # SnapStart só vale em versões publicadas
+      SnapStart:
+        ApplyOn: PublishedVersions
+      FunctionUrlConfig:
+        AuthType: NONE               # público na rede; /api/* exige token do Cognito (validado no Quarkus)
+      LoggingConfig:
+        LogGroup: !Ref PainelLogGroup
+      Environment:
+        Variables:
+          QUARKUS_PROFILE: lambda
+          PAINEL_STORAGE_TYPE: s3
+          PAINEL_STORAGE_BUCKET: !Ref DataBucket
+          PAINEL_AUTH_CONFIG_PARAM: /painel/auth-config
+          COGNITO_USER_POOL_ID: !Ref UserPool
+          BRAPI_TOKEN: !Ref BrapiToken
+          JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1
+          QUARKUS_LOG_LEVEL: INFO
+      Policies:
+        - Statement:
+            - Sid: DadosDosUsuarios
+              Effect: Allow
+              Action: [s3:GetObject, s3:PutObject]
+              Resource: !Sub "${DataBucket.Arn}/users/*"
+            # Sem ListBucket o S3 responde 403 (e não 404) para arquivo que ainda não existe.
+            # Sem condição de prefixo: nessa checagem o S3 não informa o prefixo, então ela nunca casaria.
+            - Sid: ListarBucketParaReceber404
+              Effect: Allow
+              Action: s3:ListBucket
+              Resource: !GetAtt DataBucket.Arn
+            - Sid: ConfigDoLogin
+              Effect: Allow
+              Action: ssm:GetParameter
+              Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/painel/auth-config"
+
+  PainelLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 14
+
+Outputs:
+  Url:
+    Description: Endereço do painel
+    Value: !GetAtt PainelFunctionUrl.FunctionUrl
+  GoogleRedirectUri:
+    Description: Cadastre esta URL como "URI de redirecionamento autorizado" no OAuth do Google
+    Value: !Sub "https://painel-${AWS::AccountId}.auth.${AWS::Region}.amazoncognito.com/oauth2/idpresponse"
+  DataBucketName:
+    Description: Bucket com os dados (mantido mesmo se o stack for apagado)
+    Value: !Ref DataBucket

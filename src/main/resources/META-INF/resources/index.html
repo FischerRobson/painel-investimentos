@@ -1,0 +1,1839 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Meus Investimentos</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Investimentos">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#f4f4f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111110" media="(prefers-color-scheme: dark)">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f4f4f2;
+  --surface: #fcfcfb;
+  --border: #e3e2de;
+  --grid: #ecebe7;
+  --text: #0b0b0b;
+  --text-2: #52514e;
+  --text-3: #8a8984;
+  --accent: #2a78d6;
+  --good: #0a8a0a;
+  --bad: #d03b3b;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100;
+  --s5:#e87ba4; --s6:#008300; --s7:#6250d6; --s8:#e34948;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #111110; --surface: #1a1a19; --border: #2e2e2c; --grid: #262624;
+    --text: #f0efec; --text-2: #c3c2b7; --text-3: #8d8c85; --accent: #3987e5;
+    --good: #2fbf2f; --bad: #e66767;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+    --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111110; --surface: #1a1a19; --border: #2e2e2c; --grid: #262624;
+  --text: #f0efec; --text-2: #c3c2b7; --text-3: #8d8c85; --accent: #3987e5;
+  --good: #2fbf2f; --bad: #e66767;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+  --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.wrap { max-width: 1320px; margin: 0 auto; padding: 20px 16px 60px; }
+header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+h1 { font-size: 20px; margin: 0; letter-spacing: -.01em; }
+.sub { color: var(--text-3); font-size: 12px; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 18px; }
+.controls input[type=text] {
+  flex: 1 1 360px; min-width: 0; padding: 9px 12px; font: inherit; color: var(--text);
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+}
+button {
+  font: inherit; cursor: pointer; padding: 8px 14px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+}
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; padding: 8px 12px; color: var(--text-2); }
+.seg button.on { background: var(--text); color: var(--surface); }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+.panel h2 { font-size: 15px; margin: 0 0 2px; }
+.panel .hint { color: var(--text-3); font-size: 12px; margin-bottom: 10px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 6px 0 10px; font-size: 12px; color: var(--text-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+.legend span.off { opacity: .35; }
+.legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.cmp-box { position: relative; height: 320px; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap; }
+th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--grid); }
+th { color: var(--text-3); font-weight: 600; font-size: 12px; cursor: pointer; user-select: none; }
+th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+th.sorted::after { content: " ▾"; }
+th.sorted.asc::after { content: " ▴"; }
+tbody tr:hover { background: var(--grid); }
+.tk { font-weight: 700; display: inline-flex; align-items: center; gap: 7px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+.up { color: var(--good); } .down { color: var(--bad); }
+.muted { color: var(--text-3); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 16px; }
+@media (max-width: 440px) { .grid { grid-template-columns: 1fr; } }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.card-head { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.card-head .name { color: var(--text-2); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+.badge { font-size: 10px; font-weight: 700; letter-spacing: .04em; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border); color: var(--text-2); }
+.price { white-space: nowrap; font-size: 26px; font-weight: 700; letter-spacing: -.02em; text-align: right; line-height: 1.1; }
+.chg { font-size: 13px; font-weight: 600; text-align: right; }
+.x { background: none; border: 0; color: var(--text-3); padding: 0 0 0 6px; font-size: 18px; line-height: 1; }
+.mini { position: relative; height: 150px; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 12px; }
+.stat .k { font-size: 11px; color: var(--text-3); }
+.stat .v { font-size: 14px; font-weight: 600; }
+.range52 { font-size: 11px; color: var(--text-3); }
+.bar52 { position: relative; height: 4px; border-radius: 2px; background: var(--grid); margin: 5px 0 3px; }
+.bar52 b { position: absolute; top: -3px; width: 10px; height: 10px; border-radius: 50%; background: var(--text); border: 2px solid var(--surface); transform: translateX(-50%); }
+.bar52-l { display: flex; justify-content: space-between; }
+details summary { cursor: pointer; color: var(--text-2); font-size: 12px; font-weight: 600; }
+.divbox { position: relative; height: 120px; margin-top: 8px; }
+.about { font-size: 12px; color: var(--text-2); margin-top: 6px; max-height: 120px; overflow: auto; }
+.err { color: var(--bad); font-size: 13px; }
+.logo { width: 22px; height: 22px; border-radius: 5px; object-fit: contain; background: #fff; }
+.status { color: var(--text-3); font-size: 12px; }
+#save-state.erro { color: var(--bad); font-weight: 600; }
+.head-r { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.nav { display: flex; gap: 4px; margin: 0 0 18px; border-bottom: 1px solid var(--border); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.nav::-webkit-scrollbar { display: none; }
+.nav a { padding: 10px 16px; color: var(--text-2); text-decoration: none; font-weight: 600; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.nav a:hover { color: var(--text); }
+.nav a.on { color: var(--text); border-bottom-color: var(--accent); }
+[hidden] { display: none !important; }
+/* iPhone: respeita notch e barra inferior; a faixa do topo fica escura para o relógio/bateria (texto branco) aparecer */
+body { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+.wrap { padding-top: calc(20px + env(safe-area-inset-top)); }
+body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: #111110; z-index: 60; }
+.offline { background: color-mix(in srgb, var(--s4) 22%, var(--surface)); border: 1px solid var(--border); color: var(--text);
+  border-radius: 10px; padding: 9px 12px; margin: 0 0 14px; font-size: 13px; }
+.nav a svg { display: none; }
+@media (max-width: 700px) {
+  .wrap { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
+  header .sub { display: none; }
+  .head-r { align-items: flex-start; }
+  .nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; margin: 0; gap: 0; justify-content: space-around;
+    background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border); border-bottom: 0; padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); overflow: visible; }
+  .nav a { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 2px; font-size: 10.5px;
+    border-bottom: 0; margin: 0; color: var(--text-3); -webkit-tap-highlight-color: transparent; }
+  .nav a.on { color: var(--accent); border-bottom: 0; }
+  .nav a svg { display: block; width: 22px; height: 22px; }
+  .controls input[type=text] { flex-basis: 100%; }
+}
+a { color: var(--accent); }
+.w-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0 14px; }
+.tile { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+.tile .k { font-size: 11px; color: var(--text-3); }
+.tile .v { font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
+.tile .s { font-size: 12px; color: var(--text-2); }
+.w-table th, .w-table td { padding: 8px 7px; }
+.w-table .alloc .track { width: 56px; }
+.w-table td:last-child { padding-right: 0; }
+.w-table td input { width: 90px; padding: 5px 8px; font: inherit; text-align: right; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; }
+.alloc { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.alloc .track { width: 90px; height: 6px; border-radius: 3px; background: var(--grid); overflow: hidden; }
+.alloc .fill { height: 100%; background: var(--accent); border-radius: 3px; }
+.w-add { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+.w-add input { padding: 8px 10px; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+.w-add input[name=t] { width: 130px; text-transform: uppercase; }
+.w-add input[name=q] { width: 120px; }
+.mix { display: flex; height: 8px; border-radius: 4px; overflow: hidden; gap: 2px; margin-top: 6px; }
+.mix span { display: block; height: 100%; }
+.mix-l { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 6px; font-size: 11px; color: var(--text-2); }
+.mix-l span { display: inline-flex; align-items: center; gap: 4px; }
+.mix-l i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+.w-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+details.acc { border-top: 1px solid var(--border); margin-top: 14px; }
+details.acc > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 12px 2px; user-select: none; }
+details.acc > summary::-webkit-details-marker { display: none; }
+details.acc > summary::before { content: "▸"; color: var(--text-3); transition: transform .15s; display: inline-block; width: 12px; }
+details.acc[open] > summary::before { transform: rotate(90deg); }
+.acc-t { font-weight: 700; font-size: 14px; color: var(--text); }
+.acc-s { color: var(--text-3); font-size: 12px; margin-left: auto; text-align: right; }
+.panel > details.acc:first-child { border-top: 0; margin-top: 0; }
+.panel > details.acc:first-child > summary { padding-top: 0; }
+.dist { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 28px; margin: 4px 0 6px; }
+.pie-box { position: relative; width: 220px; height: 220px; flex: none; }
+.pie-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+.pie-center .k { font-size: 11px; color: var(--text-3); }
+.pie-center .v { font-size: 15px; font-weight: 700; }
+.pie-legend { flex: 1 1 260px; display: flex; flex-direction: column; gap: 2px; max-width: 460px; }
+.pl-row { display: grid; grid-template-columns: 12px 1fr auto 56px; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: default; outline: none; }
+.pl-row:hover, .pl-row:focus { background: var(--grid); }
+.pl-row i { width: 12px; height: 12px; border-radius: 3px; }
+.pl-name { font-weight: 600; } .pl-val { font-weight: 600; } .pl-pct { color: var(--text-3); text-align: right; }
+#bk-tip { position: fixed; z-index: 50; display: none; width: 340px; max-width: calc(100vw - 16px); max-height: 70vh; overflow: auto; background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; box-shadow: 0 10px 30px rgba(0,0,0,.25); pointer-events: none; font-size: 13px; }
+.bk-h { display: flex; align-items: center; gap: 8px; font-weight: 700; margin-bottom: 4px; }
+.bk-h i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.bk-h span { margin-left: auto; font-weight: 600; color: var(--text-2); font-size: 12px; }
+.bk-n { color: var(--text-3); font-size: 11px; margin-bottom: 6px; }
+.bk-r { display: grid; grid-template-columns: 1fr auto 46px; gap: 2px 10px; padding: 5px 0; border-top: 1px solid var(--grid); }
+.bk-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bk-v { text-align: right; } .bk-p { text-align: right; color: var(--text-3); }
+.bk-bar { grid-column: 1 / -1; height: 4px; border-radius: 2px; background: var(--grid); overflow: hidden; }
+.bk-bar span { display: block; height: 100%; border-radius: 2px; }
+.proj-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); align-items: end; }
+.proj-form label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--text-3); }
+.proj-form label input { width: 100%; min-width: 0; padding: 8px 10px; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+.proj-form label.chk { flex-direction: row; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); padding-bottom: 9px; }
+.proj-form label.chk input { width: auto; }
+.proj-form .quick { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+.proj-form .quick button { padding: 5px 10px; font-size: 12px; }
+.fx-have { display: flex; align-items: end; justify-content: space-between; gap: 10px; border-top: 1px solid var(--grid); padding-top: 10px; }
+.fx-have label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--text-3); }
+.fx-have input { width: 140px; padding: 7px 10px; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+.fipe-form { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.fipe-form label input { margin-bottom: 4px; }
+.fipe-result { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 14px; margin-top: 14px; padding: 14px; border: 1px solid var(--border); border-radius: 10px; }
+.fipe-save { display: flex; flex-wrap: wrap; gap: 8px; }
+.fipe-save input { padding: 8px 10px; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; min-width: 220px; }
+.proj-box { position: relative; height: 230px; margin: 4px 0 12px; }
+.w-actions button:disabled { opacity: .45; cursor: default; }
+tr.editing td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.panel h3 { font-size: 13px; margin: 18px 0 6px; color: var(--text-2); }
+.w-add select { padding: 8px 10px; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+.rf-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); align-items: end; }
+.rf-form label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--text-3); }
+.rf-form label input, .rf-form label select { width: 100%; min-width: 0; }
+.rf-form .pair { display: flex; gap: 6px; }
+.rf-form button { white-space: nowrap; }
+.rf-form .pair select { flex: 1.3; min-width: 0; } .rf-form .pair input { flex: 1; min-width: 0; }
+.rf-form label.chk { flex-direction: row; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); padding-bottom: 9px; }
+.rf-form label.chk input { width: auto; }
+.loading { opacity: .55; pointer-events: none; transition: opacity .2s; }
+/* Skeleton: blocos no formato do conteúdo com brilho passando */
+.sk { display: block; border-radius: 6px; background: linear-gradient(90deg, var(--grid) 0%, var(--border) 50%, var(--grid) 100%);
+  background-size: 300% 100%; animation: sk-shimmer 1.4s ease-in-out infinite; }
+.sk-line { height: 12px; margin: 6px 0; }
+.sk-title { height: 18px; width: 180px; margin-bottom: 10px; }
+.sk-big { height: 26px; width: 60%; margin: 8px 0 4px; }
+.sk-block { height: 100%; min-height: 120px; border-radius: 10px; }
+.sk-circle { width: 200px; height: 200px; border-radius: 50%; flex: none;
+  -webkit-mask: radial-gradient(circle, transparent 62%, #000 63%); mask: radial-gradient(circle, transparent 62%, #000 63%); }
+.sk-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--grid); }
+.sk-row .sk { height: 12px; margin: 0; }
+.sk-input { height: 36px; border-radius: 8px; }
+.skel { pointer-events: none; }
+@keyframes sk-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+/* Barra de progresso no topo durante atualizações */
+#topbar { position: fixed; top: 0; left: 0; right: 0; height: 3px; overflow: hidden; z-index: 100; opacity: 0; transition: opacity .2s; pointer-events: none; }
+body.busy #topbar { opacity: 1; }
+#topbar::before { content: ""; position: absolute; top: 0; bottom: 0; width: 35%; background: var(--accent); border-radius: 2px; animation: topbar 1.1s ease-in-out infinite; }
+@keyframes topbar { from { left: -35%; } to { left: 100%; } }
+@media (prefers-reduced-motion: reduce) { .sk, #topbar::before { animation: none; } #topbar::before { left: 0; width: 100%; opacity: .6; } }
+</style>
+</head>
+<body>
+<div id="topbar" role="progressbar" aria-label="Carregando"></div>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Meus Investimentos</h1>
+      <div class="sub">Cotação: brapi.dev · Indicadores: Fundamentus · Histórico e proventos: Yahoo Finance · Cripto: CoinGecko · Taxas: Banco Central</div>
+    </div>
+    <div class="head-r">
+      <div class="status" id="status"></div>
+      <div class="status" id="save-state" aria-live="polite"></div>
+      <div class="status" id="user-box" hidden><span id="user-email"></span> · <a href="#" id="logout">Sair</a></div>
+      <label class="status"><input type="checkbox" id="auto"> atualizar a cada 15 min</label>
+    </div>
+  </header>
+  <nav class="nav" aria-label="Páginas">
+    <a href="/carteira" data-page="carteira"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2z"/><circle cx="16" cy="14.5" r="1.3"/></svg>Carteira</a>
+    <a href="/projecao" data-page="projecao"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20h18"/><path d="M5 16l5-5 4 3 6-7"/><path d="M15 7h5v5"/></svg>Projeção</a>
+    <a href="/ativos" data-page="ativos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Ativos</a>
+    <a href="/moedas" data-page="moedas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="9" r="6"/><path d="M15.5 9.5a6 6 0 1 1-6 6"/></svg>Moedas</a>
+    <a href="/bens" data-page="bens"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17h14M6 17l1.5-5h9L18 17"/><path d="M4 17v2h3v-2M17 17v2h3v-2"/><path d="M7.5 12 9 8h6l1.5 4"/></svg>Bens</a>
+  </nav>
+
+  <div class="offline" id="offline-bar" role="status" hidden></div>
+  <div class="controls" id="ativos-controls">
+    <input type="text" id="tickers" placeholder="Ex.: BBDC4, EGIE3, KNRI11" autocomplete="off" spellcheck="false">
+    <button class="primary" id="go">Carregar</button>
+    <div class="seg" id="ranges">
+      <button data-r="1mo">1M</button><button data-r="3mo">3M</button><button data-r="6mo">6M</button><button data-r="1y">1A</button><button data-r="5y">5A</button><button data-r="max">Máx</button>
+    </div>
+  </div>
+
+  <div id="wallet"></div>
+  <div id="projection"></div>
+  <div id="moedas"></div>
+  <div id="bens"></div>
+  <div id="app"></div>
+</div>
+
+<script>
+const DEFAULT = "BBDC4, EGIE3, ALUP11, SBSP3, VIVT3, KNRI11, VISC11, XPML11";
+const RANGE_LABEL = { "1mo": "1 mês", "3mo": "3 meses", "6mo": "6 meses", "1y": "1 ano", "5y": "5 anos", "max": "todo o histórico" };
+const store = {
+  get(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+};
+let range = store.get("range", "1y");
+// Dados do usuário: carregados de /api/carteira em loadState() e salvos por persist()
+let wallet = [];
+let listaPainel = DEFAULT;
+const saveWallet = () => persist();
+let byTicker = {};
+let data = [];
+let sortKey = null, sortAsc = false;
+let charts = [];
+const hidden = new Set();
+
+const $ = (s, el = document) => el.querySelector(s);
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const color = i => css(`--s${(i % 8) + 1}`);
+
+const brl = (v, d = 2) => v == null ? "—" : v.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+const money = v => v == null ? "—" : "R$ " + brl(v);
+const pct = (v, d = 2) => v == null || !isFinite(v) ? "—" : (v > 0 ? "+" : "") + brl(v, d) + "%";
+const big = v => {
+  if (v == null) return "—";
+  const a = Math.abs(v);
+  if (a >= 1e12) return brl(v / 1e12, 2) + " tri";
+  if (a >= 1e9) return brl(v / 1e9, 2) + " bi";
+  if (a >= 1e6) return brl(v / 1e6, 2) + " mi";
+  if (a >= 1e3) return brl(v / 1e3, 1) + " mil";
+  return brl(v, 0);
+};
+const fmtDate = (ms, withYear = true) => new Date(ms).toLocaleDateString("pt-BR", withYear ? { day: "2-digit", month: "2-digit", year: "2-digit" } : { day: "2-digit", month: "short" });
+const nz = v => v == null || v === 0 ? null : v; // Fundamentus usa 0 quando não tem o dado
+const signCls = v => v > 0 ? "up" : v < 0 ? "down" : "muted";
+const arrow = v => v > 0 ? "▲" : v < 0 ? "▼" : "•";
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+const parseTickers = str => [...new Set(str.split(/[,\s;]+/).map(t => t.trim().toUpperCase().replace(/\.SA$/, "")).filter(Boolean))];
+
+function periodReturn(it) {
+  const p = it.points || [];
+  if (p.length < 2) return null;
+  return (p[p.length - 1][1] / p[0][1] - 1) * 100;
+}
+
+// ---------- Carregamento ----------
+// ---------- Páginas ----------
+const PAGE = { "/projecao": "projecao", "/ativos": "ativos", "/moedas": "moedas", "/bens": "bens" }[location.pathname.replace(/\/$/, "")] || "carteira";
+const renderPage = () => ({ carteira: renderWallet, projecao: renderProjection, ativos: render, moedas: renderMoedas, bens: renderBens })[PAGE]();
+
+function setStatus(brapiInfo) {
+  const b = brapiInfo || {};
+  $("#status").textContent = "Atualizado às " + new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) +
+    (b.enabled && b.remaining != null ? ` · brapi: ${b.remaining.toLocaleString("pt-BR")} de ${b.limit.toLocaleString("pt-BR")} consultas restantes (30 dias)` : "");
+}
+
+// ---------- Skeleton loading ----------
+function skeletonHtml(page) {
+  const L = (w, cls = "sk-line") => `<span class="sk ${cls}" style="width:${w}"></span>`;
+  const tiles = n => `<div class="tiles">${Array.from({ length: n }, () => `<div class="tile">${L("50%")}${L("70%", "sk-big")}${L("40%")}</div>`).join("")}</div>`;
+  const rows = n => Array.from({ length: n }, () => `<div class="sk-row">${Array.from({ length: 6 }, (_, i) => `<span class="sk" style="width:${i ? 70 + (i * 7) % 30 : 60}%"></span>`).join("")}</div>`).join("");
+  const card = () => `<div class="card">
+    <div class="card-head"><div style="flex:1">${L("90px", "sk-title")}${L("70%")}</div><div style="width:120px">${L("100%", "sk-big")}${L("60%")}</div></div>
+    <div class="mini"><span class="sk sk-block"></span></div>
+    <div class="stats">${Array.from({ length: 6 }, () => `<div>${L("60%")}${L("80%")}</div>`).join("")}</div></div>`;
+  const panel = inner => `<div class="panel">${inner}</div>`;
+  const nCards = Math.min(9, Math.max(1, parseTickers($("#tickers").value).length));
+  const nRows = Math.min(8, Math.max(3, wallet.length + cryptoW.length));
+  const formRow = n => `<div class="tiles">${Array.from({ length: n }, () => `<div>${L("50%")}<span class="sk sk-input"></span></div>`).join("")}</div>`;
+  const html = {
+    carteira: panel(`${L("160px", "sk-title")}${L("40%")}${tiles(4)}
+        <div class="dist"><span class="sk sk-circle"></span><div class="pie-legend">${[1, 2, 3].map(() => `<div class="pl-row">${L("12px")}${L("60%")}${L("90px")}${L("40px")}</div>`).join("")}</div></div>
+        ${rows(nRows)}`),
+    projecao: panel(`${L("220px", "sk-title")}${L("40%")}${formRow(4)}${tiles(3)}<div class="proj-box"><span class="sk sk-block"></span></div>${rows(2)}`)
+      + panel(`${L("200px", "sk-title")}${formRow(6)}${tiles(3)}<div class="proj-box"><span class="sk sk-block"></span></div>`),
+    ativos: panel(`${L("220px", "sk-title")}${L("50%")}<div class="cmp-box"><span class="sk sk-block"></span></div>`)
+      + panel(`${L("100px", "sk-title")}${rows(Math.min(8, nCards))}`) + `<div class="grid">${Array.from({ length: nCards }, card).join("")}</div>`,
+    moedas: panel(`${L("120px", "sk-title")}${L("50%")}${tiles(1)}`) + `<div class="grid">${Array.from({ length: 5 }, card).join("")}</div>`,
+    bens: panel(`${L("200px", "sk-title")}${L("40%")}${formRow(4)}`) + panel(`${L("140px", "sk-title")}${L("60%")}${tiles(1)}`),
+  }[page];
+  return `<div class="skel" aria-hidden="true">${html}</div>`;
+}
+
+async function load() {
+  const main = $("#" + { carteira: "wallet", projecao: "projection", ativos: "app", moedas: "moedas", bens: "bens" }[PAGE]);
+  const first = !main.children.length || main.querySelector(".skel");
+  if (first) main.innerHTML = skeletonHtml(PAGE);
+  else main.classList.add("loading");
+  document.body.classList.add("busy");
+  main.setAttribute("aria-busy", "true");
+  $("#status").textContent = "Carregando…";
+  try {
+    if (PAGE === "ativos") {
+      const list = $("#tickers").value;
+      if (list !== listaPainel) { listaPainel = list; persist(); }
+      history.replaceState(null, "", "#" + encodeURIComponent(list.replace(/\s+/g, "")));
+      document.querySelectorAll("#ranges button").forEach(b => b.classList.toggle("on", b.dataset.r === range));
+      const shown = parseTickers(list);
+      const j = await (await fetch(`/api/data?range=${range}&symbols=${encodeURIComponent(shown.join(","))}`)).json();
+      byTicker = Object.fromEntries(j.items.map(it => [it.ticker, it]));
+      data = shown.filter(t => byTicker[t]).map((t, i) => ({ ...byTicker[t], idx: i, ret: periodReturn(byTicker[t]) }));
+      render();
+      setStatus(j.brapi);
+    } else if (PAGE === "carteira") {
+      let info = null;
+      if (wallet.length) { // 1M usa só a brapi para o gráfico, a consulta mais barata
+        const j = await (await fetch(`/api/data?range=1mo&symbols=${encodeURIComponent(wallet.map(w => w.t).join(","))}`)).json();
+        byTicker = Object.fromEntries(j.items.map(it => [it.ticker, it]));
+        info = j.brapi;
+      }
+      const needFx = moedasW.length || Object.values(byTicker).some(it => it.currency && it.currency !== "BRL");
+      await Promise.all([loadExtras(), needFx ? loadFx(30) : null, bensW.length ? loadBensPrices() : null]);
+      renderWallet();
+      setStatus(info);
+    } else if (PAGE === "moedas") {
+      await loadFx(fxDays);
+      renderMoedas();
+      setStatus(null);
+    } else if (PAGE === "bens") {
+      renderBens();
+      await Promise.all([bensW.length ? loadBensPrices() : null, fipeLists.brands ? null : fipeStep("type")]);
+      renderBens();
+      setStatus(null);
+    } else {
+      await loadExtras({ crypto: false });
+      renderProjection();
+      setStatus(null);
+    }
+  } catch (e) {
+    $("#status").textContent = "Erro ao carregar. O servidor (server.py) está rodando?";
+    if (main.querySelector(".skel")) main.innerHTML = `<div class="panel err">Não consegui carregar os dados. Confira se o servidor (server.py) está rodando e recarregue a página.</div>`;
+  }
+  main.classList.remove("loading");
+  document.body.classList.remove("busy");
+  main.removeAttribute("aria-busy");
+}
+
+// ---------- Carteira ----------
+const COINS = ["BTC", "ETH", "SOL", "USDT", "USDC", "XRP", "BNB", "ADA", "DOGE", "LINK"];
+const RF_TIPOS = ["CDB", "LCI", "LCA", "CRI", "CRA", "Tesouro Selic", "Tesouro Prefixado", "Tesouro IPCA+", "Debênture", "Poupança/Outro"];
+const RF_ISENTOS = ["LCI", "LCA", "CRI", "CRA"];
+let cryptoW = [];
+let rfW = [];
+const saveCrypto = () => persist();
+const saveRf = () => persist();
+let cryptoPrices = {}, cryptoErr = null;
+let rates = null, ratesFrom = null, ratesErr = null;
+let addTab = store.get("addTab", "rv");
+let rfEditId = null; // título de renda fixa sendo editado
+let walletCharts = [];
+let projCfg = { reinvest: true };
+const saveProj = () => persist();
+const accOpen = k => store.get("acc_" + k, "1") === "1";
+const todayISO = () => new Date().toLocaleDateString("sv-SE"); // AAAA-MM-DD no fuso local
+const isoBR = d => d ? d.split("-").reverse().join("/") : "—";
+
+async function loadExtras({ crypto = true } = {}) {
+  const jobs = [];
+  if (crypto && cryptoW.length) jobs.push(fetch(`/api/crypto?coins=${cryptoW.map(c => c.t).join(",")}`).then(r => r.json()).then(j => {
+    cryptoPrices = { ...cryptoPrices, ...j.prices }; cryptoErr = j.error ? "Não consegui o preço das criptos agora (CoinGecko)." : null;
+  }).catch(() => cryptoErr = "Não consegui o preço das criptos agora (CoinGecko)."));
+  if (rfW.length) {
+    const earliest = rfW.map(e => e.data).sort()[0];
+    if (!rates || earliest < ratesFrom) jobs.push(fetch(`/api/rates?from=${earliest}`).then(r => r.json()).then(j => {
+      if (j.error) { ratesErr = j.error + " Tentando de novo em 1 minuto."; setTimeout(() => loadExtras().then(renderPage), 60000); return; }
+      rates = j; ratesFrom = earliest;
+      ratesErr = j.stale ? `Banco Central fora do ar agora: usando as taxas salvas em ${j.stale}.` : null;
+    }).catch(() => ratesErr = "Não consegui as taxas do Banco Central agora."));
+  }
+  await Promise.all(jobs);
+}
+
+// Valor estimado de um título de renda fixa "na curva", com CDI e IPCA reais do Banco Central
+function rfCalc(e) {
+  if (!rates) return null;
+  const today = todayISO();
+  const end = e.venc && e.venc < today ? e.venc : today;
+  const days = rates.cdi.filter(([d]) => d >= e.data && d < end); // dias úteis com CDI
+  const du = days.length;
+  let f;
+  if (e.idx === "cdi") f = days.reduce((acc, [, r]) => acc * (1 + (r / 100) * (e.taxa / 100)), 1);
+  else if (e.idx === "pre") f = Math.pow(1 + e.taxa / 100, du / 252);
+  else { // IPCA + taxa: IPCA dos meses completos após a aplicação
+    const m0 = e.data.slice(0, 7), m1 = end.slice(0, 7);
+    const ipca = rates.ipca.filter(([d]) => d.slice(0, 7) > m0 && d.slice(0, 7) < m1).reduce((acc, [, v]) => acc * (1 + v / 100), 1);
+    f = ipca * Math.pow(1 + e.taxa / 100, du / 252);
+  }
+  const bruto = e.aplicado * f, rend = bruto - e.aplicado;
+  const corridos = (new Date(end) - new Date(e.data)) / 864e5;
+  const aliq = corridos <= 180 ? 0.225 : corridos <= 360 ? 0.20 : corridos <= 720 ? 0.175 : 0.15;
+  const ir = e.isento ? 0 : Math.max(0, rend) * aliq;
+  return { bruto, rend, ir, aliq: e.isento ? 0 : aliq, liquido: bruto - ir, venceu: end !== today };
+}
+const rfTaxa = e => e.idx === "cdi" ? `${brl(e.taxa, e.taxa % 1 ? 1 : 0)}% do CDI` : e.idx === "pre" ? `${brl(e.taxa)}% a.a.` : `IPCA + ${brl(e.taxa)}%`;
+
+// ---------- Projeção da renda fixa ----------
+const addDays = (iso, n) => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + n); return d.toLocaleDateString("sv-SE"); };
+const addMonths = (iso, n) => { const d = new Date(iso + "T12:00:00"); d.setMonth(d.getMonth() + n); return d.toLocaleDateString("sv-SE"); };
+const daysBetween = (a, b) => Math.round((new Date(b + "T12:00:00") - new Date(a + "T12:00:00")) / 864e5);
+// Dias úteis (seg–sex) de a (inclusive) até b (exclusive). Não desconta feriados.
+function weekdays(a, b) {
+  const n = daysBetween(a, b);
+  if (n <= 0) return 0;
+  let count = Math.floor(n / 7) * 5;
+  const start = new Date(a + "T12:00:00");
+  for (let i = Math.floor(n / 7) * 7; i < n; i++) {
+    const wd = (start.getDay() + i) % 7;
+    if (wd !== 0 && wd !== 6) count++;
+  }
+  return count;
+}
+const aliqIR = dias => dias <= 180 ? 0.225 : dias <= 360 ? 0.20 : dias <= 720 ? 0.175 : 0.15;
+
+// Premissas atuais: CDI anualizado do último dia e IPCA acumulado em 12 meses
+function currentRates() {
+  if (!rates) return null;
+  const lastCdi = rates.cdi[rates.cdi.length - 1]?.[1] ?? 0;
+  const ipca12 = rates.ipca.slice(-12).reduce((a, [, v]) => a * (1 + v / 100), 1);
+  return { cdi: (Math.pow(1 + lastCdi / 100, 252) - 1) * 100, ipca: (ipca12 - 1) * 100 };
+}
+function projCfgEff() {
+  const cur = currentRates() || { cdi: 0, ipca: 0 };
+  return {
+    target: projCfg.target && projCfg.target > todayISO() ? projCfg.target : addMonths(todayISO(), 12),
+    cdi: projCfg.cdi ?? +cur.cdi.toFixed(2), ipca: projCfg.ipca ?? +cur.ipca.toFixed(2),
+    reinvest: projCfg.reinvest !== false, cur,
+  };
+}
+
+// Valor de um título numa data futura (líquido = o que você receberia resgatando nesse dia)
+function projectOne(e, target, cfg) {
+  const c = rfCalc(e);
+  if (!c) return null;
+  const today = todayISO();
+  const rCdi = Math.pow(1 + cfg.cdi / 100, 1 / 252) - 1;
+  let bruto, ir, liq, end;
+  if (e.venc && e.venc <= today) { // já venceu
+    end = e.venc; bruto = c.bruto; ir = c.ir; liq = c.liquido;
+  } else {
+    end = e.venc && e.venc < target ? e.venc : target;
+    const du = weekdays(today, end);
+    const f = e.idx === "cdi" ? Math.pow(1 + rCdi * e.taxa / 100, du)
+      : e.idx === "pre" ? Math.pow(1 + e.taxa / 100, du / 252)
+      : Math.pow((1 + cfg.ipca / 100) * (1 + e.taxa / 100), du / 252);
+    bruto = c.bruto * f;
+    ir = e.isento ? 0 : Math.max(0, bruto - e.aplicado) * aliqIR(daysBetween(e.data, end));
+    liq = bruto - ir;
+  }
+  const venceAntes = end < target;
+  if (venceAntes && cfg.reinvest) { // reaplica o líquido a 100% do CDI (tributável) até a data
+    const base = liq, b2 = base * Math.pow(1 + rCdi, weekdays(end, target));
+    const ir2 = Math.max(0, b2 - base) * aliqIR(daysBetween(end, target));
+    return { bruto: b2, ir: ir + ir2, liquido: b2 - ir2, venceAntes, end };
+  }
+  return { bruto, ir, liquido: liq, venceAntes, end };
+}
+
+// ---------- Página: projeção ----------
+let projCharts = [];
+function renderProjection() {
+  const el = $("#projection");
+  const rf = rfW.map(e => ({ ...e, calc: rfCalc(e) }));
+  const vRf = rf.reduce((a, r) => a + (r.calc?.liquido || 0), 0);
+  // Projeção
+  let projHtml = "";
+  let projSeries = null;
+  if (rfW.length && rates) {
+    const cfg = projCfgEff();
+    const per = rf.map(r => ({ r, p: projectOne(r, cfg.target, cfg) })).filter(x => x.p);
+    const totLiq = per.reduce((a, x) => a + x.p.liquido, 0);
+    const totIr = per.reduce((a, x) => a + x.p.ir, 0);
+    const nowLiq = vRf;
+    // pontos do gráfico: semanal até 4 meses, mensal até 10 anos, trimestral acima
+    const span = daysBetween(todayISO(), cfg.target);
+    const pts = [];
+    for (let i = 0, d = todayISO(); d < cfg.target; i++) {
+      pts.push(d);
+      d = span <= 120 ? addDays(todayISO(), 7 * (i + 1)) : addMonths(todayISO(), (span <= 3650 ? 1 : 3) * (i + 1));
+    }
+    pts.push(cfg.target);
+    projSeries = pts.map(d => ({ x: new Date(d + "T12:00:00").getTime(), y: d === todayISO() ? nowLiq : rf.reduce((a, r) => a + (projectOne(r, d, cfg)?.liquido || 0), 0) }));
+    const yrs = span / 365;
+    projHtml = `<div class="panel">
+      <h2>Projeção da renda fixa</h2>
+      <div class="hint">Quanto seus títulos de renda fixa vão valer numa data futura.</div>
+      <form class="w-add proj-form" id="f-proj">
+        <label>Quanto terei em<input type="date" name="target" min="${addDays(todayISO(), 1)}" value="${cfg.target}"></label>
+        <label>CDI projetado (% a.a.)<input type="number" name="cdi" step="0.01" value="${cfg.cdi}"></label>
+        <label>IPCA projetado (% a.a.)<input type="number" name="ipca" step="0.01" value="${cfg.ipca}"></label>
+        <label class="chk"><input type="checkbox" name="reinvest" ${cfg.reinvest ? "checked" : ""}> Reaplicar títulos que vencerem a 100% do CDI</label>
+        <div class="quick">${[[6, "6 meses"], [12, "1 ano"], [24, "2 anos"], [60, "5 anos"]].map(([m, l]) => `<button type="button" data-m="${m}">${l}</button>`).join("")}
+          <button type="button" id="proj-reset" title="Volta CDI e IPCA para os valores atuais">Usar taxas atuais</button></div>
+      </form>
+      <div class="hint">Premissas atuais: CDI ${brl(cfg.cur.cdi)}% a.a. (taxa do último dia útil) e IPCA ${brl(cfg.cur.ipca)}% nos últimos 12 meses. "Líquido" = o que você receberia resgatando nessa data, já descontado o IR.</div>
+      <div class="tiles">
+        <div class="tile"><div class="k">Em ${isoBR(cfg.target)} você terá</div><div class="v">${money(totLiq)}</div><div class="s">líquido de IR · hoje ${money(nowLiq)}</div></div>
+        <div class="tile"><div class="k">Vai render até lá</div><div class="v up">+${money(totLiq - nowLiq)}</div><div class="s">${nowLiq ? pct((totLiq / nowLiq - 1) * 100) : "—"} em ${yrs >= 1 ? brl(yrs, 1) + " ano" + (yrs >= 2 ? "s" : "") : span + " dias"}</div></div>
+        <div class="tile"><div class="k">IR estimado</div><div class="v">${money(totIr)}</div><div class="s">total descontado no resgate</div></div>
+      </div>
+      <div class="proj-box"><canvas id="proj-chart" aria-label="Evolução projetada da renda fixa"></canvas></div>
+      <div class="table-wrap"><table class="w-table">
+        <thead><tr><th>Título</th><th>Rentabilidade</th><th>Vencimento</th><th>Líquido hoje</th><th>Bruto em ${isoBR(cfg.target)}</th><th>IR</th><th>Líquido em ${isoBR(cfg.target)}</th><th>Observação</th></tr></thead>
+        <tbody>${per.sort((a, b) => b.p.liquido - a.p.liquido).map(({ r, p }) => `<tr>
+          <td><span class="tk">${esc(r.nome)}</span> <span class="muted">${esc(r.tipo)}</span></td>
+          <td>${rfTaxa(r)}</td><td>${r.venc ? isoBR(r.venc) : "—"}</td>
+          <td>${money(r.calc.liquido)}</td><td>${money(p.bruto)}</td>
+          <td>${r.isento && !p.venceAntes ? '<span class="muted">isento</span>' : money(p.ir)}</td>
+          <td><b>${money(p.liquido)}</b></td>
+          <td class="muted">${p.venceAntes ? (cfg.reinvest ? `vence em ${isoBR(p.end)}, reaplicado a 100% CDI` : `vence em ${isoBR(p.end)}, valor parado`) : ""}</td>
+        </tr>`).join("")}</tbody>
+      </table></div>
+      <div class="status">É uma estimativa: supõe CDI e IPCA constantes até a data e não desconta feriados. Ações, FIIs e cripto não entram na projeção.</div>
+    </div>`;
+  }
+
+  if (!rfW.length) projHtml = `<div class="panel"><h2>Projeção da renda fixa</h2>
+    <div class="hint" style="margin-top:8px">Você ainda não cadastrou títulos de renda fixa. Cadastre na página <a href="/carteira">Carteira</a> (aba "Renda fixa") para ver a projeção deles.</div></div>`;
+  else if (!rates) projHtml = `<div class="panel"><h2>Projeção da renda fixa</h2>
+    <div class="${ratesErr ? "err" : "hint"}" style="margin-top:8px">${esc(ratesErr || "Carregando as taxas do Banco Central…")}</div></div>`;
+  else if (ratesErr) projHtml = `<div class="panel err">${esc(ratesErr)}</div>` + projHtml;
+  const sim = simulatorHtml();
+  el.innerHTML = projHtml + sim.html;
+  projCharts.forEach(c => c.destroy());
+  projCharts = [];
+  const sc = lineChart($("#sim-chart"), sim.series, { fmtY: v => "R$ " + big(v), fmtTip: v => money(v), height: 230 });
+  if (sc) projCharts.push(sc);
+  bindSimulator(sim.def);
+  if (projSeries) drawProjection(projSeries);
+  const fP = $("#f-proj");
+  if (fP) {
+    fP.onchange = e => {
+      if (e.target.name === "target") projCfg.target = fP.target.value || null;
+      if (e.target.name === "cdi") projCfg.cdi = fP.cdi.value === "" ? null : Number(fP.cdi.value);
+      if (e.target.name === "ipca") projCfg.ipca = fP.ipca.value === "" ? null : Number(fP.ipca.value);
+      if (e.target.name === "reinvest") projCfg.reinvest = fP.reinvest.checked;
+      saveProj(); renderProjection();
+    };
+    fP.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { projCfg.target = addMonths(todayISO(), +b.dataset.m); saveProj(); renderProjection(); });
+    $("#proj-reset").onclick = () => { projCfg.cdi = null; projCfg.ipca = null; saveProj(); renderProjection(); };
+  }
+}
+
+// ---------- Backup ----------
+function exportBackup() {
+  const payload = {
+    app: "painel-acoes", versao: 1, exportadoEm: new Date().toISOString(),
+    acoesFiis: wallet, cripto: cryptoW, rendaFixa: rfW, moedas: moedasW, bens: bensW, historico: histW, listaPainel,
+    preferencias: { projecao: projCfg, simulador: simCfg, listaPainel },
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `carteira-backup-${todayISO()}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+async function importBackup(file) {
+  let d;
+  try { d = JSON.parse(await file.text()); } catch { return alert("Esse arquivo não é um backup válido (JSON inválido)."); }
+  if (!d || d.app !== "painel-acoes") return alert("Esse arquivo não parece ser um backup deste painel.");
+  const n = k => (d[k] || []).length;
+  const resumo = `${n("acoesFiis")} ações/FIIs, ${n("cripto")} cripto, ${n("rendaFixa")} títulos de renda fixa, ${n("moedas")} moedas, ${n("bens")} bens e ${Object.keys(d.historico || {}).length} dias de histórico`;
+  if (!confirm(`Importar backup com ${resumo}?\n\nIsso SUBSTITUI todos os seus dados salvos no servidor.`)) return;
+  try {
+    await sendBackup(d);
+  } catch (e) { return alert("O servidor recusou o backup: " + e.message); }
+  rfEditId = null; rates = null; // recalcula as taxas a partir das novas datas
+  await loadState();
+  $("#tickers").value = listaPainel;
+  load();
+}
+
+// ---------- Moedas, bens, histórico e simulador: estado ----------
+const FX_CODES = ["USD", "EUR", "GBP", "ARS", "JPY"];
+const FX_SYM = { BRL: "R$", USD: "US$", EUR: "€", GBP: "£", ARS: "AR$", JPY: "¥" };
+const FIPE_TIPOS = { cars: "Carro", motorcycles: "Moto", trucks: "Caminhão" };
+const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+const SIM_DEFAULT = { aporte: 1000, meta: 1000000, renda: 5000, real: true };
+let moedasW = [];                 // [{ c: "USD", q: 100 }]
+let bensW = [];                   // [{ id, type, brand, model, year, apelido, info, last, hist }]
+let histW = {};                   // { "AAAA-MM-DD": { t, i, rv, rf, cr, fx, bens } }
+let simCfg = { ...SIM_DEFAULT };
+const saveMoedas = () => persist();
+const saveBens = () => persist();
+const saveHist = () => saveSnapshotToday();
+const saveSim = () => persist();
+let fx = null, fxErr = null, fxDays = Number(store.get("fxDays", "30")) || 30;
+let bensPrices = {}, bensErr = null;
+const fxRate = c => !c || c === "BRL" ? 1 : fx?.quotes?.[c]?.bid ?? null;
+const moneyC = (v, c = "BRL") => v == null ? "—" : (FX_SYM[c] || c) + " " + brl(v, c === "JPY" || c === "ARS" ? 0 : 2);
+const fxDec = c => (fx?.quotes?.[c]?.bid ?? 1) < 0.1 ? 5 : 4;
+// "outubro de 2026" -> número ordenável
+const mesKey = m => { const [nome, , ano] = m.split(" "); return Number(ano) * 12 + MESES.indexOf(nome); };
+const mesCurto = m => { const [nome, , ano] = m.split(" "); return nome.slice(0, 3) + "/" + String(ano).slice(2); };
+
+async function loadFx(days = 30) {
+  try {
+    const j = await (await fetch(`/api/fx?days=${days}`)).json();
+    if (j.error) { fxErr = j.error; return; }
+    fx = j; fxErr = null;
+  } catch { fxErr = "Não consegui as cotações das moedas agora."; }
+}
+
+function mergeBemHist(b, d) {
+  b.hist = b.hist || {};
+  for (const h of d.history || []) if (h.price) b.hist[h.month] = h.price;
+  b.info = { brand: d.brand, model: d.model, modelYear: d.modelYear, fuel: d.fuel, codeFipe: d.codeFipe };
+  b.last = { month: d.month, price: d.price };
+}
+async function fipeGet(kind, params) {
+  const j = await (await fetch(`/api/fipe/${kind}?${new URLSearchParams(params)}`)).json();
+  if (j.error) throw new Error(j.error);
+  return j.data;
+}
+async function loadBensPrices() {
+  bensErr = null;
+  const antes = JSON.stringify(bensW);
+  await Promise.all(bensW.map(async b => {
+    try {
+      const d = await fipeGet("price", { type: b.type, brand: b.brand, model: b.model, year: b.year });
+      bensPrices[b.id] = d; mergeBemHist(b, d);
+    } catch (e) { bensErr = "FIPE: " + e.message + ". Usando o último valor salvo."; }
+  }));
+  if (JSON.stringify(bensW) !== antes) saveBens();
+}
+const bemValue = b => bensPrices[b.id]?.price ?? b.last?.price ?? null;
+const bemNome = b => b.apelido || b.info?.model || "Veículo";
+
+// Gráfico de linha simples (1 ou mais séries), com crosshair
+function lineChart(canvas, datasets, { fmtY = v => brl(v), fmtTip = v => brl(v), fill = true, height = 150 } = {}) {
+  const all = datasets.flatMap(d => d.data);
+  if (!all.length) return null;
+  const min = Math.min(...all.map(p => p.x)), max = Math.max(...all.map(p => p.x));
+  return new Chart(canvas, {
+    type: "line",
+    data: { datasets: datasets.map((d, i) => {
+      let bg = d.color;
+      if (fill && i === 0) {
+        bg = canvas.getContext("2d").createLinearGradient(0, 0, 0, height);
+        bg.addColorStop(0, d.color + "33"); bg.addColorStop(1, d.color + "00");
+      }
+      return { label: d.label, data: d.data, borderColor: d.color, backgroundColor: bg, fill: fill && i === 0, borderWidth: 2,
+        borderDash: d.dash || [], pointRadius: d.data.length < 8 ? 3 : 0, pointBackgroundColor: d.color, pointHoverRadius: 4,
+        pointHoverBorderColor: css("--surface"), pointHoverBorderWidth: 2, tension: 0.2 };
+    }) },
+    options: {
+      maintainAspectRatio: false, animation: false, parsing: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: { legend: { display: false }, tooltip: { ...tooltipOpts(), displayColors: datasets.length > 1,
+        callbacks: { title: i => new Date(i[0].parsed.x).toLocaleDateString("pt-BR"), label: i => (datasets.length > 1 ? " " + i.dataset.label + ": " : "") + fmtTip(i.parsed.y) } } },
+      scales: {
+        x: { type: "linear", min, max, grid: { display: false }, border: { display: false }, ticks: { ...tickOpts(), maxTicksLimit: 5, callback: timeTicks(min, max) } },
+        y: { position: "right", grid: gridOpts(), border: { display: false }, ticks: { ...tickOpts(), maxTicksLimit: 4, callback: fmtY } },
+      },
+    },
+    plugins: [crosshair],
+  });
+}
+const legendHtml = items => `<div class="legend">${items.map(([n, c, dash]) => `<span><i style="background:${dash ? `repeating-linear-gradient(90deg, ${c} 0 4px, transparent 4px 7px)` : c}"></i>${n}</span>`).join("")}</div>`;
+
+// ---------- Página: moedas ----------
+let fxCharts = [];
+function renderMoedas() {
+  const el = $("#moedas");
+  fxCharts.forEach(c => c.destroy()); fxCharts = [];
+  if (!fx) { el.innerHTML = `<div class="panel ${fxErr ? "err" : "muted"}">${esc(fxErr || "Carregando cotações…")}</div>`; return; }
+  const held = c => moedasW.find(m => m.c === c)?.q || 0;
+  const total = FX_CODES.reduce((a, c) => a + held(c) * (fx.quotes[c]?.bid || 0), 0);
+  el.innerHTML = `<div class="panel">
+    <div class="w-head">
+      <div><h2>Moedas</h2><div class="hint" style="margin:0">Cotação de compra em reais (AwesomeAPI). Informe quanto você tem de cada moeda e o valor entra no patrimônio da Carteira.</div></div>
+      <div class="seg" id="fx-range">${[[30, "30 dias"], [180, "6 meses"], [360, "1 ano"]].map(([d, l]) => `<button data-d="${d}" class="${fxDays === d ? "on" : ""}">${l}</button>`).join("")}</div>
+    </div>
+    <div class="tiles"><div class="tile"><div class="k">Você tem em moedas estrangeiras</div><div class="v">${money(total)}</div>
+      <div class="s">${moedasW.filter(m => m.q).map(m => moneyC(m.q, m.c)).join(" · ") || "nenhum valor informado ainda"}</div></div></div>
+  </div>
+  <div class="grid">${FX_CODES.map((c, i) => {
+    const q = fx.quotes[c]; if (!q) return "";
+    const h = fx.history[c] || [], first = h[0]?.[1], per = first ? (q.bid / first - 1) * 100 : null, mine = held(c);
+    return `<div class="card">
+      <div class="card-head">
+        <div><div class="tk" style="font-size:17px"><span class="dot" style="background:${color(i)}"></span>${c}</div><div class="name">${esc(q.name)}</div></div>
+        <div><div class="price">R$ ${brl(q.bid, fxDec(c))}</div><div class="chg ${signCls(q.pct)}">${arrow(q.pct)} ${pct(q.pct)} hoje</div></div>
+      </div>
+      <div class="mini"><canvas data-fx="${c}" data-i="${i}"></canvas></div>
+      <div class="stats">
+        <div class="stat"><div class="k">Máx. do dia</div><div class="v">R$ ${brl(q.high, fxDec(c))}</div></div>
+        <div class="stat"><div class="k">Mín. do dia</div><div class="v">R$ ${brl(q.low, fxDec(c))}</div></div>
+        <div class="stat"><div class="k">No período</div><div class="v ${signCls(per)}">${pct(per)}</div></div>
+      </div>
+      <div class="fx-have">
+        <label>Você tem (${c})<input type="number" min="0" step="any" value="${mine || ""}" placeholder="0" data-fxq="${c}"></label>
+        <div>${mine ? `vale <b>${money(mine * q.bid)}</b>` : `<span class="muted">R$ 100 = ${moneyC(100 / q.bid, c)}</span>`}</div>
+      </div>
+    </div>`;
+  }).join("")}</div>`;
+  el.querySelectorAll("canvas[data-fx]").forEach(cv => {
+    const c = cv.dataset.fx, pts = (fx.history[c] || []).map(([x, y]) => ({ x, y }));
+    const ch = lineChart(cv, [{ data: pts, color: color(+cv.dataset.i) }], { fmtY: v => brl(v, fx.quotes[c].bid < 0.1 ? fxDec(c) : 2), fmtTip: v => "R$ " + brl(v, fxDec(c)) });
+    if (ch) fxCharts.push(ch);
+  });
+  $("#fx-range").onclick = async e => {
+    const d = +e.target.dataset.d; if (!d) return;
+    fxDays = d; store.set("fxDays", d); await loadFx(d); renderMoedas();
+  };
+  el.querySelectorAll("[data-fxq]").forEach(inp => inp.onchange = () => {
+    const c = inp.dataset.fxq, q = Math.max(0, Number(inp.value) || 0);
+    moedasW = moedasW.filter(m => m.c !== c);
+    if (q) moedasW.push({ c, q });
+    saveMoedas(); renderMoedas();
+  });
+}
+
+// ---------- Página: bens (FIPE) ----------
+let bensCharts = [];
+let fipeSel = { type: "cars", brand: "", model: "", year: "" }, fipeLists = {}, fipeResult = null, fipeErr = null, fipeBusy = false;
+async function fipeStep(step) {
+  fipeErr = null; fipeBusy = true; renderBens();
+  try {
+    if (step === "type") { fipeLists = { brands: await fipeGet("brands", { type: fipeSel.type }) }; }
+    if (step === "brand") { fipeLists.models = await fipeGet("models", { type: fipeSel.type, brand: fipeSel.brand }); delete fipeLists.years; }
+    if (step === "model") { fipeLists.years = await fipeGet("years", { type: fipeSel.type, brand: fipeSel.brand, model: fipeSel.model }); }
+    if (step === "year") { fipeResult = await fipeGet("price", fipeSel); }
+  } catch (e) { fipeErr = e.message; }
+  fipeBusy = false; renderBens();
+}
+function renderBens() {
+  const el = $("#bens");
+  bensCharts.forEach(c => c.destroy()); bensCharts = [];
+  const opt = (list, sel, ph) => `<option value="">${ph}</option>` + (list || []).map(o => `<option value="${esc(o.code)}" ${o.code === sel ? "selected" : ""}>${esc(o.name)}</option>`).join("");
+  const r = fipeResult;
+  const already = r && bensW.some(b => b.type === fipeSel.type && b.brand === fipeSel.brand && b.model === fipeSel.model && b.year === fipeSel.year);
+  const histTxt = h => h.length > 1 ? (() => { const a = h[0].price, z = h[h.length - 1].price, d = z - a;
+    return `<span class="${signCls(d)}">${d > 0 ? "+" : d < 0 ? "−" : ""}${money(Math.abs(d))} (${pct((z / a - 1) * 100)})</span> desde ${mesCurto(h[0].month)}`; })() : "";
+  const total = bensW.reduce((a, b) => a + (bemValue(b) || 0), 0);
+
+  el.innerHTML = `<div class="panel">
+    <h2>Consultar tabela FIPE</h2>
+    <div class="hint">Escolha o veículo. O valor é o da tabela FIPE do mês (fonte: parallelum.com.br).</div>
+    <div class="w-add rf-form fipe-form">
+      <label>Tipo<select id="fp-type">${Object.entries(FIPE_TIPOS).map(([k, v]) => `<option value="${k}" ${k === fipeSel.type ? "selected" : ""}>${v}</option>`).join("")}</select></label>
+      <label>Marca<select id="fp-brand" ${fipeLists.brands ? "" : "disabled"}>${opt(fipeLists.brands, fipeSel.brand, "Escolha a marca")}</select></label>
+      <label>Modelo <input id="fp-filter" placeholder="filtrar (ex.: onix 1.0)" ${fipeLists.models ? "" : "disabled"}>
+        <select id="fp-model" ${fipeLists.models ? "" : "disabled"}>${opt(fipeLists.models, fipeSel.model, fipeLists.models ? `Escolha o modelo (${fipeLists.models.length})` : "Escolha a marca antes")}</select></label>
+      <label>Ano<select id="fp-year" ${fipeLists.years ? "" : "disabled"}>${opt(fipeLists.years, fipeSel.year, "Escolha o ano")}</select></label>
+    </div>
+    ${fipeBusy ? `<div class="status" style="margin-top:8px">Consultando…</div>` : ""}
+    ${fipeErr ? `<div class="err" style="margin-top:8px">${esc(fipeErr)}</div>` : ""}
+    ${r ? `<div class="fipe-result">
+      <div><div class="name">${esc(r.brand)} · ${esc(String(r.modelYear))} · ${esc(r.fuel)} · FIPE ${esc(r.codeFipe)}</div>
+        <div class="tk" style="font-size:16px">${esc(r.model)}</div>
+        <div class="price" style="text-align:left;margin-top:6px">${money(r.price)}</div>
+        <div class="status">${esc(r.month)} ${r.history.length > 1 ? "· " + histTxt(r.history) : ""}</div></div>
+      <div class="fipe-save">${already ? `<span class="status">Já está nos seus bens.</span>` : `
+        <input id="fp-apelido" placeholder="Apelido (opcional, ex.: Meu carro)" maxlength="40">
+        <button class="primary" id="fp-save">Salvar nos meus bens</button>`}</div>
+    </div>` : ""}
+  </div>
+  <div class="panel">
+    <div class="w-head"><div><h2>Meus bens</h2><div class="hint" style="margin:0">Entram no patrimônio total da Carteira, separados dos investimentos. O painel guarda o valor FIPE de cada mês, então o gráfico de desvalorização cresce com o tempo.</div></div></div>
+    ${bensErr ? `<div class="err" style="margin-top:8px">${esc(bensErr)}</div>` : ""}
+    ${bensW.length ? `<div class="tiles"><div class="tile"><div class="k">Total em bens</div><div class="v">${money(total)}</div><div class="s">${bensW.length} ${bensW.length === 1 ? "veículo" : "veículos"}</div></div></div>` :
+      `<div class="hint" style="margin-top:8px">Nenhum bem salvo ainda. Consulte um veículo acima e clique em "Salvar nos meus bens".</div>`}
+  </div>
+  <div class="grid">${bensW.map(b => {
+    const h = Object.entries(b.hist || {}).map(([month, price]) => ({ month, price })).sort((x, y) => mesKey(x.month) - mesKey(y.month));
+    return `<div class="card">
+      <div class="card-head">
+        <div style="min-width:0"><div class="tk" style="font-size:16px">${esc(bemNome(b))} <span class="badge">${esc(FIPE_TIPOS[b.type] || "")}</span></div>
+          <div class="name" title="${esc(b.info?.model || "")}">${esc(b.info?.brand || "")} · ${esc(b.info?.model || "")}</div>
+          <div class="name muted">${esc(String(b.info?.modelYear || ""))} · ${esc(b.info?.fuel || "")} · FIPE ${esc(b.info?.codeFipe || "")}</div></div>
+        <div style="display:flex;align-items:flex-start"><div><div class="price">${money(bemValue(b))}</div><div class="chg muted">${esc(b.last?.month || "")}</div></div>
+          <button class="x" title="Remover" data-rm-bem="${esc(b.id)}">×</button></div>
+      </div>
+      ${h.length > 1 ? `<div class="mini"><canvas data-bem="${esc(b.id)}"></canvas></div>` : ""}
+      <div class="status">${h.length > 1 ? "Variação: " + histTxt(h) : "Ainda sem histórico suficiente."}</div>
+    </div>`;
+  }).join("")}</div>`;
+
+  bensW.forEach(b => {
+    const cv = el.querySelector(`canvas[data-bem="${CSS.escape(b.id)}"]`); if (!cv) return;
+    const pts = Object.entries(b.hist).map(([m, y]) => { const k = mesKey(m); return { x: new Date(Math.floor(k / 12), k % 12, 15).getTime(), y }; }).sort((a, z) => a.x - z.x);
+    const ch = lineChart(cv, [{ data: pts, color: css("--s1") }], { fmtY: v => "R$ " + big(v), fmtTip: v => money(v) });
+    if (ch) bensCharts.push(ch);
+  });
+  $("#fp-type").onchange = e => { fipeSel = { type: e.target.value, brand: "", model: "", year: "" }; fipeResult = null; fipeStep("type"); };
+  $("#fp-brand").onchange = e => { Object.assign(fipeSel, { brand: e.target.value, model: "", year: "" }); fipeResult = null; fipeLists.models = null; fipeLists.years = null; if (fipeSel.brand) fipeStep("brand"); else renderBens(); };
+  $("#fp-model").onchange = e => { Object.assign(fipeSel, { model: e.target.value, year: "" }); fipeResult = null; fipeLists.years = null; if (fipeSel.model) fipeStep("model"); else renderBens(); };
+  $("#fp-year").onchange = e => { fipeSel.year = e.target.value; fipeResult = null; if (fipeSel.year) fipeStep("year"); else renderBens(); };
+  $("#fp-filter").oninput = e => {
+    const terms = e.target.value.toLowerCase().split(/\s+/).filter(Boolean);
+    const list = (fipeLists.models || []).filter(m => terms.every(t => m.name.toLowerCase().includes(t)));
+    $("#fp-model").innerHTML = opt(list, fipeSel.model, `Escolha o modelo (${list.length})`);
+  };
+  const save = $("#fp-save");
+  if (save) save.onclick = () => {
+    const b = { id: Date.now().toString(36), ...fipeSel, apelido: $("#fp-apelido").value.trim() || null };
+    mergeBemHist(b, fipeResult); bensPrices[b.id] = fipeResult;
+    bensW.push(b); saveBens(); renderBens();
+  };
+  el.querySelectorAll("[data-rm-bem]").forEach(btn => btn.onclick = () => {
+    const b = bensW.find(x => x.id === btn.dataset.rmBem);
+    if (b && !confirm(`Remover "${bemNome(b)}" dos seus bens?`)) return;
+    bensW = bensW.filter(x => x.id !== btn.dataset.rmBem); saveBens(); renderBens();
+  });
+}
+
+// ---------- Projeção: simulador de aportes ----------
+function simulate(cfg) {
+  const nominal = Math.pow(1 + cfg.taxa / 100, 1 / 12) - 1;
+  const r = cfg.real ? Math.pow((1 + cfg.taxa / 100) / (1 + cfg.inflacao / 100), 1 / 12) - 1 : nominal;
+  let saldo = cfg.inicial, aportado = cfg.inicial, mMeta = null, mRenda = null;
+  const rows = [{ m: 0, saldo, aportado }];
+  for (let m = 1; m <= 600; m++) {
+    saldo = saldo * (1 + r) + cfg.aporte;
+    aportado += cfg.aporte;
+    rows.push({ m, saldo, aportado });
+    if (mMeta == null && cfg.meta && saldo >= cfg.meta) mMeta = m;
+    if (mRenda == null && cfg.renda && saldo * r >= cfg.renda) mRenda = m;
+  }
+  return { rows, r, mMeta, mRenda };
+}
+const fmtPrazo = m => { const a = Math.floor(m / 12), mm = m % 12; return [a ? `${a} ano${a > 1 ? "s" : ""}` : "", mm ? `${mm} ${mm > 1 ? "meses" : "mês"}` : ""].filter(Boolean).join(" e ") || "agora"; };
+const mesAno = m => { const d = new Date(); d.setMonth(d.getMonth() + m); return d.toLocaleDateString("pt-BR", { month: "short", year: "numeric" }); };
+
+function simulatorHtml() {
+  const lastSnap = Object.keys(histW).sort().pop();
+  const cur = currentRates();
+  const def = { inicial: lastSnap ? Math.round(histW[lastSnap].i) : 0, taxa: cur ? +projCfgEff().cdi.toFixed(2) : 12, inflacao: cur ? +cur.ipca.toFixed(2) : 4.5 };
+  const cfg = { aporte: 1000, meta: 1000000, renda: 5000, real: true, ...simCfg };
+  for (const k of ["inicial", "taxa", "inflacao"]) if (cfg[k] == null) cfg[k] = def[k];
+  const sim = simulate(cfg);
+  const horizon = Math.min(600, Math.max(120, Math.max(sim.mMeta || 0, sim.mRenda || 0) + 24));
+  const rows = sim.rows.slice(0, horizon + 1);
+  const unit = cfg.real ? " (em reais de hoje)" : "";
+  const marcos = [1, 5, 10, 15, 20, 25, 30, 40, 50].filter(a => a * 12 <= horizon);
+  const html = `<div class="panel">
+    <h2>Simulador de aportes</h2>
+    <div class="hint">Quanto você terá aportando todo mês, e quando chega na sua meta de patrimônio ou de renda mensal.</div>
+    <form class="w-add proj-form" id="f-sim">
+      <label>Valor inicial (R$)<input type="number" name="inicial" min="0" step="100" value="${cfg.inicial}"></label>
+      <label>Aporte mensal (R$)<input type="number" name="aporte" min="0" step="50" value="${cfg.aporte}"></label>
+      <label>Rentabilidade (% a.a.)<input type="number" name="taxa" step="0.1" value="${cfg.taxa}"></label>
+      <label>Inflação (% a.a.)<input type="number" name="inflacao" step="0.1" value="${cfg.inflacao}"></label>
+      <label>Meta de patrimônio (R$)<input type="number" name="meta" min="0" step="1000" value="${cfg.meta}"></label>
+      <label>Renda mensal desejada (R$)<input type="number" name="renda" min="0" step="100" value="${cfg.renda}"></label>
+      <label class="chk"><input type="checkbox" name="real" ${cfg.real ? "checked" : ""}> Mostrar em reais de hoje (descontando a inflação)</label>
+      <div class="quick"><button type="button" id="sim-reset" title="Volta valor inicial, rentabilidade e inflação para os valores atuais">Usar valores atuais</button></div>
+    </form>
+    <div class="hint">Padrões: valor inicial = seus investimentos ${lastSnap ? `(${isoBR(lastSnap)})` : "(abra a Carteira para preencher)"}, rentabilidade = CDI atual, inflação = IPCA dos últimos 12 meses. Rendimento mensal ${cfg.real ? "real" : "nominal"} usado: ${brl(sim.r * 100, 3)}%.</div>
+    <div class="tiles">
+      <div class="tile"><div class="k">Meta de ${money(cfg.meta)}</div><div class="v">${sim.mMeta != null ? fmtPrazo(sim.mMeta) : "—"}</div><div class="s">${sim.mMeta != null ? "em " + mesAno(sim.mMeta) : "não atinge em 50 anos"}</div></div>
+      <div class="tile"><div class="k">Renda de ${money(cfg.renda)}/mês</div><div class="v">${sim.mRenda != null ? fmtPrazo(sim.mRenda) : "—"}</div><div class="s">${sim.mRenda != null ? `em ${mesAno(sim.mRenda)}, com ${money(sim.rows[sim.mRenda].saldo)}` : "não atinge em 50 anos"}</div></div>
+      <div class="tile"><div class="k">Em 10 anos${unit}</div><div class="v">${money(sim.rows[120].saldo)}</div><div class="s">aportado ${money(sim.rows[120].aportado)} · rendimentos ${money(sim.rows[120].saldo - sim.rows[120].aportado)}</div></div>
+    </div>
+    ${legendHtml([["Patrimônio" + unit, css("--s1")], ["Total aportado", css("--s2"), true]])}
+    <div class="proj-box"><canvas id="sim-chart" aria-label="Evolução simulada do patrimônio"></canvas></div>
+    <div class="table-wrap"><table class="w-table">
+      <thead><tr><th>Prazo</th><th>Quando</th><th>Patrimônio</th><th>Total aportado</th><th>Rendimentos</th><th>Renda mensal possível</th></tr></thead>
+      <tbody>${marcos.map(a => { const x = sim.rows[a * 12]; return `<tr><td>${a} ano${a > 1 ? "s" : ""}</td><td>${mesAno(a * 12)}</td><td><b>${money(x.saldo)}</b></td><td>${money(x.aportado)}</td><td>${money(x.saldo - x.aportado)}</td><td>${money(x.saldo * sim.r)}</td></tr>`; }).join("")}</tbody>
+    </table></div>
+    <div class="status">Simulação com rentabilidade constante, aporte no fim de cada mês e sem IR. "Renda mensal possível" = quanto o patrimônio rende por mês${cfg.real ? " acima da inflação" : ""}.</div>
+  </div>`;
+  const start = new Date(); start.setDate(1);
+  const tx = m => { const d = new Date(start); d.setMonth(d.getMonth() + m); return d.getTime(); };
+  const series = [
+    { label: "Patrimônio", color: css("--s1"), data: rows.map(r => ({ x: tx(r.m), y: r.saldo })) },
+    { label: "Total aportado", color: css("--s2"), dash: [5, 4], data: rows.map(r => ({ x: tx(r.m), y: r.aportado })) },
+  ];
+  return { html, series, def };
+}
+function bindSimulator(def) {
+  const f = $("#f-sim"); if (!f) return;
+  f.onchange = e => {
+    const n = e.target.name; if (!n) return;
+    simCfg[n] = n === "real" ? e.target.checked : (e.target.value === "" ? null : Number(e.target.value));
+    saveSim(); renderProjection();
+  };
+  $("#sim-reset").onclick = () => { simCfg.inicial = null; simCfg.taxa = null; simCfg.inflacao = null; saveSim(); renderProjection(); };
+}
+
+// ---------- Carteira: evolução do patrimônio ----------
+function historyPanelHtml() {
+  const days = Object.keys(histW).sort();
+  if (days.length < 2) return `<div class="panel"><h2>Evolução do patrimônio</h2>
+    <div class="hint" style="margin-top:6px">O painel guarda uma "foto" do seu patrimônio por dia, sempre que você abre a Carteira. ${days.length ? `A primeira foi em ${isoBR(days[0])}; o gráfico aparece a partir do segundo dia.` : "A primeira será salva quando todos os valores carregarem."}</div></div>`;
+  const first = histW[days[0]], last = histW[days[days.length - 1]];
+  const d30 = days.filter(d => d <= addDays(todayISO(), -30)).pop();
+  const delta = (a, b) => `<span class="${signCls(b - a)}">${b - a > 0 ? "+" : b - a < 0 ? "−" : ""}${money(Math.abs(b - a))}</span> <span class="muted">${a ? pct((b / a - 1) * 100) : ""}</span>`;
+  return `<div class="panel"><h2>Evolução do patrimônio</h2>
+    <div class="hint">Uma foto por dia em que você abriu a Carteira. Inclui aportes e retiradas, então não é só rentabilidade.</div>
+    <div class="tiles">
+      <div class="tile"><div class="k">Desde ${isoBR(days[0])}</div><div class="v" style="font-size:16px">${delta(first.t, last.t)}</div><div class="s">patrimônio total</div></div>
+      ${d30 ? `<div class="tile"><div class="k">Últimos 30 dias</div><div class="v" style="font-size:16px">${delta(histW[d30].t, last.t)}</div><div class="s">patrimônio total</div></div>` : ""}
+      <div class="tile"><div class="k">Registros</div><div class="v">${days.length}</div><div class="s">dias salvos</div></div>
+    </div>
+    ${legendHtml([["Patrimônio total", css("--s1")], ["Investimentos", css("--s2"), true]])}
+    <div class="proj-box"><canvas id="hist-chart" aria-label="Evolução do patrimônio"></canvas></div></div>`;
+}
+function drawHistory() {
+  const cv = $("#hist-chart"); if (!cv) return;
+  const days = Object.keys(histW).sort();
+  const x = d => new Date(d + "T12:00:00").getTime();
+  const ch = lineChart(cv, [
+    { label: "Patrimônio total", color: css("--s1"), data: days.map(d => ({ x: x(d), y: histW[d].t })) },
+    { label: "Investimentos", color: css("--s2"), dash: [5, 4], data: days.map(d => ({ x: x(d), y: histW[d].i })) },
+  ], { fmtY: v => "R$ " + big(v), fmtTip: v => money(v), height: 230 });
+  if (ch) walletCharts.push(ch);
+}
+
+// ---------- Gráficos da carteira ----------
+let walletCats = [], walletTotal = 0;
+function breakdownTip() {
+  let t = document.getElementById("bk-tip");
+  if (!t) { t = document.createElement("div"); t.id = "bk-tip"; t.setAttribute("role", "tooltip"); document.body.appendChild(t); }
+  return t;
+}
+function showBreakdown(i, x, y) {
+  const c = walletCats[i]; if (!c) return;
+  const t = breakdownTip();
+  const items = [...c.items].sort((a, b) => b.value - a.value);
+  t.innerHTML = `<div class="bk-h"><i style="background:var(${c.color})"></i>${c.name}<span>${money(c.value)} · ${brl(c.value / walletTotal * 100, 1)}%</span></div>
+    ${c.note ? `<div class="bk-n">${esc(c.note)}</div>` : ""}
+    ${items.map(it => `<div class="bk-r"><span class="bk-name">${esc(it.name)} <span class="muted">${esc(it.sub || "")}</span></span>
+      <span class="bk-v">${money(it.value)}</span><span class="bk-p">${brl(it.value / c.value * 100, 1)}%</span>
+      <span class="bk-bar"><span style="width:${it.value / c.value * 100}%;background:var(${c.color})"></span></span></div>`).join("")}`;
+  t.style.display = "block";
+  const w = t.offsetWidth, h = t.offsetHeight, vw = innerWidth, vh = innerHeight;
+  let left = x + 16, top = y + 12;
+  if (left + w > vw - 8) left = Math.max(8, x - w - 16);
+  if (top + h > vh - 8) top = Math.max(8, vh - h - 8);
+  t.style.left = left + "px"; t.style.top = top + "px";
+}
+const hideBreakdown = () => { const t = document.getElementById("bk-tip"); if (t) t.style.display = "none"; };
+
+function drawPie(cats) {
+  const canvas = $("#pie");
+  const ch = new Chart(canvas, {
+    type: "doughnut",
+    data: { labels: cats.map(c => c.name), datasets: [{ data: cats.map(c => c.value), backgroundColor: cats.map(c => css(c.color)),
+      borderColor: css("--surface"), borderWidth: 2, hoverOffset: 6, borderRadius: 3 }] },
+    options: {
+      cutout: "64%", maintainAspectRatio: false, animation: false, layout: { padding: 8 },
+      plugins: { legend: { display: false }, tooltip: { enabled: false, external: ({ chart, tooltip }) => {
+        if (!tooltip.opacity || !tooltip.dataPoints?.length) return hideBreakdown();
+        const r = chart.canvas.getBoundingClientRect();
+        showBreakdown(tooltip.dataPoints[0].dataIndex, r.left + tooltip.caretX, r.top + tooltip.caretY);
+      } } },
+    },
+  });
+  canvas.onmouseleave = hideBreakdown;
+  walletCharts.push(ch);
+  document.querySelectorAll(".pl-row").forEach(row => {
+    const i = +row.dataset.cat;
+    const on = () => { ch.setActiveElements([{ datasetIndex: 0, index: i }]); ch.update("none"); const b = row.getBoundingClientRect(); showBreakdown(i, b.right - 40, b.top); };
+    const off = () => { ch.setActiveElements([]); ch.update("none"); hideBreakdown(); };
+    row.onmouseenter = on; row.onfocus = on; row.onmouseleave = off; row.onblur = off;
+  });
+}
+
+function drawProjection(series) {
+  const min = series[0].x, max = series[series.length - 1].x;
+  const c = css("--s2");
+  const ctx = $("#proj-chart");
+  const grad = ctx.getContext("2d").createLinearGradient(0, 0, 0, 220);
+  grad.addColorStop(0, c + "33"); grad.addColorStop(1, c + "00");
+  projCharts.push(new Chart(ctx, {
+    type: "line",
+    data: { datasets: [{ data: series, borderColor: c, backgroundColor: grad, fill: true, borderWidth: 2, pointRadius: 0,
+      pointHoverRadius: 4, pointHoverBackgroundColor: c, pointHoverBorderColor: css("--surface"), pointHoverBorderWidth: 2, tension: 0.2 }] },
+    options: {
+      maintainAspectRatio: false, animation: false, parsing: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: { legend: { display: false }, tooltip: { ...tooltipOpts(), displayColors: false,
+        callbacks: { title: i => new Date(i[0].parsed.x).toLocaleDateString("pt-BR"), label: i => money(i.parsed.y) + " líquido" } } },
+      scales: {
+        x: { type: "linear", min, max, grid: { display: false }, border: { color: css("--border") }, ticks: { ...tickOpts(), maxTicksLimit: 6, callback: timeTicks(min, max) } },
+        y: { grid: gridOpts(), border: { display: false }, ticks: { ...tickOpts(), maxTicksLimit: 5, callback: v => "R$ " + big(v) } },
+      },
+    },
+    plugins: [crosshair],
+  }));
+}
+
+function renderWallet() {
+  const el = $("#wallet");
+  // Ações e FIIs
+  const rv = wallet.map(w => {
+    const it = byTicker[w.t];
+    const cur = it?.currency || "BRL", rate = fxRate(cur); // ações do exterior: converte para reais
+    const ok = it && !it.error && it.price != null && rate != null;
+    const price = it && !it.error ? it.price : null;
+    const chg = !ok ? null : it.change != null ? it.change : it.changePct != null ? price - price / (1 + it.changePct / 100) : null;
+    return { kind: "rv", t: w.t, q: w.q, type: it?.type || "", cur, ok, err: it?.error, price, value: ok ? w.q * price * rate : null,
+      dayChg: chg != null ? chg * w.q * rate : null, div12: ok ? (it.div12m || 0) * w.q * rate : null };
+  });
+  // Cripto
+  const cr = cryptoW.map(c => {
+    const p = cryptoPrices[c.t];
+    const chg = p && p.changePct != null ? p.price - p.price / (1 + p.changePct / 100) : null;
+    return { kind: "cr", t: c.t, q: c.q, type: "Cripto", ok: !!p, price: p?.price ?? null, value: p ? c.q * p.price : null,
+      dayChg: chg != null ? chg * c.q : null, div12: null };
+  });
+  // Renda fixa
+  const rf = rfW.map(e => ({ ...e, calc: rfCalc(e) }));
+  // Moedas estrangeiras e bens
+  const mo = moedasW.map(m => {
+    const q = fx?.quotes?.[m.c], value = q ? m.q * q.bid : null;
+    return { ...m, ok: !!q, rate: q?.bid, value, dayChg: q ? value - value / (1 + q.pct / 100) : null };
+  });
+  const bens = bensW.map(b => ({ ...b, value: bemValue(b) }));
+
+  const sum = (arr, f) => arr.reduce((a, x) => a + (f(x) || 0), 0);
+  const vAcoes = sum(rv.filter(r => r.type !== "FII"), r => r.value);
+  const vFiis = sum(rv.filter(r => r.type === "FII"), r => r.value);
+  const vCripto = sum(cr, r => r.value);
+  const vRf = sum(rf, r => r.calc?.liquido);
+  const vFx = sum(mo, r => r.value);
+  const vBens = sum(bens, r => r.value);
+  const vExt = sum(rv.filter(r => r.type === "Exterior"), r => r.value);
+  const total = vAcoes + vFiis + vCripto + vRf + vFx; // investimentos
+  const patrimonio = total + vBens;
+  const dayTotal = sum([...rv, ...cr, ...mo], r => r.dayChg);
+  const varBase = vAcoes + vFiis + vCripto + vFx - dayTotal;
+  const dayPct = varBase ? dayTotal / varBase * 100 : null;
+  const div12 = sum(rv, r => r.div12);
+  const rfRend = sum(rf, r => r.calc ? r.calc.liquido - r.aplicado : 0);
+  const rfAplic = sum(rf, r => r.aplicado);
+  const share = v => total && v ? v / total * 100 : 0;
+  const classes = [["Ações", vAcoes, "--s1"], ["FIIs", vFiis, "--s2"], ["Renda fixa", vRf, "--s3"], ["Cripto", vCripto, "--s4"]].filter(c => c[1] > 0);
+  const empty = !wallet.length && !cryptoW.length && !rfW.length && !moedasW.length && !bensW.length;
+  const allocCell = v => `<div class="alloc">${v ? brl(share(v), 1) + "%" : "—"}<div class="track"><div class="fill" style="width:${share(v)}%"></div></div></div>`;
+  const signedMoney = v => v == null ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "") + money(Math.abs(v));
+
+  const tiles = empty ? "" : `
+    <div class="tiles">
+      <div class="tile"><div class="k">Patrimônio total</div><div class="v">${money(patrimonio)}</div><div class="s">${rfW.length && !rates ? "sem a renda fixa (aguardando taxas)" : vBens ? `investimentos ${money(total)} + bens ${money(vBens)}` : "renda fixa líquida de IR"}</div></div>
+      ${vBens ? `<div class="tile"><div class="k">Investimentos</div><div class="v">${money(total)}</div><div class="s">sem contar bens</div></div>` : ""}
+      <div class="tile"><div class="k">Hoje (renda variável)</div><div class="v ${signCls(dayTotal)}">${arrow(dayTotal)} ${money(Math.abs(dayTotal))}</div><div class="s ${signCls(dayPct)}">${pct(dayPct)}</div></div>
+      <div class="tile"><div class="k">Proventos 12 meses</div><div class="v">${money(div12)}</div><div class="s">${money(div12 / 12)} por mês · DY ${vAcoes + vFiis ? brl(div12 / (vAcoes + vFiis) * 100) + "%" : "—"}</div></div>
+      ${rfW.length ? `<div class="tile"><div class="k">Rendimento renda fixa</div><div class="v ${signCls(rfRend)}">${rates ? signedMoney(rfRend) : "—"}</div><div class="s">líquido · ${rfAplic ? pct(rfRend / rfAplic * 100) : "—"} sobre ${money(rfAplic)}</div></div>` : ""}
+    </div>`;
+
+  // Rosca: renda variável × renda fixa × cripto
+  const cats = [
+    { key: "rv", name: "Renda variável", color: "--s1", value: vAcoes + vFiis,
+      items: rv.filter(r => r.value).map(r => ({ name: r.t, sub: r.type, value: r.value })),
+      note: vAcoes + vFiis ? `Ações ${money(vAcoes - vExt)} · FIIs ${money(vFiis)}${vExt ? ` · Exterior ${money(vExt)}` : ""}` : "" },
+    { key: "rf", name: "Renda fixa", color: "--s2", value: vRf,
+      items: rf.filter(r => r.calc).map(r => ({ name: r.nome, sub: rfTaxa(r), value: r.calc.liquido })), note: "valores líquidos de IR" },
+    { key: "cr", name: "Cripto", color: "--s3", value: vCripto,
+      items: cr.filter(r => r.value).map(r => ({ name: r.t, sub: brl(r.q, 8).replace(/0+$/, "").replace(/,$/, ""), value: r.value })), note: "" },
+    { key: "fx", name: "Moedas", color: "--s4", value: vFx,
+      items: mo.filter(r => r.value).map(r => ({ name: r.c, sub: moneyC(r.q, r.c), value: r.value })), note: "valores convertidos para reais" },
+  ].filter(c => c.value > 0);
+  walletCats = cats; walletTotal = total;
+  const dist = !cats.length ? "" : `
+    <div class="dist">
+      <div class="pie-box"><canvas id="pie" aria-label="Divisão da carteira"></canvas>
+        <div class="pie-center"><div class="k">Total</div><div class="v">${money(total)}</div></div></div>
+      <div class="pie-legend">
+        <div class="hint" style="margin:0 0 4px">Passe o mouse em uma fatia ou categoria para ver os ativos.${vBens ? ` Bens (${money(vBens)}) não entram no gráfico.` : ""}</div>
+        ${cats.map((c, i) => `<div class="pl-row" data-cat="${i}" tabindex="0">
+          <i style="background:var(${c.color})"></i><span class="pl-name">${c.name}</span>
+          <span class="pl-val">${money(c.value)}</span><span class="pl-pct">${brl(share(c.value), 1)}%</span></div>`).join("")}
+      </div>
+    </div>`;
+
+  const rvRows = [...rv, ...cr].sort((a, b) => (b.value || 0) - (a.value || 0));
+  const accHead = (k, title, n, v, [um, varios] = ["ativo", "ativos"]) => `<summary><span class="acc-t">${title}</span><span class="acc-s">${n} ${n === 1 ? um : varios} · ${money(v)} · ${brl(share(v), 1)}%</span></summary>`;
+  const rvTable = !rvRows.length ? "" : `
+    <details class="acc" data-acc="rv" ${accOpen("rv") ? "open" : ""}>${accHead("rv", "Ações, FIIs e cripto", rvRows.length, vAcoes + vFiis + vCripto)}
+    <div class="table-wrap"><table class="w-table">
+      <thead><tr><th>Ativo</th><th>Quantidade</th><th>Preço</th><th>Valor</th><th>% da carteira</th><th>Hoje</th><th>Proventos 12m</th><th>Por mês</th><th></th></tr></thead>
+      <tbody>${rvRows.map(r => `<tr>
+        <td><span class="tk">${esc(r.t)}</span> <span class="muted">${esc(r.type)}</span></td>
+        <td><input type="number" min="0" step="${r.kind === "cr" ? "any" : "1"}" value="${r.q}" data-q="${esc(r.t)}" data-kind="${r.kind}"></td>
+        <td>${r.price != null ? moneyC(r.price, r.cur || "BRL") : `<span class="muted">${r.err ? "não encontrado" : "carregando…"}</span>`}</td>
+        <td>${money(r.value)}</td>
+        <td>${allocCell(r.value)}</td>
+        <td class="${signCls(r.dayChg)}" ${r.kind === "cr" ? 'title="Variação em 24 horas"' : ""}>${signedMoney(r.dayChg)}${r.kind === "cr" && r.dayChg != null ? ' <span class="muted">24h</span>' : ""}</td>
+        <td>${r.div12 ? money(r.div12) : "—"}</td>
+        <td>${r.div12 ? money(r.div12 / 12) : "—"}</td>
+        <td><button class="x" title="Remover" data-rm-w="${esc(r.t)}" data-kind="${r.kind}">×</button></td>
+      </tr>`).join("")}</tbody>
+    </table></div></details>`;
+
+  const rfTable = !rf.length ? "" : `
+    <details class="acc" data-acc="rf" ${accOpen("rf") ? "open" : ""}>${accHead("rf", "Renda fixa", rf.length, vRf, ["título", "títulos"])}
+    <div class="table-wrap"><table class="w-table">
+      <thead><tr><th>Título</th><th>Rentabilidade</th><th>Aplicado</th><th>Aplicação</th><th>Vencimento</th><th>Valor bruto</th><th>IR</th><th>Valor líquido</th><th>Rendimento líq.</th><th>% da carteira</th><th></th></tr></thead>
+      <tbody>${rf.sort((a, b) => (b.calc?.liquido || 0) - (a.calc?.liquido || 0)).map(r => {
+        const c = r.calc, rendLiq = c ? c.liquido - r.aplicado : null;
+        return `<tr class="${r.id === rfEditId ? "editing" : ""}">
+        <td><span class="tk">${esc(r.nome)}</span> <span class="muted">${esc(r.tipo)}</span></td>
+        <td>${rfTaxa(r)}</td>
+        <td>${money(r.aplicado)}</td>
+        <td>${isoBR(r.data)}</td>
+        <td>${r.venc ? isoBR(r.venc) + (c?.venceu ? ' <span class="muted">(venceu)</span>' : "") : "—"}</td>
+        <td>${c ? money(c.bruto) : `<span class="muted">${ratesErr ? "sem taxas" : "calculando…"}</span>`}</td>
+        <td>${c ? (r.isento ? '<span class="muted">isento</span>' : `${money(c.ir)} <span class="muted">${brl(c.aliq * 100, 1)}%</span>`) : "—"}</td>
+        <td>${c ? money(c.liquido) : "—"}</td>
+        <td class="${signCls(rendLiq)}">${c ? `${signedMoney(rendLiq)} <span class="muted">${pct(rendLiq / r.aplicado * 100)}</span>` : "—"}</td>
+        <td>${allocCell(c?.liquido)}</td>
+        <td style="white-space:nowrap"><button class="x" title="Editar" data-ed-rf="${esc(r.id)}">✎</button><button class="x" title="Remover" data-rm-rf="${esc(r.id)}">×</button></td>
+      </tr>`; }).join("")}</tbody>
+    </table></div></details>`;
+
+  const today = todayISO();
+  const forms = {
+    rv: `<form class="w-add" id="f-rv">
+        <input name="t" placeholder="Ticker (ex.: BBDC4, AAPL)" autocomplete="off" spellcheck="false" required style="text-transform:uppercase">
+        <input name="q" type="number" min="0" step="1" placeholder="Quantidade" required>
+        <button class="primary" type="submit">Adicionar</button>
+        <span class="status">Ações americanas (ex.: AAPL, MSFT) entram convertidas pelo dólar do dia. Se já estiver na carteira, a quantidade é substituída.</span></form>`,
+    cr: `<form class="w-add" id="f-cr">
+        <select name="t">${COINS.map(c => `<option>${c}</option>`).join("")}</select>
+        <input name="q" type="number" min="0" step="any" placeholder="Quantidade (ex.: 0,015)" required>
+        <button class="primary" type="submit">Adicionar</button>
+        <span class="status">Preço em reais pelo CoinGecko. Se já estiver na carteira, a quantidade é substituída.</span></form>`,
+    rf: `<form class="w-add rf-form" id="f-rf">
+        <label>Nome<input name="nome" placeholder="Ex.: CDB Banco Inter" required></label>
+        <label>Tipo<select name="tipo">${RF_TIPOS.map(t => `<option>${t}</option>`).join("")}</select></label>
+        <label>Rentabilidade<span class="pair"><select name="idx"><option value="cdi">% do CDI</option><option value="pre">Prefixado % a.a.</option><option value="ipca">IPCA + % a.a.</option></select>
+          <input name="taxa" type="number" step="any" min="0" placeholder="Ex.: 110" required></span></label>
+        <label>Valor aplicado (R$) — quanto saiu da sua conta no dia<input name="aplicado" type="number" step="0.01" min="0" required></label>
+        <label>Data da aplicação<input name="data" type="date" max="${today}" required></label>
+        <label>Vencimento<input name="venc" type="date"></label>
+        <label class="chk"><input name="isento" type="checkbox"> Isento de IR</label>
+        ${rfEditId ? `<span class="pair"><button class="primary" type="submit">Salvar alterações</button><button type="button" id="rf-cancel">Cancelar</button></span>` : `<button class="primary" type="submit">Adicionar</button>`}</form>
+        <div class="status" style="margin-top:6px">${rfEditId ? "<b>Editando um título.</b> " : ""}Valor estimado "na curva" com o CDI e o IPCA do Banco Central, descontando o IR (tabela regressiva). Não considera IOF (só vale para menos de 30 dias) nem a marcação a mercado do Tesouro.</div>`,
+  };
+
+  el.innerHTML = `<div class="panel">
+    <div class="w-head">
+      <div><h2>Minha carteira</h2><div class="hint" style="margin:0">Salva no servidor: disponível em qualquer dispositivo. Proventos estimados com base no que foi pago nos últimos 12 meses.</div></div>
+      <div class="w-actions">
+        ${wallet.length ? `<button id="w-show">Ver ações e FIIs em Ativos</button>` : ""}
+        <button id="w-export" ${empty ? "disabled" : ""}>Exportar backup</button>
+        <button id="w-import">Importar backup</button>
+        <input type="file" id="w-file" accept=".json,application/json" hidden>
+      </div>
+    </div>
+    ${[cryptoErr, ratesErr].filter(Boolean).map(m => `<div class="err" style="margin-top:8px">${esc(m)}</div>`).join("")}
+    ${tiles}
+    ${dist}
+    ${empty ? `<div class="hint" style="margin-top:8px">Sua carteira está vazia. Adicione algo abaixo.</div>` : ""}
+    ${rvTable}
+    ${rfTable}
+    ${mo.length ? `<details class="acc" data-acc="fx" ${accOpen("fx") ? "open" : ""}>${accHead("fx", "Moedas", mo.length, vFx, ["moeda", "moedas"])}
+      <div class="table-wrap"><table class="w-table"><thead><tr><th>Moeda</th><th>Quantidade</th><th>Cotação</th><th>Valor</th><th>% da carteira</th><th>Hoje</th></tr></thead>
+      <tbody>${mo.map(r => `<tr><td><span class="tk">${r.c}</span></td><td>${moneyC(r.q, r.c)}</td><td>${r.ok ? "R$ " + brl(r.rate, fxDec(r.c)) : "—"}</td><td>${money(r.value)}</td><td>${allocCell(r.value)}</td><td class="${signCls(r.dayChg)}">${signedMoney(r.dayChg)}</td></tr>`).join("")}</tbody></table></div>
+      <div class="status">Para alterar, use a página <a href="/moedas">Moedas</a>.</div></details>` : ""}
+    ${bens.length ? `<details class="acc" data-acc="bens" ${accOpen("bens") ? "open" : ""}><summary><span class="acc-t">Bens</span><span class="acc-s">${bens.length} · ${money(vBens)} · fora dos investimentos</span></summary>
+      <div class="table-wrap"><table class="w-table"><thead><tr><th>Bem</th><th>Ano</th><th>Código FIPE</th><th>Referência</th><th>Valor FIPE</th></tr></thead>
+      <tbody>${bens.map(b => `<tr><td><span class="tk">${esc(bemNome(b))}</span> <span class="muted">${esc(b.info?.model || "")}</span></td><td>${esc(String(b.info?.modelYear || ""))}</td><td>${esc(b.info?.codeFipe || "")}</td><td>${esc(b.last?.month || "")}</td><td>${money(b.value)}</td></tr>`).join("")}</tbody></table></div>
+      <div class="status">Para adicionar ou remover, use a página <a href="/bens">Bens</a>.</div></details>` : ""}
+    <h3>Adicionar</h3>
+    <div class="seg" id="add-tabs">
+      <button data-tab="rv" class="${addTab === "rv" ? "on" : ""}">Ação / FII</button><button data-tab="cr" class="${addTab === "cr" ? "on" : ""}">Cripto</button><button data-tab="rf" class="${addTab === "rf" ? "on" : ""}">Renda fixa</button>
+    </div>
+    ${forms[addTab]}
+  </div>
+  ${empty ? "" : historyPanelHtml()}`;
+
+  walletCharts.forEach(c => c.destroy());
+  walletCharts = [];
+  el.querySelectorAll("details.acc").forEach(d => d.ontoggle = () => store.set("acc_" + d.dataset.acc, d.open ? "1" : "0"));
+  if (cats.length) drawPie(cats);
+  // Foto diária do patrimônio (só quando todos os valores carregaram)
+  const complete = !empty && rv.every(r => r.ok) && cr.every(r => r.ok) && mo.every(r => r.ok) && (!rfW.length || rates) && bens.every(b => b.value != null);
+  if (complete) {
+    const snap = { t: patrimonio, i: total, rv: vAcoes + vFiis, rf: vRf, cr: vCripto, fx: vFx, bens: vBens };
+    const isNew = !histW[todayISO()];
+    histW[todayISO()] = Object.fromEntries(Object.entries(snap).map(([k, v]) => [k, Math.round(v * 100) / 100]));
+    saveHist();
+    if (isNew && Object.keys(histW).length === 2) return renderWallet(); // agora já dá para desenhar o gráfico
+  }
+  drawHistory();
+
+  // --- eventos
+  $("#add-tabs").onclick = e => { const t = e.target.dataset.tab; if (t) { addTab = t; rfEditId = null; store.set("addTab", t); renderWallet(); } };
+  $("#w-export").onclick = exportBackup;
+  $("#w-import").onclick = () => $("#w-file").click();
+  $("#w-file").onchange = e => { const f = e.target.files[0]; if (f) importBackup(f); };
+  const show = $("#w-show");
+  if (show) show.onclick = () => { location.href = "/ativos#" + encodeURIComponent(wallet.map(w => w.t).join(",")); };
+
+  const fRv = $("#f-rv");
+  if (fRv) fRv.onsubmit = e => {
+    e.preventDefault();
+    const t = parseTickers(fRv.t.value)[0], q = Number(fRv.q.value);
+    if (!t || !(q >= 0)) return;
+    const ex = wallet.find(w => w.t === t);
+    ex ? ex.q = q : wallet.push({ t, q });
+    saveWallet();
+    byTicker[t] ? renderWallet() : load();
+  };
+  const fCr = $("#f-cr");
+  if (fCr) fCr.onsubmit = async e => {
+    e.preventDefault();
+    const t = fCr.t.value, q = Number(fCr.q.value);
+    if (!(q >= 0)) return;
+    const ex = cryptoW.find(c => c.t === t);
+    ex ? ex.q = q : cryptoW.push({ t, q });
+    saveCrypto(); await loadExtras(); renderWallet();
+  };
+  const fRf = $("#f-rf");
+  if (fRf) {
+    const syncTipo = () => {
+      const t = fRf.tipo.value;
+      fRf.isento.checked = RF_ISENTOS.includes(t);
+      if (t === "Tesouro Selic") { fRf.idx.value = "cdi"; fRf.taxa.value = 100; }
+      if (t === "Tesouro Prefixado") fRf.idx.value = "pre";
+      if (t === "Tesouro IPCA+") fRf.idx.value = "ipca";
+    };
+    fRf.tipo.onchange = syncTipo;
+    const editing = rfEditId && rfW.find(x => x.id === rfEditId);
+    if (editing) {
+      for (const k of ["nome", "tipo", "idx", "taxa", "aplicado", "data"]) fRf[k].value = editing[k];
+      fRf.venc.value = editing.venc || "";
+      fRf.isento.checked = !!editing.isento;
+      $("#rf-cancel").onclick = () => { rfEditId = null; renderWallet(); };
+    }
+    fRf.onsubmit = async e => {
+      e.preventDefault();
+      const entry = {
+        nome: fRf.nome.value.trim(), tipo: fRf.tipo.value, idx: fRf.idx.value,
+        taxa: Number(fRf.taxa.value), aplicado: Number(fRf.aplicado.value), data: fRf.data.value,
+        venc: fRf.venc.value || null, isento: fRf.isento.checked,
+      };
+      const ex = rfEditId && rfW.find(x => x.id === rfEditId);
+      if (ex) Object.assign(ex, entry); else rfW.push({ id: Date.now().toString(36), ...entry });
+      rfEditId = null;
+      saveRf(); await loadExtras(); renderWallet();
+    };
+  }
+  el.querySelectorAll("[data-q]").forEach(inp => inp.onchange = () => {
+    const list = inp.dataset.kind === "cr" ? cryptoW : wallet;
+    const w = list.find(w => w.t === inp.dataset.q);
+    w.q = Math.max(0, Number(inp.value) || 0);
+    inp.dataset.kind === "cr" ? saveCrypto() : saveWallet();
+    renderWallet();
+  });
+  el.querySelectorAll("[data-rm-w]").forEach(b => b.onclick = () => {
+    if (b.dataset.kind === "cr") { cryptoW = cryptoW.filter(c => c.t !== b.dataset.rmW); saveCrypto(); }
+    else { wallet = wallet.filter(w => w.t !== b.dataset.rmW); saveWallet(); }
+    renderWallet();
+  });
+  el.querySelectorAll("[data-ed-rf]").forEach(b => b.onclick = () => {
+    rfEditId = b.dataset.edRf; addTab = "rf"; renderWallet();
+    $("#f-rf").scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+  el.querySelectorAll("[data-rm-rf]").forEach(b => b.onclick = () => {
+    const e = rfW.find(x => x.id === b.dataset.rmRf);
+    if (e && !confirm(`Remover "${e.nome}" da carteira?`)) return;
+    if (rfEditId === b.dataset.rmRf) rfEditId = null;
+    rfW = rfW.filter(x => x.id !== b.dataset.rmRf); saveRf(); renderWallet();
+  });
+}
+
+// ---------- Render ----------
+function render() {
+  charts.forEach(c => c.destroy());
+  charts = [];
+  const ok = data.filter(d => !d.error);
+  const bad = data.filter(d => d.error);
+  const app = $("#app");
+  if (!data.length) { app.innerHTML = `<div class="panel muted">Digite alguns tickers acima.</div>`; return; }
+
+  app.innerHTML = `
+    ${bad.length ? `<div class="panel err">Não encontrei: ${bad.map(b => esc(b.ticker)).join(", ")}</div>` : ""}
+    ${ok.some(d => d.warnings?.length) ? `<div class="panel err">${[...new Set(ok.flatMap(d => d.warnings || []))].map(esc).join("<br>")}<br><span class="muted">Usando o Yahoo como reserva para esses ativos.</span></div>` : ""}
+    <div class="panel">
+      <h2>Comparativo de desempenho</h2>
+      <div class="hint">Variação do preço em ${RANGE_LABEL[range]}, todos partindo de 0% (não inclui proventos). Clique na legenda para esconder/mostrar.</div>
+      <div class="legend" id="cmp-legend"></div>
+      <div class="cmp-box"><canvas id="cmp"></canvas></div>
+    </div>
+    <div class="panel">
+      <h2>Resumo</h2>
+      <div class="hint">Clique no cabeçalho para ordenar. DY, P/L, P/VP e ROE vêm do Fundamentus (DY = proventos dos últimos 12 meses ÷ preço).</div>
+      <div class="table-wrap"><table id="tbl"></table></div>
+    </div>
+    <div class="grid" id="cards"></div>`;
+
+  renderLegend(ok);
+  renderCompare(ok);
+  renderTable(ok);
+  renderCards(ok);
+}
+
+const gridOpts = () => ({ color: css("--grid"), drawTicks: false });
+const tickOpts = () => ({ color: css("--text-3"), font: { size: 11 }, padding: 6 });
+const tooltipOpts = () => ({
+  backgroundColor: css("--surface"), titleColor: css("--text"), bodyColor: css("--text-2"),
+  borderColor: css("--border"), borderWidth: 1, padding: 10, boxPadding: 4, usePointStyle: true,
+});
+function timeTicks(min, max) {
+  const spanDays = (max - min) / 864e5;
+  return v => {
+    const d = new Date(v);
+    if (spanDays > 400) return d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
+    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+  };
+}
+// Linha vertical acompanhando o mouse
+const crosshair = {
+  id: "crosshair",
+  afterDraw(chart) {
+    const a = chart.tooltip?.getActiveElements?.();
+    if (!a || !a.length) return;
+    const x = a[0].element.x, { top, bottom } = chart.chartArea, ctx = chart.ctx;
+    ctx.save(); ctx.strokeStyle = css("--text-3"); ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke(); ctx.restore();
+  },
+};
+
+function renderLegend(ok) {
+  const el = $("#cmp-legend");
+  el.innerHTML = ok.map(it => `<span data-s="${esc(it.symbol)}" class="${hidden.has(it.symbol) ? "off" : ""}"><i style="background:${color(it.idx)}"></i>${esc(it.ticker)} <b class="${signCls(it.ret)}">${pct(it.ret, 1)}</b></span>`).join("");
+  el.onclick = e => {
+    const s = e.target.closest("span")?.dataset.s; if (!s) return;
+    hidden.has(s) ? hidden.delete(s) : hidden.add(s);
+    e.target.closest("span").classList.toggle("off");
+    const ch = charts[0];
+    ch.data.datasets.forEach(ds => ds.hidden = hidden.has(ds.sym));
+    ch.update();
+  };
+}
+
+function renderCompare(ok) {
+  const all = ok.flatMap(it => it.points);
+  if (!all.length) return;
+  const min = Math.min(...all.map(p => p[0])), max = Math.max(...all.map(p => p[0]));
+  const datasets = ok.map(it => {
+    const base = it.points[0]?.[1];
+    return {
+      sym: it.symbol, label: it.ticker, hidden: hidden.has(it.symbol),
+      data: it.points.map(([t, c]) => ({ x: t, y: (c / base - 1) * 100 })),
+      borderColor: color(it.idx), backgroundColor: color(it.idx),
+      borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, pointHoverBorderWidth: 2,
+      pointHoverBorderColor: css("--surface"), tension: 0.15,
+    };
+  });
+  charts.push(new Chart($("#cmp"), {
+    type: "line",
+    data: { datasets },
+    options: {
+      maintainAspectRatio: false, animation: false, parsing: false,
+      interaction: { mode: "nearest", axis: "x", intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: { ...tooltipOpts(), mode: "index", intersect: false, itemSort: (a, b) => b.parsed.y - a.parsed.y,
+          callbacks: { title: i => fmtDate(i[0].parsed.x), label: c => ` ${c.dataset.label}: ${pct(c.parsed.y)}` } },
+      },
+      scales: {
+        x: { type: "linear", min, max, grid: { display: false }, border: { color: css("--border") }, ticks: { ...tickOpts(), maxTicksLimit: 7, callback: timeTicks(min, max) } },
+        y: { grid: gridOpts(), border: { display: false }, ticks: { ...tickOpts(), callback: v => v + "%" } },
+      },
+    },
+    plugins: [crosshair],
+  }));
+}
+
+const COLS = [
+  { k: "ticker", l: "Ticker", f: it => `<span class="tk"><span class="dot" style="background:${color(it.idx)}"></span>${esc(it.ticker)}</span>`, s: it => it.ticker },
+  { k: "type", l: "Tipo", f: it => `<span class="muted">${esc(it.type)}${it.industry ? " · " + esc(it.industry) : ""}</span>`, s: it => it.type + (it.industry || "") },
+  { k: "price", l: "Preço", f: it => moneyC(it.price, it.currency) },
+  { k: "changePct", l: "Dia", f: it => `<span class="${signCls(it.changePct)}">${arrow(it.changePct)} ${pct(it.changePct)}</span>` },
+  { k: "ret", l: "Período", f: it => `<span class="${signCls(it.ret)}">${pct(it.ret)}</span>` },
+  { k: "dy12m", l: "DY 12m", f: it => it.dy12m ? brl(it.dy12m * 100) + "%" : "—" },
+  { k: "roe", l: "ROE", f: it => nz(it.fund?.roe) != null ? brl(it.fund.roe * 100, 1) + "%" : "—", s: it => nz(it.fund?.roe) },
+  { k: "div12m", l: "Proventos 12m", f: it => it.div12m ? moneyC(it.div12m, it.currency) : "—" },
+  { k: "pe", l: "P/L", f: it => it.type === "FII" || !it.pe ? "—" : brl(it.pe) },
+  { k: "pvp", l: "P/VP", f: it => it.pvp ? brl(it.pvp) : "—" },
+  { k: "pos52", l: "Mín–Máx 52s", f: it => `${brl(it.low52)} – ${brl(it.high52)}`, s: it => it.high52 > it.low52 ? (it.price - it.low52) / (it.high52 - it.low52) : null },
+  { k: "marketCap", l: "Valor de mercado", f: it => big(it.marketCap) },
+  { k: "volume", l: "Volume", f: it => big(it.volume) },
+];
+
+function renderTable(ok) {
+  const rows = [...ok];
+  if (sortKey) {
+    const col = COLS.find(c => c.k === sortKey);
+    const val = it => col.s ? col.s(it) : (sortKey === "pe" && it.type === "FII" ? null : it[sortKey]);
+    rows.sort((a, b) => {
+      const x = val(a), y = val(b);
+      if (x == null) return 1; if (y == null) return -1;
+      const r = typeof x === "string" ? x.localeCompare(y) : x - y;
+      return sortAsc ? r : -r;
+    });
+  }
+  const t = $("#tbl");
+  t.innerHTML = `<thead><tr>${COLS.map(c => `<th data-k="${c.k}" class="${c.k === sortKey ? "sorted" + (sortAsc ? " asc" : "") : ""}">${c.l}</th>`).join("")}</tr></thead>
+    <tbody>${rows.map(it => `<tr>${COLS.map(c => `<td>${c.f(it)}</td>`).join("")}</tr>`).join("")}</tbody>`;
+  t.onclick = e => {
+    const k = e.target.closest("th")?.dataset.k; if (!k) return;
+    if (sortKey === k) sortAsc = !sortAsc; else { sortKey = k; sortAsc = k === "ticker" || k === "type"; }
+    renderTable(ok);
+  };
+}
+
+function renderCards(ok) {
+  const wrap = $("#cards");
+  ok.forEach(it => {
+    const c = color(it.idx);
+    const pos = it.high52 > it.low52 ? Math.min(100, Math.max(0, (it.price - it.low52) / (it.high52 - it.low52) * 100)) : 50;
+    const divs = it.dividends || [];
+    const last = divs[divs.length - 1];
+    const f = it.fund || {};
+    const isFII = it.type === "FII";
+    const pctv = (v, d = 1) => nz(v) != null ? brl(v * 100, d) + "%" : "—";
+    const stats = isFII ? [
+      ["DY 12m", it.dy12m ? brl(it.dy12m * 100) + "%" : "—"],
+      ["P/VP", it.pvp ? brl(it.pvp) : "—"],
+      ["Último provento", last ? moneyC(last.amount, it.currency) : "—"],
+      ["Vacância", f.vacancia != null ? brl(f.vacancia * 100, 1) + "%" : "—"],
+      ["Nº de imóveis", nz(f.imoveis) != null ? brl(f.imoveis, 0) : "—"],
+      ["Cap rate", pctv(f.capRate)],
+      ["No período", `<span class="${signCls(it.ret)}">${pct(it.ret)}</span>`],
+      ["Valor de mercado", big(it.marketCap)],
+      ["Liquidez diária", nz(f.liquidez) != null ? "R$ " + big(f.liquidez) : big(it.volume)],
+    ] : [
+      ["DY 12m", it.dy12m ? brl(it.dy12m * 100) + "%" : "—"],
+      ["P/L", it.pe ? brl(it.pe) : "—"],
+      ["P/VP", it.pvp ? brl(it.pvp) : "—"],
+      ["ROE", pctv(f.roe)],
+      ["Margem líquida", pctv(f.margemLiq)],
+      ["EV/EBITDA", nz(f.evEbitda) != null ? brl(f.evEbitda) : "—"],
+      ["No período", `<span class="${signCls(it.ret)}">${pct(it.ret)}</span>`],
+      ["Dív. líq./Patrim.", nz(f.divLiqPatrim) != null ? brl(f.divLiqPatrim) : "—"],
+      ["Último provento", last ? moneyC(last.amount, it.currency) : "—"],
+      ["Valor de mercado", big(it.marketCap)],
+      ["Volume (ações)", big(it.volume)],
+      ["Cresc. receita 5a", pctv(f.crescRec5a)],
+    ];
+    const el = document.createElement("div");
+    el.className = "card";
+    el.innerHTML = `
+      <div class="card-head">
+        <div style="min-width:0">
+          <div class="tk" style="font-size:17px">${it.logo ? `<img class="logo" src="${esc(it.logo)}" alt="" onerror="this.remove()">` : ""}<span class="dot" style="background:${c}"></span>${esc(it.ticker)} <span class="badge">${esc(it.type)}</span></div>
+          <div class="name" title="${esc(it.name)}">${esc(it.name)}</div>
+          <div class="name muted">${esc(it.sector || "")}${it.industry ? (it.sector ? " · " : "") + esc(it.industry) : ""}</div>
+        </div>
+        <div style="display:flex;align-items:flex-start">
+          <div>
+            <div class="price">${moneyC(it.price, it.currency)}</div>
+            <div class="chg ${signCls(it.changePct)}">${arrow(it.changePct)} ${pct(it.changePct)} hoje</div>
+          </div>
+          <button class="x" title="Remover" data-rm="${esc(it.ticker)}">×</button>
+        </div>
+      </div>
+      <div class="mini"><canvas></canvas></div>
+      <div>
+        <div class="range52">Faixa de 52 semanas</div>
+        <div class="bar52"><b style="left:${pos}%"></b></div>
+        <div class="range52 bar52-l"><span>${moneyC(it.low52, it.currency)}</span><span>${moneyC(it.high52, it.currency)}</span></div>
+      </div>
+      <div class="stats">${stats.map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("")}</div>
+      ${divs.length ? `<details class="divs"><summary>Proventos (últimos 2 anos · ${divs.length} pagamentos)</summary><div class="divbox"><canvas></canvas></div></details>` : ""}
+      ${it.summary ? `<details><summary>${isFII ? "Sobre o fundo" : "Sobre a empresa"}</summary><div class="about">${esc(it.summary)}</div></details>` : ""}
+      <div class="range52">Gráfico: ${esc(it.sources?.grafico || "—")} · cotação: ${esc(it.sources?.cotacao || "—")} · indicadores: ${esc(it.sources?.indicadores || "—")}</div>`;
+    wrap.appendChild(el);
+
+    // Gráfico de preço
+    const pts = it.points.map(([x, y]) => ({ x, y }));
+    if (pts.length) {
+      const min = pts[0].x, max = pts[pts.length - 1].x;
+      const ctx = el.querySelector(".mini canvas");
+      const grad = ctx.getContext("2d").createLinearGradient(0, 0, 0, 150);
+      grad.addColorStop(0, c + "33"); grad.addColorStop(1, c + "00");
+      charts.push(new Chart(ctx, {
+        type: "line",
+        data: { datasets: [{ data: pts, borderColor: c, backgroundColor: grad, fill: true, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: c, pointHoverBorderColor: css("--surface"), pointHoverBorderWidth: 2, tension: 0.15 }] },
+        options: {
+          maintainAspectRatio: false, animation: false, parsing: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: { legend: { display: false }, tooltip: { ...tooltipOpts(), displayColors: false,
+            callbacks: { title: i => fmtDate(i[0].parsed.x), label: i => moneyC(i.parsed.y, it.currency) + "  (" + pct((i.parsed.y / pts[0].y - 1) * 100) + " no período)" } } },
+          scales: {
+            x: { type: "linear", min, max, grid: { display: false }, border: { display: false }, ticks: { ...tickOpts(), maxTicksLimit: 4, callback: timeTicks(min, max) } },
+            y: { position: "right", grid: gridOpts(), border: { display: false }, ticks: { ...tickOpts(), maxTicksLimit: 4, callback: v => brl(v) } },
+          },
+        },
+        plugins: [crosshair],
+      }));
+    }
+
+    // Gráfico de proventos (criado ao abrir)
+    const det = el.querySelector("details.divs");
+    if (divs.length && det) det.addEventListener("toggle", () => {
+      if (!det.open || det._chart) return;
+      det._chart = new Chart(det.querySelector("canvas"), {
+        type: "bar",
+        data: { labels: divs.map(d => fmtDate(d.date)), datasets: [{ data: divs.map(d => d.amount), backgroundColor: c, borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: "bottom", maxBarThickness: 18, categoryPercentage: .85, barPercentage: .9 }] },
+        options: {
+          maintainAspectRatio: false, animation: false,
+          plugins: { legend: { display: false }, tooltip: { ...tooltipOpts(), displayColors: false, callbacks: { label: i => moneyC(i.parsed.y, it.currency) + " por cota/ação" } } },
+          scales: {
+            x: { grid: { display: false }, border: { color: css("--border") }, ticks: { ...tickOpts(), maxTicksLimit: 6, maxRotation: 0 } },
+            y: { grid: gridOpts(), border: { display: false }, ticks: { ...tickOpts(), maxTicksLimit: 4, callback: v => brl(v, 2) } },
+          },
+        },
+      });
+      charts.push(det._chart);
+    });
+  });
+
+  wrap.onclick = e => {
+    const t = e.target.closest("[data-rm]")?.dataset.rm; if (!t) return;
+    const list = $("#tickers").value.split(/[,\s;]+/).filter(s => s && s.toUpperCase() !== t);
+    $("#tickers").value = list.join(", ");
+    load();
+  };
+}
+
+// ---------- Login (Cognito + Google, authorization code com PKCE) ----------
+// Só vale no deploy: localmente /api/auth/config responde {enabled:false} e nada disso roda.
+// Access token fica só em memória; o refresh token (30 dias) fica no localStorage para não pedir login toda vez.
+let auth = { enabled: false }, accessToken = null, tokenExp = 0, refreshing = null;
+let semRede = false; // a última tentativa de renovar o login falhou por falta de internet
+const nativeFetch = window.fetch.bind(window);
+const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const randomStr = n => b64url(crypto.getRandomValues(new Uint8Array(n)));
+const redirectUri = () => location.origin + "/";
+const jwtPayload = t => { try { return JSON.parse(atob(t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))); } catch { return {}; } };
+
+async function tokenRequest(params) {
+  const r = await nativeFetch(auth.domain + "/oauth2/token", {
+    method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ client_id: auth.clientId, ...params }),
+  });
+  if (!r.ok) throw new Error("token " + r.status);
+  const t = await r.json();
+  accessToken = t.access_token;
+  tokenExp = Date.now() + (t.expires_in || 3600) * 1000;
+  if (t.refresh_token) store.set("auth_refresh", t.refresh_token);
+  if (t.id_token) store.set("auth_email", jwtPayload(t.id_token).email || "");
+}
+async function login() {
+  const verifier = randomStr(48), state = randomStr(16);
+  const challenge = b64url(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)));
+  sessionStorage.setItem("pkce", JSON.stringify({ verifier, state, back: location.pathname + location.hash }));
+  location.assign(auth.domain + "/oauth2/authorize?" + new URLSearchParams({
+    response_type: "code", client_id: auth.clientId, redirect_uri: redirectUri(), identity_provider: "Google",
+    scope: "openid email profile", state, code_challenge: challenge, code_challenge_method: "S256",
+  }));
+  return new Promise(() => {}); // a página vai sair daqui
+}
+function logout() {
+  store.set("auth_refresh", ""); store.set("auth_email", "");
+  navigator.serviceWorker?.controller?.postMessage("limpar-dados"); // apaga os dados guardados para uso offline
+  location.assign(auth.domain + "/logout?" + new URLSearchParams({ client_id: auth.clientId, logout_uri: redirectUri() }));
+}
+async function refreshTokens() {
+  const rt = store.get("auth_refresh", "");
+  if (!rt) { accessToken = null; return; }
+  refreshing ??= tokenRequest({ grant_type: "refresh_token", refresh_token: rt })
+    .then(() => { semRede = false; })
+    .catch(e => {
+      accessToken = null;
+      // TypeError = sem internet: mantém o login guardado e usa os dados salvos
+      if (e instanceof TypeError) semRede = true; else store.set("auth_refresh", "");
+    })
+    .finally(() => { refreshing = null; });
+  return refreshing;
+}
+async function initAuth() {
+  auth = await (await nativeFetch("/api/auth/config")).json();
+  if (!auth.enabled) return;
+  const url = new URL(location.href), code = url.searchParams.get("code");
+  if (code) { // voltando do Cognito
+    const saved = JSON.parse(sessionStorage.getItem("pkce") || "{}");
+    sessionStorage.removeItem("pkce");
+    if (saved.state !== url.searchParams.get("state")) throw new Error("login inválido (state)");
+    await tokenRequest({ grant_type: "authorization_code", code, redirect_uri: redirectUri(), code_verifier: saved.verifier });
+    const back = saved.back && saved.back !== "/" ? saved.back : null;
+    if (back) { location.replace(back); return new Promise(() => {}); }
+    history.replaceState(null, "", "/");
+  }
+  if (!accessToken) await refreshTokens();
+  if (!accessToken && !semRede) return login();
+  $("#user-email").textContent = store.get("auth_email", "");
+  $("#user-box").hidden = false;
+  $("#logout").onclick = e => { e.preventDefault(); logout(); };
+}
+// Toda chamada a /api/* leva o token; se expirar (401), renova e tenta de novo uma vez.
+// Sem internet, a requisição segue sem token e o service worker responde com os últimos dados salvos.
+window.fetch = async (input, init = {}) => {
+  const url = typeof input === "string" ? input : input.url;
+  if (!url.startsWith("/api/")) return nativeFetch(input, init);
+  const r = await apiFetch(url, input, init);
+  marcarOffline(r);
+  return r;
+};
+async function apiFetch(url, input, init) {
+  if (!auth.enabled || url.startsWith("/api/auth/")) return nativeFetch(input, init);
+  if (!accessToken || Date.now() > tokenExp - 60_000) await refreshTokens();
+  if (!accessToken) return semRede ? nativeFetch(input, init) : login();
+  const call = () => nativeFetch(input, { ...init, headers: { ...(init.headers || {}), Authorization: "Bearer " + accessToken } });
+  let r = await call();
+  if (r.status === 401) {
+    await refreshTokens();
+    if (!accessToken) return semRede ? r : login();
+    r = await call();
+  }
+  return r;
+}
+function marcarOffline(r) {
+  const salvoEm = r.headers.get("X-Painel-Offline");
+  const bar = $("#offline-bar");
+  if (salvoEm === null) { bar.hidden = true; return; }
+  const d = salvoEm ? new Date(salvoEm) : null;
+  bar.textContent = "Sem internet: mostrando os dados salvos" + (d ? ` em ${d.toLocaleDateString("pt-BR")} às ${d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : "") + ". Alterações não serão salvas.";
+  bar.hidden = false;
+}
+
+// ---------- Persistência no servidor ----------
+// A carteira é um documento único em /api/carteira, com controle de versão por ETag:
+// cada PUT manda If-Match com a versão lida; se outro dispositivo salvou antes, o servidor responde 412.
+let carteiraEtag = null;          // null = ainda não existe no servidor
+let persistTimer = null, persistChain = Promise.resolve(), lastSnapSent = null;
+const etagOf = r => (r.headers.get("ETag") || "").replace(/"/g, "") || null;
+
+function carteiraDoc() {
+  return { acoesFiis: wallet, cripto: cryptoW, rendaFixa: rfW, moedas: moedasW, bens: bensW,
+    preferencias: { projecao: projCfg, simulador: simCfg, listaPainel } };
+}
+function applyCarteira(d) {
+  wallet = d.acoesFiis || []; cryptoW = d.cripto || []; rfW = d.rendaFixa || []; moedasW = d.moedas || []; bensW = d.bens || [];
+  const p = d.preferencias || {};
+  projCfg = { reinvest: true, ...(p.projecao || {}) };
+  simCfg = { ...SIM_DEFAULT, ...(p.simulador || {}) };
+  if (typeof p.listaPainel === "string" && p.listaPainel.trim()) listaPainel = p.listaPainel;
+}
+function setSaveState(state, msg = "") {
+  const el = $("#save-state");
+  el.className = "status " + state;
+  el.textContent = { pendente: "Salvando…", ok: "Salvo ✓", erro: "Erro ao salvar: " + msg }[state] || "";
+  if (state === "ok") setTimeout(() => { if (el.textContent === "Salvo ✓") el.textContent = ""; }, 2500);
+}
+// Junta alterações em sequência (400 ms) num PUT só; os PUTs saem um de cada vez
+function persist() {
+  clearTimeout(persistTimer);
+  setSaveState("pendente");
+  persistTimer = setTimeout(() => { persistChain = persistChain.then(doPersist); }, 400);
+}
+async function doPersist() {
+  const headers = { "Content-Type": "application/json" };
+  if (carteiraEtag) headers["If-Match"] = `"${carteiraEtag}"`; else headers["If-None-Match"] = "*";
+  try {
+    const r = await fetch("/api/carteira", { method: "PUT", headers, body: JSON.stringify(carteiraDoc()) });
+    if (r.status === 412) {
+      setSaveState("erro", "conflito");
+      alert("Seus dados foram alterados em outro dispositivo. A página vai recarregar com a versão mais recente.");
+      return location.reload();
+    }
+    if (!r.ok) throw new Error(await errorText(r));
+    carteiraEtag = etagOf(r);
+    setSaveState("ok");
+  } catch (e) { setSaveState("erro", e.message); }
+}
+async function errorText(r) {
+  const j = await r.json().catch(() => ({}));
+  if (j.error) return j.error;
+  if (j.violations?.length) return j.violations.map(v => `${v.field.split(".").slice(2).join(".")}: ${v.message}`).join("; ");
+  return "HTTP " + r.status;
+}
+// Foto do dia: só envia se mudou desde o último envio
+function saveSnapshotToday() {
+  const d = todayISO(), snap = histW[d];
+  if (!snap || JSON.stringify(snap) === lastSnapSent) return;
+  lastSnapSent = JSON.stringify(snap);
+  fetch(`/api/historico/${d}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: lastSnapSent })
+    .then(r => { if (!r.ok) lastSnapSent = null; }).catch(() => { lastSnapSent = null; });
+}
+async function sendBackup(payload) {
+  const r = await fetch("/api/backup/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+  if (!r.ok) throw new Error(await errorText(r));
+}
+
+// Dados antigos deste navegador (versão com localStorage), no formato do backup
+function legacyBackup() {
+  const arr = k => { try { return JSON.parse(store.get(k, "[]")) || []; } catch { return []; } };
+  const obj = k => { try { return JSON.parse(store.get(k, "{}")) || {}; } catch { return {}; } };
+  const b = { app: "painel-acoes", versao: 1, acoesFiis: arr("carteira"), cripto: arr("carteira_cripto"), rendaFixa: arr("carteira_rf"),
+    moedas: arr("carteira_moedas"), bens: arr("carteira_bens"), historico: obj("historico_patrimonio"),
+    listaPainel: store.get("tickers", ""), preferencias: { projecao: obj("projecao"), simulador: obj("simulador") } };
+  const temDados = b.acoesFiis.length || b.cripto.length || b.rendaFixa.length || b.moedas.length || b.bens.length || Object.keys(b.historico).length;
+  return temDados ? b : null;
+}
+
+async function loadState() {
+  let r = await fetch("/api/carteira");
+  if (r.status === 404) {
+    const legado = store.get("migrado", "0") === "1" ? null : legacyBackup();
+    if (legado && confirm("Encontrei uma carteira salva neste navegador (versão antiga).\n\nQuer enviá-la para o servidor? Assim ela fica disponível em qualquer dispositivo.")) {
+      await sendBackup(legado);
+      store.set("migrado", "1");
+      r = await fetch("/api/carteira");
+    } else if (legado) {
+      store.set("migrado", "1"); // não perguntar de novo
+    }
+  }
+  if (r.ok) { applyCarteira(await r.json()); carteiraEtag = etagOf(r); }
+  else if (r.status !== 404) throw new Error(await errorText(r));
+  const h = await fetch("/api/historico");
+  histW = h.ok ? await h.json() : {};
+  lastSnapSent = histW[todayISO()] ? JSON.stringify(histW[todayISO()]) : null;
+}
+
+// ---------- Inicialização ----------
+$("#go").onclick = load;
+$("#tickers").addEventListener("keydown", e => { if (e.key === "Enter") load(); });
+$("#ranges").onclick = e => {
+  const r = e.target.dataset.r; if (!r) return;
+  range = r; store.set("range", r); load();
+};
+let timer;
+$("#auto").checked = store.get("auto", "0") === "1";
+const setAuto = () => { clearInterval(timer); store.set("auto", $("#auto").checked ? "1" : "0"); if ($("#auto").checked) timer = setInterval(load, 15 * 60 * 1000); };
+$("#auto").onchange = setAuto;
+setAuto();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderPage);
+// mostra só o que é da página atual
+document.querySelectorAll(".nav a").forEach(a => a.classList.toggle("on", a.dataset.page === PAGE));
+document.title = { carteira: "Carteira", projecao: "Projeção", ativos: "Ativos", moedas: "Moedas", bens: "Bens" }[PAGE] + " · Meus Investimentos";
+const pageEls = { carteira: ["#wallet"], projecao: ["#projection"], ativos: ["#ativos-controls", "#app"], moedas: ["#moedas"], bens: ["#bens"] };
+for (const [pg, sels] of Object.entries(pageEls)) sels.forEach(sel => $(sel).hidden = pg !== PAGE);
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+(async () => {
+  try {
+    await initAuth();
+    await loadState();
+  } catch (e) {
+    $("#" + { carteira: "wallet", projecao: "projection", ativos: "app", moedas: "moedas", bens: "bens" }[PAGE]).innerHTML =
+      `<div class="panel err">Não consegui carregar seus dados do servidor (${esc(e.message)}). Recarregue a página em instantes.</div>`;
+    return;
+  }
+  $("#tickers").value = (PAGE === "ativos" && decodeURIComponent(location.hash.slice(1)).replace(/,/g, ", ")) || listaPainel;
+  load();
+})();
+</script>
+</body>
+</html>
