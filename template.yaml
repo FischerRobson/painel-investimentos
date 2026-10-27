@@ -211,6 +211,10 @@ Resources:
               Effect: Allow
               Action: s3:ListBucket
               Resource: !GetAtt DataBucket.Arn
+            - Sid: CustosDaConta
+              Effect: Allow
+              Action: [ce:GetCostAndUsage, ce:GetCostForecast]
+              Resource: "*"
             - Sid: ConfigDoLogin
               Effect: Allow
               Action: ssm:GetParameter

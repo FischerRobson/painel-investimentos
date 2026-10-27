@@ -211,6 +211,7 @@ details.acc[open] > summary::before { transform: rotate(90deg); }
 .fipe-result { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 14px; margin-top: 14px; padding: 14px; border: 1px solid var(--border); border-radius: 10px; }
 .fipe-save { display: flex; flex-wrap: wrap; gap: 8px; }
 .fipe-save input { padding: 8px 10px; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; min-width: 220px; }
+.cmp-top { display: flex; justify-content: flex-end; margin: 4px 0 6px; }
 .proj-box { position: relative; height: 230px; margin: 4px 0 12px; }
 .w-actions button:disabled { opacity: .45; cursor: default; }
 tr.editing td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
@@ -268,6 +269,7 @@ body.busy #topbar { opacity: 1; }
     <a href="/ativos" data-page="ativos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Ativos</a>
     <a href="/moedas" data-page="moedas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="9" r="6"/><path d="M15.5 9.5a6 6 0 1 1-6 6"/></svg>Moedas</a>
     <a href="/bens" data-page="bens"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17h14M6 17l1.5-5h9L18 17"/><path d="M4 17v2h3v-2M17 17v2h3v-2"/><path d="M7.5 12 9 8h6l1.5 4"/></svg>Bens</a>
+    <a href="/custos" data-page="custos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"/><path d="M16.5 7.5c0-1.7-2-2.8-4.5-2.8S7.5 5.8 7.5 7.5s2 2.4 4.5 2.9 4.5 1.3 4.5 3.1-2 3-4.5 3-4.5-1.2-4.5-2.9"/></svg>Custos</a>
   </nav>
 
   <div class="offline" id="offline-bar" role="status" hidden></div>
@@ -283,6 +285,7 @@ body.busy #topbar { opacity: 1; }
   <div id="projection"></div>
   <div id="moedas"></div>
   <div id="bens"></div>
+  <div id="custos"></div>
   <div id="app"></div>
 </div>
 
@@ -336,8 +339,8 @@ function periodReturn(it) {
 
 // ---------- Carregamento ----------
 // ---------- Páginas ----------
-const PAGE = { "/projecao": "projecao", "/ativos": "ativos", "/moedas": "moedas", "/bens": "bens" }[location.pathname.replace(/\/$/, "")] || "carteira";
-const renderPage = () => ({ carteira: renderWallet, projecao: renderProjection, ativos: render, moedas: renderMoedas, bens: renderBens })[PAGE]();
+const PAGE = { "/projecao": "projecao", "/ativos": "ativos", "/moedas": "moedas", "/bens": "bens", "/custos": "custos" }[location.pathname.replace(/\/$/, "")] || "carteira";
+const renderPage = () => ({ carteira: renderWallet, projecao: renderProjection, ativos: render, moedas: renderMoedas, bens: renderBens, custos: renderCustos })[PAGE]();
 
 function setStatus(brapiInfo) {
   const b = brapiInfo || {};
@@ -368,12 +371,13 @@ function skeletonHtml(page) {
       + panel(`${L("100px", "sk-title")}${rows(Math.min(8, nCards))}`) + `<div class="grid">${Array.from({ length: nCards }, card).join("")}</div>`,
     moedas: panel(`${L("120px", "sk-title")}${L("50%")}${tiles(1)}`) + `<div class="grid">${Array.from({ length: 5 }, card).join("")}</div>`,
     bens: panel(`${L("200px", "sk-title")}${L("40%")}${formRow(4)}`) + panel(`${L("140px", "sk-title")}${L("60%")}${tiles(1)}`),
+    custos: panel(`${L("160px", "sk-title")}${L("60%")}${tiles(3)}`) + panel(`${L("140px", "sk-title")}<div class="proj-box"><span class="sk sk-block"></span></div>`),
   }[page];
   return `<div class="skel" aria-hidden="true">${html}</div>`;
 }
 
 async function load() {
-  const main = $("#" + { carteira: "wallet", projecao: "projection", ativos: "app", moedas: "moedas", bens: "bens" }[PAGE]);
+  const main = $("#" + { carteira: "wallet", projecao: "projection", ativos: "app", moedas: "moedas", bens: "bens", custos: "custos" }[PAGE]);
   const first = !main.children.length || main.querySelector(".skel");
   if (first) main.innerHTML = skeletonHtml(PAGE);
   else main.classList.add("loading");
@@ -406,6 +410,10 @@ async function load() {
     } else if (PAGE === "moedas") {
       await loadFx(fxDays);
       renderMoedas();
+      setStatus(null);
+    } else if (PAGE === "custos") {
+      await Promise.all([loadCustos(), loadFx(2)]);
+      renderCustos();
       setStatus(null);
     } else if (PAGE === "bens") {
       renderBens();
@@ -1000,6 +1008,207 @@ function drawHistory() {
   if (ch) walletCharts.push(ch);
 }
 
+// ---------- Carteira × mercado (CDI, Ibovespa, IFIX) ----------
+// Simulação: como a composição de HOJE (pesos pelo valor atual) teria se saído no período.
+let composicao = null;
+let cmpRange = store.get("cmpRange", "1y"), cmpDados = null, cmpErr = null, cmpCarregando = false, cmpCharts = [];
+const CMP_RANGES = [["6mo", "6 meses"], ["1y", "1 ano"], ["5y", "5 anos"]];
+const CMP_SERIES = [["carteira", "Sua carteira", "--s1"], ["CDI", "CDI", "--s2", true], ["IBOV", "Ibovespa", "--s3"], ["IFIX", "IFIX", "--s4"]];
+
+function comparativoPanelHtml() {
+  const aberto = store.get("acc_cmp", "0") === "1";
+  return `<div class="panel"><details class="acc" id="cmp-acc" ${aberto ? "open" : ""}>
+    <summary><span class="acc-t">Carteira × CDI, Ibovespa e IFIX</span><span class="acc-s" id="cmp-resumo"></span></summary>
+    <div id="cmp-body"></div></details></div>`;
+}
+
+function bindComparativo() {
+  const acc = $("#cmp-acc"); if (!acc) return;
+  acc.ontoggle = () => {
+    store.set("acc_cmp", acc.open ? "1" : "0");
+    if (acc.open && !cmpDados && !cmpCarregando) loadComparativo();
+  };
+  renderComparativo();
+  if (acc.open && !cmpDados && !cmpCarregando) loadComparativo();
+}
+
+async function loadComparativo() {
+  if (!composicao) return;
+  cmpCarregando = true; cmpErr = null; renderComparativo();
+  const moedasExterior = composicao.rv.filter(r => r.value && r.cur && r.cur !== "BRL").map(r => r.cur);
+  const fxCodes = [...new Set([...composicao.mo.filter(m => m.value).map(m => m.c), ...moedasExterior])];
+  const coins = composicao.cr.filter(c => c.value).map(c => c.t);
+  const tickers = composicao.rv.filter(r => r.value).map(r => r.t);
+  try {
+    const [bench, dados] = await Promise.all([
+      fetch(`/api/benchmarks?range=${cmpRange}&fx=${fxCodes.join(",")}&crypto=${coins.join(",")}`).then(r => r.json()),
+      tickers.length ? fetch(`/api/data?range=${cmpRange}&symbols=${encodeURIComponent(tickers.join(","))}`).then(r => r.json()) : { items: [] },
+    ]);
+    cmpDados = calcularComparativo(bench, dados.items || []);
+  } catch (e) { cmpErr = "Não consegui carregar os dados de comparação agora."; }
+  cmpCarregando = false;
+  renderComparativo();
+}
+
+// valor da série no instante t: o último ponto até t (ou o primeiro, se t vier antes da série)
+function valorEm(serie, t) {
+  let lo = 0, hi = serie.length - 1, ans = 0;
+  while (lo <= hi) { const mid = (lo + hi) >> 1; if (serie[mid][0] <= t) { ans = mid; lo = mid + 1; } else hi = mid - 1; }
+  return serie[ans][1];
+}
+const multiplica = (a, b) => a.map(([t, v]) => [t, v * valorEm(b, t)]);
+// Cada fonte marca o dia num horário diferente (Yahoo B3 13h, EUA 13h30, cripto 0h, CDI 21h UTC):
+// todos os pontos passam a valer como "fim daquele dia", para comparar dia com dia.
+const fimDoDia = t => Math.floor(t / 864e5) * 864e5 + 864e5 - 1;
+const porDia = s => (s || []).map(([t, v]) => [fimDoDia(t), v]);
+
+function calcularComparativo(bench, items) {
+  const ind = Object.fromEntries(Object.entries(bench.indices || {}).map(([k, s]) => [k, porDia(s)])), cdi = ind.CDI || [];
+  const fxDia = Object.fromEntries(Object.entries(bench.fx || {}).map(([k, s]) => [k, porDia(s)]));
+  const grade = (cdi.length ? cdi : ind.IBOV || []).map(p => p[0]);
+  if (grade.length < 2) throw new Error("sem dados");
+  // o CDI de hoje só sai amanhã: o período vai até o dado mais recente das outras séries
+  const ultimo = Math.max(...[ind.IBOV, ind.IFIX].filter(s => s?.length).map(s => s[s.length - 1][0]));
+  if (ultimo > grade[grade.length - 1]) grade.push(ultimo);
+  const ativos = [], fora = [];
+
+  for (const r of composicao.rv.filter(r => r.value)) {
+    const it = items.find(i => i.ticker === r.t);
+    let pts = porDia(it?.points);
+    if (pts.length && r.cur && r.cur !== "BRL") pts = fxDia[r.cur] ? multiplica(pts, fxDia[r.cur]) : [];
+    pts.length > 1 ? ativos.push({ peso: r.value, serie: pts }) : fora.push(r.t);
+  }
+  for (const c of composicao.cr.filter(c => c.value)) {
+    const s = porDia(bench.crypto?.[c.t]);
+    s.length > 1 ? ativos.push({ peso: c.value, serie: s }) : fora.push(c.t);
+  }
+  for (const m of composicao.mo.filter(m => m.value)) {
+    const s = fxDia[m.c];
+    s?.length > 1 ? ativos.push({ peso: m.value, serie: s }) : fora.push(m.c);
+  }
+  // renda fixa refeita dia a dia com o CDI e o IPCA do período
+  const ipcaMes = Object.fromEntries((bench.ipca || []).map(([d, v]) => [d.slice(0, 7), v]));
+  for (const r of composicao.rf.filter(r => r.calc?.liquido)) {
+    if (cdi.length < 2) { fora.push(r.nome); continue; }
+    const serie = [[cdi[0][0], 1]];
+    let f = 1;
+    for (let i = 1; i < cdi.length; i++) {
+      const diaCdi = cdi[i][1] / cdi[i - 1][1] - 1;
+      if (r.idx === "cdi") f *= 1 + diaCdi * r.taxa / 100;
+      else f *= Math.pow(1 + r.taxa / 100, 1 / 252);
+      if (r.idx === "ipca") {
+        const mes = new Date(cdi[i][0]).toISOString().slice(0, 7), mesAnt = new Date(cdi[i - 1][0]).toISOString().slice(0, 7);
+        if (mes !== mesAnt && ipcaMes[mesAnt] != null) f *= 1 + ipcaMes[mesAnt] / 100; // IPCA do mês que terminou
+      }
+      serie.push([cdi[i][0], f]);
+    }
+    ativos.push({ peso: r.calc.liquido, serie });
+  }
+
+  const pesoTotal = ativos.reduce((a, x) => a + x.peso, 0);
+  const t0 = grade[0];
+  const carteira = pesoTotal ? grade.map(t => [t, ativos.reduce((a, x) => a + x.peso * valorEm(x.serie, t) / valorEm(x.serie, t0), 0) / pesoTotal]) : [];
+  const norm = s => s?.length ? grade.map(t => [t, valorEm(s, t) / valorEm(s, t0)]) : [];
+  const series = { carteira, CDI: norm(cdi), IBOV: norm(ind.IBOV), IFIX: norm(ind.IFIX) };
+  const ret = Object.fromEntries(Object.entries(series).map(([k, s]) => [k, s.length ? (s[s.length - 1][1] - 1) * 100 : null]));
+  return { series, ret, fora, avisos: bench.warnings || [], vazia: !ativos.length };
+}
+
+function renderComparativo() {
+  const body = $("#cmp-body"); if (!body) return;
+  cmpCharts.forEach(c => c.destroy()); cmpCharts = [];
+  const d = cmpDados;
+  const seg = `<div class="seg" id="cmp-range">${CMP_RANGES.map(([k, l]) => `<button data-r="${k}" class="${cmpRange === k ? "on" : ""}">${l}</button>`).join("")}</div>`;
+  let html = `<div class="cmp-top">${seg}</div>`;
+  if (cmpCarregando) html += `<div class="status" style="margin:12px 0">Buscando históricos…</div>`;
+  else if (cmpErr) html += `<div class="err" style="margin:12px 0">${esc(cmpErr)}</div>`;
+  else if (d?.vazia) html += `<div class="hint" style="margin:12px 0">Cadastre ativos na carteira para comparar.</div>`;
+  else if (d) {
+    const pctCdi = d.ret.CDI > 0 && d.ret.carteira != null ? d.ret.carteira / d.ret.CDI * 100 : null;
+    html += `<div class="tiles">${CMP_SERIES.map(([k, nome, cor]) => `<div class="tile"><div class="k"><span class="dot" style="background:var(${cor})"></span> ${nome}${k === "IFIX" ? " <span class='muted'>(XFIX11)</span>" : ""}</div>
+        <div class="v ${signCls(d.ret[k])}">${pct(d.ret[k])}</div>${k === "carteira" && pctCdi != null ? `<div class="s">${brl(pctCdi, 0)}% do CDI</div>` : ""}</div>`).join("")}</div>
+      ${legendHtml(CMP_SERIES.filter(([k]) => d.series[k].length).map(([, nome, cor, dash]) => [nome, css(cor), dash]))}
+      <div class="proj-box"><canvas id="cmp-chart" aria-label="Carteira comparada com CDI, Ibovespa e IFIX"></canvas></div>`;
+  }
+  html += `<div class="status">Simulação: como a sua composição de hoje (cada ativo pesando pelo valor atual) teria se saído no período.
+    Não considera compras, vendas nem aportes; bens ficam de fora. IFIX aproximado pelo ETF XFIX11, que o replica.
+    ${d?.fora?.length ? `Sem histórico no período: ${esc(d.fora.join(", "))}.` : ""}${d?.avisos?.length ? " " + esc(d.avisos.join("; ")) + "." : ""}</div>`;
+  body.innerHTML = html;
+  const resumo = $("#cmp-resumo");
+  if (resumo) resumo.textContent = d && !d.vazia ? `${CMP_RANGES.find(r => r[0] === cmpRange)[1]}: carteira ${pct(d.ret.carteira, 1)} · CDI ${pct(d.ret.CDI, 1)}` : "toque para calcular";
+  $("#cmp-range").onclick = e => {
+    const r = e.target.dataset.r; if (!r || r === cmpRange) return;
+    cmpRange = r; store.set("cmpRange", r); cmpDados = null; loadComparativo();
+  };
+  const cv = $("#cmp-chart");
+  if (cv && d) {
+    const ds = CMP_SERIES.filter(([k]) => d.series[k].length).map(([k, nome, cor, dash]) => ({
+      label: nome, color: css(cor), dash: dash ? [5, 4] : [], data: d.series[k].map(([x, y]) => ({ x, y: (y - 1) * 100 })),
+    }));
+    const ch = lineChart(cv, ds, { fill: false, height: 230, fmtY: v => brl(v, 0) + "%", fmtTip: v => pct(v) });
+    if (ch) cmpCharts.push(ch);
+  }
+}
+
+// ---------- Página: custos da AWS ----------
+let custos = null, custosErr = null, custosCharts = [];
+async function loadCustos() {
+  try {
+    const j = await (await fetch("/api/custos")).json();
+    if (j.error) { custosErr = j.error; return; }
+    custos = j; custosErr = null;
+  } catch { custosErr = "Não consegui carregar os custos agora."; }
+}
+const usd = v => v == null ? "—" : "US$ " + brl(v, v > 0 && v < 0.01 ? 4 : 2);
+
+function barChart(canvas, labels, values, fmt) {
+  return new Chart(canvas, {
+    type: "bar",
+    data: { labels, datasets: [{ data: values, backgroundColor: css("--s1"), borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: "bottom", maxBarThickness: 28 }] },
+    options: {
+      maintainAspectRatio: false, animation: false,
+      plugins: { legend: { display: false }, tooltip: { ...tooltipOpts(), displayColors: false, callbacks: { label: i => fmt(i.parsed.y) } } },
+      scales: {
+        x: { grid: { display: false }, border: { color: css("--border") }, ticks: { ...tickOpts(), maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } },
+        y: { grid: gridOpts(), border: { display: false }, beginAtZero: true, ticks: { ...tickOpts(), maxTicksLimit: 4, callback: v => "US$ " + brl(v, v < 1 ? 2 : 0) } },
+      },
+    },
+  });
+}
+
+function renderCustos() {
+  const el = $("#custos");
+  custosCharts.forEach(c => c.destroy()); custosCharts = [];
+  if (custosErr) { el.innerHTML = `<div class="panel err">${esc(custosErr)}</div>`; return; }
+  if (!custos) { el.innerHTML = `<div class="panel muted">Carregando custos…</div>`; return; }
+  const dolar = fx?.quotes?.USD?.bid;
+  const reais = v => dolar && v != null ? `≈ ${money(v * dolar)}` : "";
+  const meses = custos.meses || [], atual = meses[meses.length - 1], anterior = meses[meses.length - 2];
+  const nomeMes = m => new Date(m + "-15T12:00:00").toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
+  el.innerHTML = `<div class="panel">
+    <h2>Custos da AWS</h2>
+    <div class="hint">Total da conta AWS (que só tem este app), em dólar, antes de créditos. Atualiza a cada 12 h, porque cada consulta à API de custos da AWS custa US$ 0,01.</div>
+    ${custos.aviso ? `<div class="offline" style="margin-top:8px">${esc(custos.aviso)}</div>` : ""}
+    ${atual ? `<div class="tiles">
+      <div class="tile"><div class="k">Este mês (até agora)</div><div class="v">${usd(atual.total)}</div><div class="s">${reais(atual.total)}</div></div>
+      <div class="tile"><div class="k">Previsão para o mês</div><div class="v">${usd(custos.previsaoMes)}</div><div class="s">${custos.previsaoMes != null ? reais(custos.previsaoMes) : "a AWS ainda não tem dados suficientes"}</div></div>
+      <div class="tile"><div class="k">Mês passado</div><div class="v">${anterior ? usd(anterior.total) : "—"}</div><div class="s">${anterior ? reais(anterior.total) : ""}</div></div>
+    </div>` : ""}
+  </div>
+  ${meses.length ? `<div class="panel"><h2>Últimos meses</h2><div class="proj-box"><canvas id="custos-meses"></canvas></div></div>` : ""}
+  ${atual?.servicos?.length ? `<div class="panel"><h2>Por serviço neste mês</h2>
+    <div class="table-wrap"><table class="w-table"><thead><tr><th>Serviço</th><th>Custo</th><th>Em reais</th><th>% do mês</th></tr></thead>
+    <tbody>${atual.servicos.map(s => `<tr><td>${esc(s.nome)}</td><td>${usd(s.valor)}</td><td>${reais(s.valor)}</td><td>${atual.total ? brl(s.valor / atual.total * 100, 1) + "%" : "—"}</td></tr>`).join("")}</tbody></table></div></div>`
+    : atual ? `<div class="panel hint">Nenhum custo registrado neste mês até agora (tudo dentro do nível gratuito).</div>` : ""}
+  ${custos.diario?.length ? `<div class="panel"><h2>Dia a dia neste mês</h2><div class="proj-box"><canvas id="custos-dias"></canvas></div></div>` : ""}
+  <div class="status" style="margin:4px 2px 16px">Dados de ${horaCustos(custos.fetchedAt)}.</div>`;
+  const cm = $("#custos-meses");
+  if (cm) custosCharts.push(barChart(cm, meses.map(m => nomeMes(m.mes)), meses.map(m => m.total), usd));
+  const cd = $("#custos-dias");
+  if (cd) custosCharts.push(barChart(cd, custos.diario.map(d => d.dia.slice(8, 10)), custos.diario.map(d => d.valor), usd));
+}
+const horaCustos = ms => new Date(ms).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+
 // ---------- Gráficos da carteira ----------
 let walletCats = [], walletTotal = 0;
 function breakdownTip() {
@@ -1101,6 +1310,7 @@ function renderWallet() {
     return { ...m, ok: !!q, rate: q?.bid, value, dayChg: q ? value - value / (1 + q.pct / 100) : null };
   });
   const bens = bensW.map(b => ({ ...b, value: bemValue(b) }));
+  composicao = { rv, cr, mo, rf };
 
   const sum = (arr, f) => arr.reduce((a, x) => a + (f(x) || 0), 0);
   const vAcoes = sum(rv.filter(r => r.type !== "FII"), r => r.value);
@@ -1253,6 +1463,7 @@ function renderWallet() {
     </div>
     ${forms[addTab]}
   </div>
+  ${empty ? "" : comparativoPanelHtml()}
   ${empty ? "" : historyPanelHtml()}`;
 
   walletCharts.forEach(c => c.destroy());
@@ -1269,6 +1480,7 @@ function renderWallet() {
     if (isNew && Object.keys(histW).length === 2) return renderWallet(); // agora já dá para desenhar o gráfico
   }
   drawHistory();
+  bindComparativo();
 
   // --- eventos
   $("#add-tabs").onclick = e => { const t = e.target.dataset.tab; if (t) { addTab = t; rfEditId = null; store.set("addTab", t); renderWallet(); } };
@@ -1818,8 +2030,8 @@ setAuto();
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderPage);
 // mostra só o que é da página atual
 document.querySelectorAll(".nav a").forEach(a => a.classList.toggle("on", a.dataset.page === PAGE));
-document.title = { carteira: "Carteira", projecao: "Projeção", ativos: "Ativos", moedas: "Moedas", bens: "Bens" }[PAGE] + " · Meus Investimentos";
-const pageEls = { carteira: ["#wallet"], projecao: ["#projection"], ativos: ["#ativos-controls", "#app"], moedas: ["#moedas"], bens: ["#bens"] };
+document.title = { carteira: "Carteira", projecao: "Projeção", ativos: "Ativos", moedas: "Moedas", bens: "Bens", custos: "Custos" }[PAGE] + " · Meus Investimentos";
+const pageEls = { carteira: ["#wallet"], projecao: ["#projection"], ativos: ["#ativos-controls", "#app"], moedas: ["#moedas"], bens: ["#bens"], custos: ["#custos"] };
 for (const [pg, sels] of Object.entries(pageEls)) sels.forEach(sel => $(sel).hidden = pg !== PAGE);
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 (async () => {

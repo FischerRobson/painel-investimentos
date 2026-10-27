@@ -13,7 +13,7 @@ class PageControllerTest {
 
     @Test
     void paginasServemOIndex() {
-        for (String p : new String[]{"/", "/carteira", "/projecao", "/ativos", "/moedas", "/bens"}) {
+        for (String p : new String[]{"/", "/carteira", "/projecao", "/ativos", "/moedas", "/bens", "/custos"}) {
             given().when().get(p).then().statusCode(200).body(containsString("Meus Investimentos"));
         }
     }
