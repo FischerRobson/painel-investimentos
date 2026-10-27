@@ -2,7 +2,7 @@
 //  - Páginas: rede primeiro (mudanças aparecem na hora); ícones e Chart.js: cache primeiro (troque VERSION para renovar).
 //  - GET /api/*: rede primeiro; se falhar, devolve a última resposta salva com o header X-Painel-Offline.
 //  - PUT/POST nunca passam pelo cache.
-const VERSION = "painel-v2";
+const VERSION = "painel-v3";
 const DATA = "painel-dados";
 const SHELL = [
   "/", "/carteira", "/projecao", "/ativos", "/moedas", "/bens", "/custos",
@@ -51,6 +51,7 @@ async function paginaRedePrimeiro(req) {
 }
 
 async function dadosRedePrimeiro(req) {
+  if (req.headers.get("X-Painel-Demo")) return fetch(req); // dados fictícios não ficam guardados no aparelho
   const cache = await caches.open(DATA);
   try {
     const r = await fetch(req);

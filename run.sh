@@ -17,6 +17,6 @@ fi
 if [[ ! -f target/quarkus-app/quarkus-run.jar \
       || -n "$(find src pom.xml -newer target/quarkus-app/quarkus-run.jar -print -quit)" \
       || -n "$(ls target/quarkus-app/lib/main 2>/dev/null | grep -m1 amazon-lambda)" ]]; then
-  ./mvnw -q -B package -DskipTests
+  ./mvnw -q -B clean package -DskipTests
 fi
 exec java $JVM_OPTS -jar target/quarkus-app/quarkus-run.jar
