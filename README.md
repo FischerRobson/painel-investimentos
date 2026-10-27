@@ -35,6 +35,8 @@ Login: Cognito (Google) com authorization code + PKCE; só e-mails da lista ALLO
 | `GET/PUT /api/carteira` | Carteira do usuário (`If-Match` obrigatório no PUT; 412 em conflito) |
 | `GET /api/historico`, `PUT /api/historico/{data}` | Foto diária do patrimônio |
 | `GET /api/backup`, `POST /api/backup/import` | Exporta/importa tudo |
+| `GET /api/benchmarks?range=&fx=&crypto=` | CDI, Ibovespa, IFIX (via XFIX11), câmbio e cripto em reais no período, para comparar a carteira |
+| `GET /api/custos` | Custos da conta AWS pelo Cost Explorer (cache de 12 h: cada consulta custa US$ 0,01) |
 | `GET /api/auth/config` | Configuração pública do login (única rota `/api` sem token) |
 
 Erros das fontes externas voltam com HTTP 200 e `{"error": "..."}` (a página exibe a mensagem);
