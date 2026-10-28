@@ -263,6 +263,7 @@ body.busy #topbar { opacity: 1; }
     <div class="head-r">
       <div class="status" id="status"></div>
       <div class="status" id="save-state" aria-live="polite"></div>
+      <div class="status" id="versao" title="Versão da API"></div>
       <div class="status" id="user-box" hidden><span id="user-email"></span> · <a href="#" id="logout">Sair</a></div>
       <button type="button" id="demo-btn" class="demo-btn" title="Mostra o app com dados fictícios, sem expor os seus">Modo demonstração</button>
       <label class="status"><input type="checkbox" id="auto"> atualizar a cada 15 min</label>
@@ -2052,6 +2053,7 @@ $("#demo-bar").hidden = !DEMO;
 $("#demo-btn").textContent = DEMO ? "Sair da demonstração" : "Modo demonstração";
 $("#demo-btn").onclick = alternarDemo;
 $("#demo-sair").onclick = alternarDemo;
+nativeFetch("/api/version").then(r => r.json()).then(v => { if (v.version) $("#versao").textContent = "v" + v.version; }).catch(() => {});
 (async () => {
   try {
     await initAuth();

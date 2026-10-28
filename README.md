@@ -37,7 +37,8 @@ Login: Cognito (Google) com authorization code + PKCE; só e-mails da lista ALLO
 | `GET /api/backup`, `POST /api/backup/import` | Exporta/importa tudo |
 | `GET /api/benchmarks?range=&fx=&crypto=` | CDI, Ibovespa, IFIX (via XFIX11), câmbio e cripto em reais no período, para comparar a carteira |
 | `GET /api/custos` | Custos da conta AWS pelo Cost Explorer (cache de 12 h: cada consulta custa US$ 0,01) |
-| `GET /api/auth/config` | Configuração pública do login (única rota `/api` sem token) |
+| `GET /api/auth/config` | Configuração pública do login (sem token) |
+| `GET /api/version` | Versão da API, a mesma do `pom.xml` (sem token) |
 
 ### Modo demonstração
 
@@ -65,10 +66,27 @@ Opcional: crie um `.env` com `BRAPI_TOKEN=...` (token grátis em brapi.dev). Sem
 
 ## Fluxo de trabalho e deploy
 
-1. Crie uma branch, faça as alterações e abra um Pull Request para a `master`.
-2. O workflow **CI** roda em todo PR: testes, pacote do Lambda, `cfn-lint` dos templates e checagem do frontend.
-3. Depois do merge, rode **Actions → Deploy → Run workflow** (só funciona na `master`). Ele testa de novo,
-   faz o deploy com o SAM e confere se a página responde e se a API exige login.
+1. Crie uma branch, faça as alterações, **suba a versão no `pom.xml`** e abra um Pull Request para a `master`.
+2. O workflow **CI** roda em todo PR: versão, testes, pacote do Lambda, `cfn-lint` dos templates e checagem do frontend.
+3. Depois do merge, rode **Actions → Deploy → Run workflow** (só funciona na `master`). Ele recusa versão já
+   publicada, testa de novo, faz o deploy com o SAM e confere se a página responde, se a API exige login e se
+   a versão no ar é a nova. No fim cria a tag `vX.Y.Z` e o release no GitHub, com as mudanças desde o anterior.
+
+### Versionamento
+
+A versão da API é a `<version>` do `pom.xml`, no formato `X.Y.Z` (veja com `./versao.sh`):
+**Z** para correções, **Y** para funcionalidades novas, **X** para mudanças que quebram a API ou os dados salvos.
+
+- **PR**: o check *Versão (maior que a da master)* falha se a versão não for maior que a da `master`.
+  Ele é obrigatório na proteção da branch, então sem subir a versão não há merge.
+- **Deploy**: a tag `vX.Y.Z` marca o que foi publicado; uma versão com tag não é publicada de novo.
+- **Lambda**: cada versão publicada da função leva `vX.Y.Z` na descrição (parâmetro `AppVersion` do template),
+  então o console da AWS mostra que versão do app cada uma roda, como a tag de uma imagem de container.
+- **Página**: o topo mostra a versão no ar, lida de `GET /api/version`.
+
+Dependências: o Dependabot abre um PR por mês para Maven e outro para as GitHub Actions. Esses PRs também
+precisam subir a versão (patch) antes do merge. O SAM CLI do deploy tem versão e SHA-256 fixos no
+`deploy.yml`; para atualizar, troque os dois.
 
 O GitHub acessa a AWS por OIDC (credenciais temporárias, sem chave guardada). Configuração do environment
 `production` do repositório:

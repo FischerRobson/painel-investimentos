@@ -20,6 +20,7 @@ fi
 : "${GOOGLE_CLIENT_SECRET:?defina GOOGLE_CLIENT_SECRET}"
 : "${ALLOWED_EMAILS:?defina ALLOWED_EMAILS}"
 BRAPI_TOKEN=${BRAPI_TOKEN:-$(grep -s '^BRAPI_TOKEN=' .env | cut -d= -f2- || true)}
+APP_VERSION=$(./versao.sh)
 
 if ! command -v java >/dev/null 2>&1; then
   export JAVA_HOME="${JAVA_HOME:-$HOME/.sdkman/candidates/java/21.0.0.0-graal}"
@@ -34,7 +35,7 @@ EXTRA=()
 [[ "${1:-}" == "--dry-run" ]] && EXTRA+=(--no-execute-changeset)
 [[ -n "${CFN_EXEC_ROLE_ARN:-}" ]] && EXTRA+=(--role-arn "$CFN_EXEC_ROLE_ARN")
 
-echo "==> Deploy ($STACK em $REGION)"
+echo "==> Deploy da versão $APP_VERSION ($STACK em $REGION)"
 sam deploy \
   --template-file template.yaml \
   --stack-name "$STACK" \
@@ -48,7 +49,8 @@ sam deploy \
     "GoogleClientId=$GOOGLE_CLIENT_ID" \
     "GoogleClientSecret=$GOOGLE_CLIENT_SECRET" \
     "AllowedEmails=$ALLOWED_EMAILS" \
-    "BrapiToken=$BRAPI_TOKEN"
+    "BrapiToken=$BRAPI_TOKEN" \
+    "AppVersion=$APP_VERSION"
 
 aws cloudformation describe-stacks --stack-name "$STACK" --region "$REGION" \
   --query 'Stacks[0].Outputs[].[OutputKey,OutputValue]' --output table

@@ -14,6 +14,29 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  versao:
+    name: Versão (maior que a da master)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Compara a versão do pom.xml com a da branch de destino
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          git fetch --depth=1 origin "$BASE"
+          git show "origin/$BASE:pom.xml" > "$RUNNER_TEMP/base-pom.xml"
+          pr=$(./versao.sh)
+          base=$(./versao.sh "$RUNNER_TEMP/base-pom.xml")
+          base=${base%%-*}   # 1.0.0-SNAPSHOT conta como 1.0.0
+          echo "versão do PR: $pr · versão da $BASE: $base"
+          [[ "$pr" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error file=pom.xml::a versão precisa ser X.Y.Z (sem -SNAPSHOT); hoje é '$pr'"; exit 1; }
+          maior=$(printf '%s\n%s\n' "$base" "$pr" | sort -V | tail -n1)
+          if [[ "$pr" == "$base" || "$maior" != "$pr" ]]; then
+            echo "::error file=pom.xml::suba a versão no pom.xml: precisa ser maior que $base (a da $BASE)"
+            exit 1
+          fi
+
   backend:
     name: Backend (testes + pacote do Lambda)
     runs-on: ubuntu-latest

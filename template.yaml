@@ -20,6 +20,11 @@ Parameters:
     NoEcho: true
     Default: ""
     Description: Token da brapi.dev (vazio = cotações só pelo Yahoo)
+  AppVersion:
+    Type: String
+    Default: dev
+    AllowedPattern: "^(dev|\\d+\\.\\d+\\.\\d+)$"
+    Description: Versão do app (pom.xml), gravada na descrição de cada versão publicada do Lambda
 
 Resources:
   # ------------------------------------------------------------------ dados
@@ -183,6 +188,7 @@ Resources:
       MemorySize: 512                # limite de contas novas; pedir aumento em Service Quotas se precisar
       Timeout: 60                    # 1ª consulta ao Banco Central pode levar ~12 s
       AutoPublishAlias: live         # SnapStart só vale em versões publicadas
+      VersionDescription: !Sub "v${AppVersion}"   # mostra qual versão do app cada versão do Lambda roda
       SnapStart:
         ApplyOn: PublishedVersions
       FunctionUrlConfig:
