@@ -115,6 +115,10 @@ details summary { cursor: pointer; color: var(--text-2); font-size: 12px; font-w
 .logo { width: 22px; height: 22px; border-radius: 5px; object-fit: contain; background: #fff; }
 .status { color: var(--text-3); font-size: 12px; }
 #save-state.erro { color: var(--bad); font-weight: 600; }
+.demo-btn { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 3px 9px; font-size: 12px; color: var(--text-2); cursor: pointer; }
+.demo-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; margin: 0 0 14px;
+  padding: 10px 14px; border-radius: 10px; background: #6250d6; color: #fff; font-weight: 600; font-size: 13px; }
+.demo-bar button { background: #fff; color: #3b2fa0; border: 0; border-radius: 6px; padding: 5px 10px; font-weight: 700; cursor: pointer; }
 .head-r { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .nav { display: flex; gap: 4px; margin: 0 0 18px; border-bottom: 1px solid var(--border); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
 .nav::-webkit-scrollbar { display: none; }
@@ -260,9 +264,14 @@ body.busy #topbar { opacity: 1; }
       <div class="status" id="status"></div>
       <div class="status" id="save-state" aria-live="polite"></div>
       <div class="status" id="user-box" hidden><span id="user-email"></span> · <a href="#" id="logout">Sair</a></div>
+      <button type="button" id="demo-btn" class="demo-btn" title="Mostra o app com dados fictícios, sem expor os seus">Modo demonstração</button>
       <label class="status"><input type="checkbox" id="auto"> atualizar a cada 15 min</label>
     </div>
   </header>
+  <div class="demo-bar" id="demo-bar" role="status" hidden>
+    <span>Modo demonstração: todos os dados são fictícios e nada do que você fizer será salvo.</span>
+    <button type="button" id="demo-sair">Sair da demonstração</button>
+  </div>
   <nav class="nav" aria-label="Páginas">
     <a href="/carteira" data-page="carteira"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2z"/><circle cx="16" cy="14.5" r="1.3"/></svg>Carteira</a>
     <a href="/projecao" data-page="projecao"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20h18"/><path d="M5 16l5-5 4 3 6-7"/><path d="M15 7h5v5"/></svg>Projeção</a>
@@ -655,6 +664,7 @@ function exportBackup() {
 }
 
 async function importBackup(file) {
+  if (DEMO) return alert("Importar backup não está disponível no modo demonstração.");
   let d;
   try { d = JSON.parse(await file.text()); } catch { return alert("Esse arquivo não é um backup válido (JSON inválido)."); }
   if (!d || d.app !== "painel-acoes") return alert("Esse arquivo não parece ser um backup deste painel.");
@@ -1823,6 +1833,9 @@ function renderCards(ok) {
 // ---------- Login (Cognito + Google, authorization code com PKCE) ----------
 // Só vale no deploy: localmente /api/auth/config responde {enabled:false} e nada disso roda.
 // Access token fica só em memória; o refresh token (30 dias) fica no localStorage para não pedir login toda vez.
+// Modo demonstração: o backend responde tudo com dados fictícios e descarta as gravações
+const DEMO = store.get("demo", "0") === "1";
+function alternarDemo() { store.set("demo", DEMO ? "0" : "1"); location.reload(); }
 let auth = { enabled: false }, accessToken = null, tokenExp = 0, refreshing = null;
 let semRede = false; // a última tentativa de renovar o login falhou por falta de internet
 const nativeFetch = window.fetch.bind(window);
@@ -1887,7 +1900,7 @@ async function initAuth() {
   if (!accessToken) await refreshTokens();
   if (!accessToken && !semRede) return login();
   $("#user-email").textContent = store.get("auth_email", "");
-  $("#user-box").hidden = false;
+  $("#user-box").hidden = DEMO; // ao mostrar para alguém, o e-mail não aparece
   $("#logout").onclick = e => { e.preventDefault(); logout(); };
 }
 // Toda chamada a /api/* leva o token; se expirar (401), renova e tenta de novo uma vez.
@@ -1895,6 +1908,7 @@ async function initAuth() {
 window.fetch = async (input, init = {}) => {
   const url = typeof input === "string" ? input : input.url;
   if (!url.startsWith("/api/")) return nativeFetch(input, init);
+  if (DEMO) init = { ...init, headers: { ...(init.headers || {}), "X-Painel-Demo": "1" } };
   const r = await apiFetch(url, input, init);
   marcarOffline(r);
   return r;
@@ -2034,6 +2048,10 @@ document.title = { carteira: "Carteira", projecao: "Projeção", ativos: "Ativos
 const pageEls = { carteira: ["#wallet"], projecao: ["#projection"], ativos: ["#ativos-controls", "#app"], moedas: ["#moedas"], bens: ["#bens"], custos: ["#custos"] };
 for (const [pg, sels] of Object.entries(pageEls)) sels.forEach(sel => $(sel).hidden = pg !== PAGE);
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+$("#demo-bar").hidden = !DEMO;
+$("#demo-btn").textContent = DEMO ? "Sair da demonstração" : "Modo demonstração";
+$("#demo-btn").onclick = alternarDemo;
+$("#demo-sair").onclick = alternarDemo;
 (async () => {
   try {
     await initAuth();
@@ -2043,7 +2061,7 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").cat
       `<div class="panel err">Não consegui carregar seus dados do servidor (${esc(e.message)}). Recarregue a página em instantes.</div>`;
     return;
   }
-  $("#tickers").value = (PAGE === "ativos" && decodeURIComponent(location.hash.slice(1)).replace(/,/g, ", ")) || listaPainel;
+  $("#tickers").value = (PAGE === "ativos" && !DEMO && decodeURIComponent(location.hash.slice(1)).replace(/,/g, ", ")) || listaPainel;
   load();
 })();
 </script>

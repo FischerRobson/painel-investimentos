@@ -39,6 +39,15 @@ Login: Cognito (Google) com authorization code + PKCE; só e-mails da lista ALLO
 | `GET /api/custos` | Custos da conta AWS pelo Cost Explorer (cache de 12 h: cada consulta custa US$ 0,01) |
 | `GET /api/auth/config` | Configuração pública do login (única rota `/api` sem token) |
 
+### Modo demonstração
+
+O botão **"Modo demonstração"** (topo da página) faz o app mostrar dados fictícios, para testar ou apresentar
+sem expor os dados reais. A página envia `X-Painel-Demo: 1` em toda chamada à API, e o `DemoFilter`
+(`@ServerRequestFilter` pré-roteamento) responde com dados gerados pelo `DemoDataService`:
+carteira, histórico, cotações, câmbio, cripto, taxas, FIPE, comparativo e custos. Gravações são aceitas e
+descartadas, importar backup é recusado, o e-mail do usuário fica oculto e o service worker não guarda
+essas respostas. O login continua exigido.
+
 Erros das fontes externas voltam com HTTP 200 e `{"error": "..."}` (a página exibe a mensagem);
 os endpoints de dados do usuário usam status HTTP normais (400, 404, 412, 428).
 

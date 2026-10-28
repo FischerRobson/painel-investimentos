@@ -27,7 +27,7 @@ if ! command -v java >/dev/null 2>&1; then
 fi
 
 echo "==> Build (perfil lambda)"
-./mvnw -B -q package -Plambda -DskipTests
+./mvnw -B -q clean package -Plambda -DskipTests   # clean: não levar classes de outra branch
 ls -lh target/function.zip
 
 EXTRA=()
