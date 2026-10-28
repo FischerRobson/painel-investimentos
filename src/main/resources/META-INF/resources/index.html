@@ -148,6 +148,9 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 }
 a { color: var(--accent); }
 .w-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; }
+.uso-bar { height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; }
+.uso-bar > span { display: block; height: 100%; background: var(--s1); }
+.uso-bar > span.alto { background: var(--s4); }
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0 14px; }
 .tile { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
 .tile .k { font-size: 11px; color: var(--text-3); }
@@ -352,10 +355,9 @@ function periodReturn(it) {
 const PAGE = { "/projecao": "projecao", "/ativos": "ativos", "/moedas": "moedas", "/bens": "bens", "/custos": "custos" }[location.pathname.replace(/\/$/, "")] || "carteira";
 const renderPage = () => ({ carteira: renderWallet, projecao: renderProjection, ativos: render, moedas: renderMoedas, bens: renderBens, custos: renderCustos })[PAGE]();
 
-function setStatus(brapiInfo) {
-  const b = brapiInfo || {};
-  $("#status").textContent = "Atualizado às " + new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) +
-    (b.enabled && b.remaining != null ? ` · brapi: ${b.remaining.toLocaleString("pt-BR")} de ${b.limit.toLocaleString("pt-BR")} consultas restantes (30 dias)` : "");
+// O consumo da brapi fica na página Custos (os headers das cotações só trazem o limite por minuto).
+function setStatus() {
+  $("#status").textContent = "Atualizado às " + new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
 // ---------- Skeleton loading ----------
@@ -405,35 +407,33 @@ async function load() {
       byTicker = Object.fromEntries(j.items.map(it => [it.ticker, it]));
       data = shown.filter(t => byTicker[t]).map((t, i) => ({ ...byTicker[t], idx: i, ret: periodReturn(byTicker[t]) }));
       render();
-      setStatus(j.brapi);
+      setStatus();
     } else if (PAGE === "carteira") {
-      let info = null;
       if (wallet.length) { // 1M usa só a brapi para o gráfico, a consulta mais barata
         const j = await (await fetch(`/api/data?range=1mo&symbols=${encodeURIComponent(wallet.map(w => w.t).join(","))}`)).json();
         byTicker = Object.fromEntries(j.items.map(it => [it.ticker, it]));
-        info = j.brapi;
       }
       const needFx = moedasW.length || Object.values(byTicker).some(it => it.currency && it.currency !== "BRL");
       await Promise.all([loadExtras(), needFx ? loadFx(30) : null, bensW.length ? loadBensPrices() : null]);
       renderWallet();
-      setStatus(info);
+      setStatus();
     } else if (PAGE === "moedas") {
       await loadFx(fxDays);
       renderMoedas();
-      setStatus(null);
+      setStatus();
     } else if (PAGE === "custos") {
-      await Promise.all([loadCustos(), loadFx(2)]);
+      await Promise.all([loadCustos(), loadBrapiUso(), loadFx(2)]);
       renderCustos();
-      setStatus(null);
+      setStatus();
     } else if (PAGE === "bens") {
       renderBens();
       await Promise.all([bensW.length ? loadBensPrices() : null, fipeLists.brands ? null : fipeStep("type")]);
       renderBens();
-      setStatus(null);
+      setStatus();
     } else {
       await loadExtras({ crypto: false });
       renderProjection();
-      setStatus(null);
+      setStatus();
     }
   } catch (e) {
     $("#status").textContent = "Erro ao carregar. O servidor (server.py) está rodando?";
@@ -1172,6 +1172,39 @@ async function loadCustos() {
 }
 const usd = v => v == null ? "—" : "US$ " + brl(v, v > 0 && v < 0.01 ? 4 : 2);
 
+// Consumo do plano da brapi (cache de 10 min no servidor; a consulta não gasta cota)
+let brapiUso = null, brapiUsoErr = null;
+async function loadBrapiUso() {
+  try {
+    const j = await (await fetch("/api/brapi/uso")).json();
+    if (j.error) { brapiUsoErr = j.error; brapiUso = null; return; }
+    brapiUso = j; brapiUsoErr = null;
+  } catch { brapiUsoErr = "Não consegui carregar o consumo da brapi agora."; }
+}
+function painelBrapi() {
+  if (brapiUsoErr) return `<div class="panel err">${esc(brapiUsoErr)}</div>`;
+  const u = brapiUso;
+  if (!u) return "";
+  if (!u.enabled) return `<div class="panel"><h2>Consultas da brapi.dev</h2><div class="hint">Sem token da brapi configurado: as cotações vêm só do Yahoo Finance.</div></div>`;
+  const n = v => v.toLocaleString("pt-BR"), p = u.limite ? Math.min(100, u.usado / u.limite * 100) : 0;
+  const plano = { free: "gratuito", startup: "Startup", pro: "Pro" }[u.plano] || u.plano || "atual";
+  const dia = iso => iso ? isoBR(iso.slice(0, 10)) : "—";
+  const janela = u.janela === "billing-cycle"
+    ? { k: "Renova em", v: dia(u.fim), s: `ciclo de cobrança desde ${dia(u.inicio)}` }
+    : { k: "Janela", v: "30 dias", s: `contagem corrida, desde ${dia(u.inicio)}` };
+  return `<div class="panel">
+    <h2>Consultas da brapi.dev</h2>
+    <div class="hint">Cotações da B3. O plano ${esc(plano)} permite ${n(u.limite)} consultas; acima disso, as cotações passam a vir do Yahoo Finance.</div>
+    <div class="tiles">
+      <div class="tile"><div class="k">Usadas</div><div class="v">${n(u.usado)}</div><div class="s">${brl(p, 1)}% do limite</div></div>
+      <div class="tile"><div class="k">Restantes</div><div class="v">${n(u.restante)}</div><div class="s">de ${n(u.limite)}</div></div>
+      <div class="tile"><div class="k">${janela.k}</div><div class="v">${janela.v}</div><div class="s">${janela.s}</div></div>
+    </div>
+    <div class="uso-bar" role="meter" aria-label="Consultas usadas" aria-valuemin="0" aria-valuemax="${u.limite}" aria-valuenow="${u.usado}"><span class="${p >= 80 ? "alto" : ""}" style="width:${p}%"></span></div>
+    <div class="status" style="margin-top:8px">Dados de ${horaCustos(u.fetchedAt)}.</div>
+  </div>`;
+}
+
 function barChart(canvas, labels, values, fmt) {
   return new Chart(canvas, {
     type: "bar",
@@ -1190,8 +1223,8 @@ function barChart(canvas, labels, values, fmt) {
 function renderCustos() {
   const el = $("#custos");
   custosCharts.forEach(c => c.destroy()); custosCharts = [];
-  if (custosErr) { el.innerHTML = `<div class="panel err">${esc(custosErr)}</div>`; return; }
-  if (!custos) { el.innerHTML = `<div class="panel muted">Carregando custos…</div>`; return; }
+  if (custosErr) { el.innerHTML = `<div class="panel err">${esc(custosErr)}</div>` + painelBrapi(); return; }
+  if (!custos) { el.innerHTML = `<div class="panel muted">Carregando custos…</div>` + painelBrapi(); return; }
   const dolar = fx?.quotes?.USD?.bid;
   const reais = v => dolar && v != null ? `≈ ${money(v * dolar)}` : "";
   const meses = custos.meses || [], atual = meses[meses.length - 1], anterior = meses[meses.length - 2];
@@ -1212,7 +1245,8 @@ function renderCustos() {
     <tbody>${atual.servicos.map(s => `<tr><td>${esc(s.nome)}</td><td>${usd(s.valor)}</td><td>${reais(s.valor)}</td><td>${atual.total ? brl(s.valor / atual.total * 100, 1) + "%" : "—"}</td></tr>`).join("")}</tbody></table></div></div>`
     : atual ? `<div class="panel hint">Nenhum custo registrado neste mês até agora (tudo dentro do nível gratuito).</div>` : ""}
   ${custos.diario?.length ? `<div class="panel"><h2>Dia a dia neste mês</h2><div class="proj-box"><canvas id="custos-dias"></canvas></div></div>` : ""}
-  <div class="status" style="margin:4px 2px 16px">Dados de ${horaCustos(custos.fetchedAt)}.</div>`;
+  <div class="status" style="margin:4px 2px 16px">Dados de ${horaCustos(custos.fetchedAt)}.</div>
+  ${painelBrapi()}`;
   const cm = $("#custos-meses");
   if (cm) custosCharts.push(barChart(cm, meses.map(m => nomeMes(m.mes)), meses.map(m => m.total), usd));
   const cd = $("#custos-dias");

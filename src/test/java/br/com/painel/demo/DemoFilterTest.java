@@ -83,6 +83,8 @@ class DemoFilterTest {
                 .body("indices", hasKey("CDI")).body("crypto", hasKey("BTC"));
         given().header(DEMO, "1").when().get("/api/custos").then().statusCode(200)
                 .body("previsaoMes", notNullValue());
+        given().header(DEMO, "1").when().get("/api/brapi/uso").then().statusCode(200)
+                .body("enabled", equalTo(true)).body("limite", equalTo(15000)).body("usado", equalTo(3120));
     }
 
     @Test

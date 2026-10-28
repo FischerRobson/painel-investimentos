@@ -61,6 +61,7 @@ public class DemoDataService {
             case "/api/rates" -> new Resposta(200, rates(param(q, "from", LocalDate.now().minusYears(1).toString())), null);
             case "/api/benchmarks" -> new Resposta(200, benchmarks(param(q, "range", "1y"), q.getFirst("fx"), q.getFirst("crypto")), null);
             case "/api/custos" -> new Resposta(200, custos(), null);
+            case "/api/brapi/uso" -> new Resposta(200, brapiUso(), null);
             default -> path.startsWith("/api/historico/") ? new Resposta(204, null, null)
                     : path.startsWith("/api/fipe/") ? new Resposta(200, Map.of("data", fipe(path.substring(10), q)), null)
                     : new Resposta(404, Map.of("error", "não disponível no modo demonstração"), null);
@@ -278,6 +279,13 @@ public class DemoDataService {
             diario.add(Map.of("dia", hoje.withDayOfMonth(d).toString(), "valor", round4(0.005 + (d % 5) * 0.004)));
         }
         return Map.of("meses", meses, "diario", diario, "previsaoMes", 0.46, "fetchedAt", System.currentTimeMillis());
+    }
+
+    Map<String, Object> brapiUso() {
+        LocalDate hoje = LocalDate.now();
+        return Map.of("enabled", true, "plano", "free", "limite", 15_000, "usado", 3_120, "restante", 11_880,
+                "janela", "rolling-30d", "inicio", hoje.minusDays(30) + "T00:00:00.000Z", "fim", hoje + "T12:00:00.000Z",
+                "fetchedAt", System.currentTimeMillis());
     }
 
     Object fipe(String kind, MultivaluedMap<String, String> q) {
