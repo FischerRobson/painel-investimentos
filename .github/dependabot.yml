@@ -1,0 +1,19 @@
+# Atualizações automáticas de dependências: um PR por ecossistema por mês, com tudo agrupado.
+# Lembrete: o check de versão também vale aqui; suba a versão (patch) no pom.xml do PR antes do merge.
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      maven:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]

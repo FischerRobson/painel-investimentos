@@ -6,7 +6,7 @@ on:
 
 permissions:
   id-token: write   # OIDC: credenciais temporárias da AWS, sem chave guardada
-  contents: read
+  contents: write   # cria a tag e o release da versão publicada
 
 concurrency:
   group: deploy-producao
@@ -20,8 +20,24 @@ jobs:
     environment: production
     env:
       AWS_REGION: us-east-1
+      # Versão fixa do SAM CLI. Para atualizar: troque a versão e o SHA-256 do
+      # aws-sam-cli-linux-x86_64.zip (sha256sum no arquivo baixado da página de releases).
+      SAM_CLI_VERSION: 1.169.0
+      SAM_CLI_SHA256: 3e921832e9fb39a6563380afc9855eac6dab163238ef3b2bec4a5ba223e4be8b
     steps:
       - uses: actions/checkout@v5
+
+      - name: Versão
+        id: versao
+        run: |
+          v=$(./versao.sh)
+          [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::versão '$v' do pom.xml não é X.Y.Z"; exit 1; }
+          if git ls-remote --exit-code --tags origin "refs/tags/v$v" >/dev/null; then
+            echo "::error::a versão $v já foi publicada (tag v$v existe). Suba a versão no pom.xml."
+            exit 1
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "Versão a publicar: $v"
 
       - uses: actions/setup-java@v5
         with:
@@ -34,7 +50,8 @@ jobs:
 
       - name: Instala o SAM CLI
         run: |
-          curl -sSL -o /tmp/sam.zip https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip
+          curl -sSL -o /tmp/sam.zip "https://github.com/aws/aws-sam-cli/releases/download/v${SAM_CLI_VERSION}/aws-sam-cli-linux-x86_64.zip"
+          echo "${SAM_CLI_SHA256}  /tmp/sam.zip" | sha256sum -c -
           unzip -q /tmp/sam.zip -d /tmp/sam
           sudo /tmp/sam/install --update
           sam --version
@@ -55,11 +72,20 @@ jobs:
           BRAPI_TOKEN: ${{ secrets.BRAPI_TOKEN }}
 
       - name: Verificação pós-deploy
+        env:
+          VERSAO: ${{ steps.versao.outputs.version }}
         run: |
           URL=$(aws cloudformation describe-stacks --stack-name painel-investimentos \
             --query "Stacks[0].Outputs[?OutputKey=='Url'].OutputValue" --output text)
           pagina=$(curl -s -o /dev/null -w "%{http_code}" "${URL}carteira")
           api=$(curl -s -o /dev/null -w "%{http_code}" "${URL}api/carteira")
-          echo "página: $pagina (esperado 200) · API sem login: $api (esperado 401)"
-          [[ "$pagina" == "200" && "$api" == "401" ]]
-          echo "### Publicado: ${URL}" >> "$GITHUB_STEP_SUMMARY"
+          noar=$(curl -s "${URL}api/version" | jq -r .version)
+          echo "página: $pagina (esperado 200) · API sem login: $api (esperado 401) · versão no ar: $noar (esperado $VERSAO)"
+          [[ "$pagina" == "200" && "$api" == "401" && "$noar" == "$VERSAO" ]]
+          echo "### Publicada a versão $VERSAO: ${URL}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Tag e release da versão
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSAO: ${{ steps.versao.outputs.version }}
+        run: gh release create "v$VERSAO" --target "$GITHUB_SHA" --title "v$VERSAO" --generate-notes

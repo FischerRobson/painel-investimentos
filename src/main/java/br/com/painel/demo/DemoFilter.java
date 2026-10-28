@@ -21,7 +21,8 @@ public class DemoFilter {
     @ServerRequestFilter(preMatching = true)
     public Response filter(ContainerRequestContext ctx) {
         String path = ctx.getUriInfo().getPath();
-        if (!"1".equals(ctx.getHeaderString(HEADER)) || !path.startsWith("/api/") || path.startsWith("/api/auth/")) {
+        if (!"1".equals(ctx.getHeaderString(HEADER)) || !path.startsWith("/api/") || path.startsWith("/api/auth/")
+                || path.equals("/api/version")) {
             return null;
         }
         DemoDataService.Resposta r = demo.responder(ctx.getMethod(), path, ctx.getUriInfo().getQueryParameters());
