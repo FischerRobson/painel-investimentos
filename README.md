@@ -37,6 +37,7 @@ Login: Cognito (Google) com authorization code + PKCE; só e-mails da lista ALLO
 | `GET /api/backup`, `POST /api/backup/import` | Exporta/importa tudo |
 | `GET /api/benchmarks?range=&fx=&crypto=` | CDI, Ibovespa, IFIX (via XFIX11), câmbio e cripto em reais no período, para comparar a carteira |
 | `GET /api/custos` | Custos da conta AWS pelo Cost Explorer (cache de 12 h: cada consulta custa US$ 0,01) |
+| `GET /api/brapi/uso` | Consumo do plano da brapi (usadas, restantes, janela), mostrado na página Custos; cache de 10 min, não gasta cota |
 | `GET /api/auth/config` | Configuração pública do login (sem token) |
 | `GET /api/version` | Versão da API, a mesma do `pom.xml` (sem token) |
 

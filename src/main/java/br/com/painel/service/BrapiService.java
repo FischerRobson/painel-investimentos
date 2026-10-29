@@ -4,6 +4,7 @@ import br.com.painel.client.BrapiClient;
 import br.com.painel.config.PainelConfig;
 import br.com.painel.dto.BrapiInfo;
 import br.com.painel.dto.BrapiQuote;
+import br.com.painel.dto.BrapiUso;
 import br.com.painel.dto.Point;
 import br.com.painel.util.PriceCleaner;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -27,8 +28,6 @@ public class BrapiService {
     // O plano grátis aceita 1 requisição por vez. O lock justo enfileira as chamadas (o @Bulkhead síncrono
     // rejeitaria em vez de esperar); ReentrantLock em vez de synchronized para não prender virtual threads.
     private final ReentrantLock lock = new ReentrantLock(true);
-    private volatile Integer remaining;
-    private volatile Integer limit;
 
     public BrapiService(@RestClient BrapiClient client, PainelConfig config) {
         this.client = client;
@@ -40,18 +39,49 @@ public class BrapiService {
     }
 
     public BrapiInfo info() {
-        return enabled() ? new BrapiInfo(true, remaining, limit) : new BrapiInfo(false, null, null);
+        return new BrapiInfo(enabled());
+    }
+
+    // Os headers RateLimit-* das cotações são do limite por minuto, não da cota do mês;
+    // a cota vem desta rota própria da brapi, que não gasta consulta.
+    @CacheResult(cacheName = "brapi-uso")
+    public BrapiUso uso() {
+        if (!enabled()) {
+            return BrapiUso.DESATIVADO;
+        }
+        lock.lock();
+        try {
+            return parseUso(client.usage(auth()), System.currentTimeMillis());
+        } catch (WebApplicationException e) {
+            throw new BrapiException("brapi: " + errorMessage(e));
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    static BrapiUso parseUso(JsonNode body, long agora) {
+        JsonNode u = body == null ? null : body.get("usage");
+        if (u == null || !u.path("planLimit").isNumber() || !u.path("currentUsage").isNumber()) {
+            throw new BrapiException("brapi: resposta de consumo inesperada");
+        }
+        JsonNode janela = u.path("usageWindow");
+        long limite = u.get("planLimit").asLong(), usado = u.get("currentUsage").asLong();
+        long restante = u.path("remainingUsage").isNumber() ? u.get("remainingUsage").asLong() : Math.max(0, limite - usado);
+        return new BrapiUso(true, u.path("planName").asText(null), limite, usado, restante,
+                janela.path("type").asText(null), janela.path("start").asText(null), janela.path("end").asText(null), agora);
+    }
+
+    private String auth() {
+        return "Bearer " + config.brapi().token().orElse("");
     }
 
     @CacheResult(cacheName = "brapi-quote")
     public BrapiQuote quote(String ticker) {
         JsonNode body;
         lock.lock();
-        try (Response r = client.quote(ticker, "3mo", "1d", "summaryProfile", "Bearer " + config.brapi().token().orElse(""))) {
-            track(r);
+        try (Response r = client.quote(ticker, "3mo", "1d", "summaryProfile", auth())) {
             body = r.readEntity(JsonNode.class);
         } catch (WebApplicationException e) {
-            track(e.getResponse());
             throw new BrapiException("brapi: " + errorMessage(e));
         } finally {
             lock.unlock();
@@ -65,18 +95,6 @@ public class BrapiService {
         }
         points.sort(Comparator.comparingLong(Point::t));
         return new BrapiQuote(res, PriceCleaner.clean(points));
-    }
-
-    private void track(Response r) {
-        if (r == null) {
-            return;
-        }
-        String rem = r.getHeaderString("ratelimit-remaining");
-        if (rem != null && !rem.isBlank()) {
-            remaining = Integer.valueOf(rem.trim());
-            String lim = r.getHeaderString("ratelimit-limit");
-            limit = lim == null || lim.isBlank() ? null : Integer.valueOf(lim.trim());
-        }
     }
 
     private static String errorMessage(WebApplicationException e) {
