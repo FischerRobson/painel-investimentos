@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>br.com.painel</groupId>
     <artifactId>painel-investimentos</artifactId>
-    <version>1.1.0</version>
+    <version>1.3.0</version>
     <packaging>quarkus</packaging>
 
     <properties>
