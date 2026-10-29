@@ -1,7 +1,7 @@
 # Meus Investimentos
 
 Painel pessoal de investimentos: carteira (ações, FIIs, exterior, cripto, renda fixa, moedas e bens),
-projeção de renda fixa, simulador de aportes, pesquisa de ativos e cotações de moedas.
+projeção de renda fixa, simulador de aportes, pesquisa de ativos, cotações de moedas e um glossário de termos financeiros.
 Frontend em uma página (PWA instalável no iPhone) e backend em **Quarkus** rodando no **AWS Lambda**.
 
 ## Arquitetura
@@ -40,6 +40,14 @@ Login: Cognito (Google) com authorization code + PKCE; só e-mails da lista ALLO
 | `GET /api/brapi/uso` | Consumo do plano da brapi (usadas, restantes, janela), mostrado na página Custos; cache de 10 min, não gasta cota |
 | `GET /api/auth/config` | Configuração pública do login (sem token) |
 | `GET /api/version` | Versão da API, a mesma do `pom.xml` (sem token) |
+
+### Glossário
+
+A página **Glossário** (`/glossario`) explica termos como Selic, CDI, CDB, P/VP e come-cotas, com exemplo
+e "por que importa". O conteúdo fica em `src/main/resources/META-INF/resources/glossario.json` (público, sem
+login, funciona offline). Para incluir um termo, adicione um item em `termos` com `id`, `nome`, `categoria`,
+`resumo` e, se quiser, `sigla`, `outrosNomes` (entram na busca), `exemplo`, `importa` e `relacionados`
+(ids de outros termos). O CI confere ids, categorias e relacionados. Link direto: `/glossario#selic`.
 
 ### Modo demonstração
 

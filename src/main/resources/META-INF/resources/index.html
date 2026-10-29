@@ -253,6 +253,28 @@ body.busy #topbar { opacity: 1; }
 #topbar::before { content: ""; position: absolute; top: 0; bottom: 0; width: 35%; background: var(--accent); border-radius: 2px; animation: topbar 1.1s ease-in-out infinite; }
 @keyframes topbar { from { left: -35%; } to { left: 100%; } }
 @media (prefers-reduced-motion: reduce) { .sk, #topbar::before { animation: none; } #topbar::before { left: 0; width: 100%; opacity: .6; } }
+/* ---------- Glossário ---------- */
+.g-busca { display: block; width: 100%; margin: 10px 0 12px; padding: 10px 12px; font: inherit; font-size: 16px; color: var(--text);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+.seg.g-cats { display: flex; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.seg.g-cats::-webkit-scrollbar { display: none; }
+.g-cats button { flex: 0 0 auto; white-space: nowrap; }
+.g-grupo { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); margin: 22px 2px 10px; }
+.g-conta { margin: 4px 2px 10px; }
+.g-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 12px; margin-bottom: 16px; }
+.g-termo { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px;
+  scroll-margin-top: calc(16px + env(safe-area-inset-top)); transition: border-color .3s, box-shadow .3s; }
+.g-termo.g-alvo { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+.g-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.g-termo h3 { margin: 0; font-size: 16px; letter-spacing: -.01em; }
+.g-sigla { color: var(--text-3); font-size: 12px; margin-top: 2px; }
+.g-termo p { margin: 8px 0 0; }
+.g-bloco { margin-top: 10px; padding: 8px 10px; background: var(--bg); border-radius: 8px; font-size: 13px; color: var(--text-2); }
+.g-bloco b { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-3); margin-bottom: 2px; }
+.g-rel { margin-top: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); }
+.g-rel a { padding: 2px 9px; border: 1px solid var(--border); border-radius: 999px; text-decoration: none; }
+.g-rel a:hover { border-color: var(--accent); }
+@media (max-width: 400px) { .nav a { letter-spacing: -.02em; } } /* 7 itens no menu de baixo */
 </style>
 </head>
 <body>
@@ -283,6 +305,7 @@ body.busy #topbar { opacity: 1; }
     <a href="/moedas" data-page="moedas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="9" r="6"/><path d="M15.5 9.5a6 6 0 1 1-6 6"/></svg>Moedas</a>
     <a href="/bens" data-page="bens"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17h14M6 17l1.5-5h9L18 17"/><path d="M4 17v2h3v-2M17 17v2h3v-2"/><path d="M7.5 12 9 8h6l1.5 4"/></svg>Bens</a>
     <a href="/custos" data-page="custos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"/><path d="M16.5 7.5c0-1.7-2-2.8-4.5-2.8S7.5 5.8 7.5 7.5s2 2.4 4.5 2.9 4.5 1.3 4.5 3.1-2 3-4.5 3-4.5-1.2-4.5-2.9"/></svg>Custos</a>
+    <a href="/glossario" data-page="glossario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h7M9 11h5"/></svg>Glossário</a>
   </nav>
 
   <div class="offline" id="offline-bar" role="status" hidden></div>
@@ -299,6 +322,7 @@ body.busy #topbar { opacity: 1; }
   <div id="moedas"></div>
   <div id="bens"></div>
   <div id="custos"></div>
+  <div id="glossario"></div>
   <div id="app"></div>
 </div>
 
@@ -352,8 +376,10 @@ function periodReturn(it) {
 
 // ---------- Carregamento ----------
 // ---------- Páginas ----------
-const PAGE = { "/projecao": "projecao", "/ativos": "ativos", "/moedas": "moedas", "/bens": "bens", "/custos": "custos" }[location.pathname.replace(/\/$/, "")] || "carteira";
-const renderPage = () => ({ carteira: renderWallet, projecao: renderProjection, ativos: render, moedas: renderMoedas, bens: renderBens, custos: renderCustos })[PAGE]();
+const PAGE = { "/projecao": "projecao", "/ativos": "ativos", "/moedas": "moedas", "/bens": "bens", "/custos": "custos", "/glossario": "glossario" }[location.pathname.replace(/\/$/, "")] || "carteira";
+const renderPage = () => ({ carteira: renderWallet, projecao: renderProjection, ativos: render, moedas: renderMoedas, bens: renderBens, custos: renderCustos, glossario: renderGlossario })[PAGE]();
+// id do elemento principal de cada página
+const MAIN_ID = { carteira: "wallet", projecao: "projection", ativos: "app", moedas: "moedas", bens: "bens", custos: "custos", glossario: "glossario" };
 
 // O consumo da brapi fica na página Custos (os headers das cotações só trazem o limite por minuto).
 function setStatus() {
@@ -384,12 +410,14 @@ function skeletonHtml(page) {
     moedas: panel(`${L("120px", "sk-title")}${L("50%")}${tiles(1)}`) + `<div class="grid">${Array.from({ length: 5 }, card).join("")}</div>`,
     bens: panel(`${L("200px", "sk-title")}${L("40%")}${formRow(4)}`) + panel(`${L("140px", "sk-title")}${L("60%")}${tiles(1)}`),
     custos: panel(`${L("160px", "sk-title")}${L("60%")}${tiles(3)}`) + panel(`${L("140px", "sk-title")}<div class="proj-box"><span class="sk sk-block"></span></div>`),
+    glossario: panel(`${L("110px", "sk-title")}${L("55%")}<span class="sk sk-input"></span>`)
+      + `<div class="g-grid">${Array.from({ length: 6 }, () => `<div class="g-termo">${L("40%", "sk-title")}${L("100%")}${L("90%")}${L("65%")}</div>`).join("")}</div>`,
   }[page];
   return `<div class="skel" aria-hidden="true">${html}</div>`;
 }
 
 async function load() {
-  const main = $("#" + { carteira: "wallet", projecao: "projection", ativos: "app", moedas: "moedas", bens: "bens", custos: "custos" }[PAGE]);
+  const main = $("#" + MAIN_ID[PAGE]);
   const first = !main.children.length || main.querySelector(".skel");
   if (first) main.innerHTML = skeletonHtml(PAGE);
   else main.classList.add("loading");
@@ -421,6 +449,11 @@ async function load() {
       await loadFx(fxDays);
       renderMoedas();
       setStatus();
+    } else if (PAGE === "glossario") {
+      await loadGlossario();
+      renderGlossario();
+      if (first) focarTermo(location.hash.slice(1));
+      $("#status").textContent = "";
     } else if (PAGE === "custos") {
       await Promise.all([loadCustos(), loadBrapiUso(), loadFx(2)]);
       renderCustos();
@@ -2064,6 +2097,119 @@ async function loadState() {
   lastSnapSent = histW[todayISO()] ? JSON.stringify(histW[todayISO()]) : null;
 }
 
+// ---------- Glossário ----------
+// O conteúdo fica em glossario.json (arquivo estático); aqui só buscamos, filtramos e mostramos.
+let glossario = null, glossarioErr = null;
+let gCat = store.get("gCat", ""), gBusca = "";
+const semAcento = s => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+async function loadGlossario() {
+  if (glossario) return;
+  try {
+    const r = await nativeFetch("/glossario.json");
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const g = await r.json();
+    for (const t of g.termos) {
+      t.chave = semAcento([t.nome, t.sigla, ...(t.outrosNomes || [])].join(" "));
+      t.texto = t.chave + " " + semAcento([t.resumo, t.exemplo, t.importa].join(" "));
+    }
+    glossario = g; glossarioErr = null;
+  } catch (e) {
+    glossarioErr = "Não consegui carregar o glossário. Confira a conexão e recarregue a página.";
+  }
+}
+
+function renderGlossario() {
+  const el = $("#glossario");
+  if (glossarioErr) { el.innerHTML = `<div class="panel err">${esc(glossarioErr)}</div>`; return; }
+  if (!glossario) return;
+  if (!glossario.categorias.some(c => c.id === gCat)) gCat = "";
+  if (!el.querySelector("#g-busca")) { // monta o topo uma vez só, para a busca não perder o foco ao digitar
+    el.innerHTML = `<div class="panel">
+      <h2>Glossário</h2>
+      <div class="hint">${glossario.termos.length} termos para consultar quando bater a dúvida. ${esc(glossario.aviso || "")}</div>
+      <input type="search" id="g-busca" class="g-busca" placeholder="Buscar: CDI, DY, come-cotas…" autocomplete="off" spellcheck="false" aria-label="Buscar termo">
+      <div class="seg g-cats" id="g-cats" role="group" aria-label="Categorias">
+        <button type="button" data-c="">Todas</button>${glossario.categorias.map(c => `<button type="button" data-c="${esc(c.id)}">${esc(c.nome)}</button>`).join("")}
+      </div>
+    </div>
+    <div id="g-lista" aria-live="polite"></div>`;
+    $("#g-busca").value = gBusca;
+    $("#g-busca").addEventListener("input", e => { gBusca = e.target.value; renderGlossarioLista(); });
+    $("#g-cats").onclick = e => {
+      const b = e.target.closest("button"); if (!b) return;
+      gCat = b.dataset.c; store.set("gCat", gCat); renderGlossarioLista();
+    };
+    $("#g-lista").onclick = e => { // "Veja também": navega sem recarregar e guarda no histórico (o voltar funciona)
+      const a = e.target.closest("a[data-termo]"); if (!a) return;
+      e.preventDefault();
+      history.pushState(null, "", "#" + a.dataset.termo);
+      focarTermo(a.dataset.termo);
+    };
+  }
+  renderGlossarioLista();
+}
+
+function renderGlossarioLista() {
+  const palavras = semAcento(gBusca).split(/\s+/).filter(Boolean);
+  const nomeCat = Object.fromEntries(glossario.categorias.map(c => [c.id, c.nome]));
+  const porId = Object.fromEntries(glossario.termos.map(t => [t.id, t]));
+  document.querySelectorAll("#g-cats button").forEach(b => b.classList.toggle("on", b.dataset.c === gCat));
+  const porNome = (a, b) => a.nome.localeCompare(b.nome, "pt-BR");
+  const achados = glossario.termos.filter(t => (!gCat || t.categoria === gCat) && palavras.every(p => t.texto.includes(p)));
+  const comCategoria = palavras.length && !gCat; // agrupado por categoria, a etiqueta seria repetida
+  const card = t => {
+    const rel = (t.relacionados || []).map(id => porId[id]).filter(Boolean);
+    return `<article class="g-termo" id="g-${esc(t.id)}">
+      <div class="g-head"><h3>${esc(t.nome)}</h3>${comCategoria ? `<span class="badge">${esc(nomeCat[t.categoria])}</span>` : ""}</div>
+      ${t.sigla ? `<div class="g-sigla">${esc(t.sigla)}</div>` : ""}
+      <p>${esc(t.resumo)}</p>
+      ${t.exemplo ? `<div class="g-bloco"><b>Exemplo</b>${esc(t.exemplo)}</div>` : ""}
+      ${t.importa ? `<div class="g-bloco"><b>Por que importa</b>${esc(t.importa)}</div>` : ""}
+      ${rel.length ? `<div class="g-rel">Veja também ${rel.map(r => `<a href="#${esc(r.id)}" data-termo="${esc(r.id)}">${esc(r.nome)}</a>`).join("")}</div>` : ""}
+    </article>`;
+  };
+  let html;
+  if (!achados.length) {
+    html = `<div class="panel muted">Nenhum termo encontrado${gBusca.trim() ? ` para “${esc(gBusca.trim())}”` : ""}.${gCat ? " Experimente buscar em todas as categorias." : ""}</div>`;
+  } else if (palavras.length) {
+    // na busca, quem bate no nome (ou sigla) vem antes de quem só cita a palavra no texto
+    const noNome = t => palavras.every(p => t.chave.includes(p)) ? 0 : 1;
+    achados.sort((a, b) => noNome(a) - noNome(b) || porNome(a, b));
+    html = `<div class="status g-conta">${achados.length} ${achados.length === 1 ? "termo encontrado" : "termos encontrados"}</div>
+      <div class="g-grid">${achados.map(card).join("")}</div>`;
+  } else {
+    html = glossario.categorias.filter(c => !gCat || c.id === gCat).map(c => {
+      const ts = achados.filter(t => t.categoria === c.id).sort(porNome);
+      return ts.length ? `<h2 class="g-grupo">${esc(c.nome)}</h2><div class="g-grid">${ts.map(card).join("")}</div>` : "";
+    }).join("");
+  }
+  $("#g-lista").innerHTML = html;
+}
+
+// Rola até um termo (link /glossario#selic ou "Veja também"); se o filtro o esconde, limpa o filtro antes.
+function focarTermo(id) {
+  if (!glossario || !id) return;
+  id = decodeURIComponent(id);
+  if (!glossario.termos.some(t => t.id === id)) return;
+  if (!document.getElementById("g-" + id)) {
+    gCat = ""; gBusca = ""; $("#g-busca").value = "";
+    renderGlossarioLista();
+  }
+  const el = document.getElementById("g-" + id);
+  el.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  document.querySelectorAll(".g-termo.g-alvo").forEach(x => x.classList.remove("g-alvo"));
+  el.classList.add("g-alvo");
+  setTimeout(() => el.classList.remove("g-alvo"), 2500);
+}
+if (PAGE === "glossario") {
+  addEventListener("popstate", () => focarTermo(location.hash.slice(1)));
+  addEventListener("keydown", e => { // "/" leva para a busca
+    if (e.key !== "/" || e.ctrlKey || e.metaKey || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName)) return;
+    const b = $("#g-busca"); if (b) { e.preventDefault(); b.focus(); }
+  });
+}
+
 // ---------- Inicialização ----------
 $("#go").onclick = load;
 $("#tickers").addEventListener("keydown", e => { if (e.key === "Enter") load(); });
@@ -2079,8 +2225,8 @@ setAuto();
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderPage);
 // mostra só o que é da página atual
 document.querySelectorAll(".nav a").forEach(a => a.classList.toggle("on", a.dataset.page === PAGE));
-document.title = { carteira: "Carteira", projecao: "Projeção", ativos: "Ativos", moedas: "Moedas", bens: "Bens", custos: "Custos" }[PAGE] + " · Meus Investimentos";
-const pageEls = { carteira: ["#wallet"], projecao: ["#projection"], ativos: ["#ativos-controls", "#app"], moedas: ["#moedas"], bens: ["#bens"], custos: ["#custos"] };
+document.title = { carteira: "Carteira", projecao: "Projeção", ativos: "Ativos", moedas: "Moedas", bens: "Bens", custos: "Custos", glossario: "Glossário" }[PAGE] + " · Meus Investimentos";
+const pageEls = { carteira: ["#wallet"], projecao: ["#projection"], ativos: ["#ativos-controls", "#app"], moedas: ["#moedas"], bens: ["#bens"], custos: ["#custos"], glossario: ["#glossario"] };
 for (const [pg, sels] of Object.entries(pageEls)) sels.forEach(sel => $(sel).hidden = pg !== PAGE);
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 $("#demo-bar").hidden = !DEMO;
@@ -2093,9 +2239,11 @@ nativeFetch("/api/version").then(r => r.json()).then(v => { if (v.version) $("#v
     await initAuth();
     await loadState();
   } catch (e) {
-    $("#" + { carteira: "wallet", projecao: "projection", ativos: "app", moedas: "moedas", bens: "bens" }[PAGE]).innerHTML =
-      `<div class="panel err">Não consegui carregar seus dados do servidor (${esc(e.message)}). Recarregue a página em instantes.</div>`;
-    return;
+    if (PAGE !== "glossario") { // o glossário não depende dos dados do usuário
+      $("#" + MAIN_ID[PAGE]).innerHTML =
+        `<div class="panel err">Não consegui carregar seus dados do servidor (${esc(e.message)}). Recarregue a página em instantes.</div>`;
+      return;
+    }
   }
   $("#tickers").value = (PAGE === "ativos" && !DEMO && decodeURIComponent(location.hash.slice(1)).replace(/,/g, ", ")) || listaPainel;
   load();

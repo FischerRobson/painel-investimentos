@@ -1,11 +1,11 @@
 // Service worker do painel: abre sem internet mostrando os últimos dados carregados.
-//  - Páginas: rede primeiro (mudanças aparecem na hora); ícones e Chart.js: cache primeiro (troque VERSION para renovar).
+//  - Páginas e glossario.json: rede primeiro (mudanças aparecem na hora); ícones e Chart.js: cache primeiro (troque VERSION para renovar).
 //  - GET /api/*: rede primeiro; se falhar, devolve a última resposta salva com o header X-Painel-Offline.
 //  - PUT/POST nunca passam pelo cache.
-const VERSION = "painel-v3";
+const VERSION = "painel-v4";
 const DATA = "painel-dados";
 const SHELL = [
-  "/", "/carteira", "/projecao", "/ativos", "/moedas", "/bens", "/custos",
+  "/", "/carteira", "/projecao", "/ativos", "/moedas", "/bens", "/custos", "/glossario", "/glossario.json",
   "/manifest.json", "/icons/icon-192.png", "/icons/apple-touch-icon.png",
   "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js",
 ];
@@ -32,6 +32,8 @@ self.addEventListener("fetch", e => {
 
   if (sameOrigin && url.pathname.startsWith("/api/")) {
     e.respondWith(dadosRedePrimeiro(req));
+  } else if (sameOrigin && url.pathname === "/glossario.json") {
+    e.respondWith(arquivoRedePrimeiro(req));
   } else if (sameOrigin && req.mode === "navigate") {
     e.respondWith(paginaRedePrimeiro(req));
   } else if (SHELL.includes(sameOrigin ? url.pathname : url.href)) {
@@ -47,6 +49,17 @@ async function paginaRedePrimeiro(req) {
   } catch (err) {
     const url = new URL(req.url);
     return (await caches.match(url.pathname)) || (await caches.match("/")) || Response.error();
+  }
+}
+
+// Conteúdo estático que muda com o deploy: busca sempre a versão nova e usa a guardada só sem internet.
+async function arquivoRedePrimeiro(req) {
+  try {
+    const r = await fetch(req);
+    if (r.ok) (await caches.open(VERSION)).put(req, r.clone());
+    return r;
+  } catch (err) {
+    return (await caches.match(req)) || Response.error();
   }
 }
 

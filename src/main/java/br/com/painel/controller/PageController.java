@@ -8,7 +8,7 @@ import jakarta.ws.rs.core.MediaType;
 import java.io.InputStream;
 
 // Todas as páginas são o mesmo index.html; o JavaScript decide o que mostrar pela URL.
-@Path("/{page: carteira|projecao|ativos|moedas|bens|custos}")
+@Path("/{page: carteira|projecao|ativos|moedas|bens|custos|glossario}")
 public class PageController {
 
     @GET

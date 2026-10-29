@@ -1,0 +1,618 @@
+{
+  "atualizadoEm": "2026-10-29",
+  "aviso": "Conteúdo educativo, não é recomendação de investimento. Regras de imposto mudam: confira na Receita Federal antes de declarar.",
+  "categorias": [
+    { "id": "juros", "nome": "Juros e inflação" },
+    { "id": "rf", "nome": "Renda fixa" },
+    { "id": "rv", "nome": "Ações e FIIs" },
+    { "id": "indicadores", "nome": "Indicadores" },
+    { "id": "mercado", "nome": "Bolsa e corretora" },
+    { "id": "ir", "nome": "Impostos" },
+    { "id": "carteira", "nome": "Planejamento" },
+    { "id": "exterior", "nome": "Câmbio e cripto" }
+  ],
+  "termos": [
+    {
+      "id": "juros", "nome": "Taxa de juros", "categoria": "juros",
+      "resumo": "O preço do dinheiro no tempo: quanto quem empresta recebe (e quem pega emprestado paga) por período, em % ao ano ou ao mês.",
+      "exemplo": "R$ 1.000 emprestados a 12% ao ano viram R$ 1.120 depois de um ano.",
+      "importa": "Quase toda a renda fixa é cotada como uma taxa de juros. Juros altos deixam a renda fixa mais atraente e costumam pesar sobre a bolsa.",
+      "relacionados": ["selic", "juros-compostos", "juros-reais"]
+    },
+    {
+      "id": "juros-compostos", "nome": "Juros compostos", "categoria": "juros", "outrosNomes": ["juros sobre juros"],
+      "resumo": "Juros sobre juros: o rendimento de cada período passa a render também nos períodos seguintes.",
+      "exemplo": "R$ 10.000 a 1% ao mês viram R$ 11.268 em um ano (não R$ 11.200) e R$ 33.004 em 10 anos.",
+      "importa": "É o motor da página Projeção. Quanto mais tempo o dinheiro fica aplicado, mais o efeito cresce: tempo pesa tanto quanto a taxa.",
+      "relacionados": ["juros", "aporte", "rentabilidade"]
+    },
+    {
+      "id": "selic", "nome": "Selic", "sigla": "Sistema Especial de Liquidação e de Custódia", "categoria": "juros", "outrosNomes": ["taxa básica de juros"],
+      "resumo": "A taxa básica de juros da economia, definida pelo Copom. Serve de piso e referência para todas as outras taxas do país.",
+      "exemplo": "Quando o Copom sobe a Selic, o CDI acompanha no dia seguinte e um CDB a 100% do CDI passa a render mais.",
+      "importa": "É o principal termômetro da renda fixa: decide quanto rendem Tesouro Selic, CDBs pós-fixados e a poupança.",
+      "relacionados": ["copom", "cdi", "tesouro-selic", "inflacao"]
+    },
+    {
+      "id": "copom", "nome": "Copom", "sigla": "Comitê de Política Monetária", "categoria": "juros",
+      "resumo": "Comitê do Banco Central que se reúne 8 vezes por ano (a cada 45 dias, mais ou menos) para definir a meta da Selic.",
+      "exemplo": "Com a inflação acima da meta, o Copom tende a subir a Selic para esfriar o consumo; com ela controlada, tende a cortar.",
+      "importa": "As reuniões mexem com a bolsa, o dólar e o preço dos títulos prefixados e IPCA+ no mesmo dia.",
+      "relacionados": ["selic", "inflacao", "marcacao-a-mercado"]
+    },
+    {
+      "id": "cdi", "nome": "CDI", "sigla": "Certificado de Depósito Interbancário", "categoria": "juros",
+      "resumo": "A taxa dos empréstimos de um dia entre bancos. Anda colada na Selic (alguns centésimos abaixo) e é a referência da maioria dos CDBs, LCIs, LCAs e fundos.",
+      "exemplo": "Um CDB a 110% do CDI, com o CDI em 14% ao ano, rende 15,4% ao ano antes do imposto.",
+      "importa": "É a régua mais usada para saber se um investimento foi bem: a página Ativos compara a carteira com o CDI.",
+      "relacionados": ["selic", "pos-fixado", "cdb", "benchmark"]
+    },
+    {
+      "id": "inflacao", "nome": "Inflação", "categoria": "juros",
+      "resumo": "A alta generalizada dos preços ao longo do tempo. Com ela, o mesmo dinheiro compra menos coisas.",
+      "exemplo": "Com inflação de 5% ao ano, R$ 10.000 parados compram depois de um ano o que hoje custa cerca de R$ 9.524.",
+      "importa": "Um investimento só aumenta seu poder de compra se render mais que a inflação.",
+      "relacionados": ["ipca", "igpm", "juros-reais", "copom"]
+    },
+    {
+      "id": "ipca", "nome": "IPCA", "sigla": "Índice Nacional de Preços ao Consumidor Amplo", "categoria": "juros",
+      "resumo": "A inflação oficial do Brasil, medida todo mês pelo IBGE com uma cesta de produtos e serviços das famílias.",
+      "exemplo": "IPCA de 4,5% em 12 meses: o que custava R$ 100 há um ano custa R$ 104,50 hoje.",
+      "importa": "Corrige o Tesouro IPCA+ e é a meta que o Banco Central persegue. A página Projeção usa o IPCA para calcular a renda fixa atrelada à inflação.",
+      "relacionados": ["inflacao", "tesouro-ipca", "juros-reais", "copom"]
+    },
+    {
+      "id": "igpm", "nome": "IGP-M", "sigla": "Índice Geral de Preços – Mercado", "categoria": "juros", "outrosNomes": ["inflação do aluguel"],
+      "resumo": "Índice de inflação da FGV com peso grande de preços de atacado e commodities, por isso oscila mais que o IPCA.",
+      "exemplo": "Muitos contratos de aluguel são reajustados uma vez por ano pelo IGP-M.",
+      "importa": "Afeta a receita de FIIs de tijolo, cujos aluguéis costumam ser corrigidos por IGP-M ou IPCA.",
+      "relacionados": ["ipca", "inflacao", "fii-tijolo-papel"]
+    },
+    {
+      "id": "juros-reais", "nome": "Juros reais", "categoria": "juros", "outrosNomes": ["rentabilidade real", "ganho real"],
+      "resumo": "O rendimento descontada a inflação: quanto o seu poder de compra realmente cresceu.",
+      "exemplo": "Rendeu 12% num ano com IPCA de 5%: o ganho real é 1,12 ÷ 1,05 − 1 = 6,67% (não 7%, porque não basta subtrair).",
+      "importa": "Ajuda a comparar épocas diferentes: 10% ao ano com inflação de 9% é pior que 6% com inflação de 2%.",
+      "relacionados": ["inflacao", "ipca", "tesouro-ipca", "rentabilidade"]
+    },
+
+    {
+      "id": "renda-fixa", "nome": "Renda fixa", "categoria": "rf",
+      "resumo": "Investimentos em que você empresta dinheiro a um banco, ao governo ou a uma empresa, com a regra de rendimento definida na compra (uma taxa ou um índice).",
+      "exemplo": "CDB, LCI, LCA, Tesouro Direto, debêntures, CRI e CRA são renda fixa.",
+      "importa": "“Fixa” quer dizer regra conhecida, não valor garantido: o preço de alguns títulos oscila até o vencimento.",
+      "relacionados": ["prefixado", "pos-fixado", "marcacao-a-mercado", "renda-variavel"]
+    },
+    {
+      "id": "prefixado", "nome": "Prefixado", "categoria": "rf",
+      "resumo": "Título com taxa fechada na compra, como 13% ao ano. Você sabe exatamente quanto vai receber no vencimento.",
+      "exemplo": "R$ 10.000 a 13% ao ano por 2 anos viram R$ 12.769 brutos no vencimento, aconteça o que acontecer com a Selic.",
+      "importa": "Bom quando os juros caem depois da compra. Se os juros sobem, você fica preso a uma taxa menor e o título perde valor se vendido antes.",
+      "relacionados": ["pos-fixado", "tesouro-prefixado", "marcacao-a-mercado"]
+    },
+    {
+      "id": "pos-fixado", "nome": "Pós-fixado", "categoria": "rf",
+      "resumo": "Título cujo rendimento acompanha um índice ao longo do tempo, quase sempre o CDI ou a Selic.",
+      "exemplo": "Um CDB a 100% do CDI rende mais quando o CDI sobe e menos quando cai.",
+      "importa": "Quase não oscila de preço, por isso é o tipo usado na reserva de emergência.",
+      "relacionados": ["cdi", "prefixado", "tesouro-selic", "reserva-de-emergencia"]
+    },
+    {
+      "id": "cdb", "nome": "CDB", "sigla": "Certificado de Depósito Bancário", "categoria": "rf",
+      "resumo": "Um empréstimo que você faz a um banco. Em troca, ele paga juros (prefixados, pós-fixados ou IPCA+).",
+      "exemplo": "R$ 10.000 num CDB a 100% do CDI por 2 anos pagam 15% de imposto sobre o rendimento, retido no resgate.",
+      "importa": "É coberto pelo FGC. A liquidez varia: uns permitem resgate a qualquer dia, outros só no vencimento.",
+      "relacionados": ["fgc", "ir-regressivo", "lci-lca", "liquidez"]
+    },
+    {
+      "id": "lci-lca", "nome": "LCI e LCA", "sigla": "Letra de Crédito Imobiliário / do Agronegócio", "categoria": "rf",
+      "resumo": "Títulos que os bancos emitem para financiar imóveis ou o agronegócio. Para pessoa física, são isentos de imposto de renda e cobertos pelo FGC.",
+      "exemplo": "Uma LCI a 90% do CDI rende o mesmo que um CDB a cerca de 106% do CDI pagando 15% de imposto (0,90 ÷ 0,85).",
+      "importa": "Para comparar com um CDB, converta para o equivalente antes do imposto. Têm prazo mínimo de carência, em geral de 9 a 12 meses.",
+      "relacionados": ["cdb", "fgc", "ir-regressivo", "cri-cra"]
+    },
+    {
+      "id": "cri-cra", "nome": "CRI e CRA", "sigla": "Certificado de Recebíveis Imobiliários / do Agronegócio", "categoria": "rf",
+      "resumo": "Títulos emitidos por securitizadoras e lastreados em dívidas do setor imobiliário ou do agronegócio. Isentos de imposto para pessoa física.",
+      "exemplo": "Um CRI pode ser lastreado nos aluguéis que uma rede de varejo paga pelas suas lojas.",
+      "importa": "Não têm FGC: se o devedor não pagar, o prejuízo é seu. Por isso pagam mais que LCI e LCA.",
+      "relacionados": ["lci-lca", "debenture", "risco-de-credito", "fii-tijolo-papel"]
+    },
+    {
+      "id": "debenture", "nome": "Debênture", "categoria": "rf",
+      "resumo": "Título de dívida emitido por uma empresa (não banco) para financiar seus projetos.",
+      "exemplo": "Debêntures incentivadas, de projetos de infraestrutura como rodovias e energia, são isentas de imposto para pessoa física.",
+      "importa": "Não têm FGC e muitas têm pouca liquidez antes do vencimento. A taxa maior paga o risco da empresa.",
+      "relacionados": ["cri-cra", "risco-de-credito", "fgc"]
+    },
+    {
+      "id": "tesouro-direto", "nome": "Tesouro Direto", "categoria": "rf", "outrosNomes": ["títulos públicos"],
+      "resumo": "Programa do Tesouro Nacional para pessoas físicas comprarem títulos do governo federal pela internet, a partir de cerca de R$ 30.",
+      "exemplo": "Há três famílias principais: Tesouro Selic, Tesouro Prefixado e Tesouro IPCA+ (além de Renda+ e Educa+).",
+      "importa": "O risco é o do governo federal, o mais baixo do país. A B3 cobra taxa de custódia de 0,20% ao ano.",
+      "relacionados": ["tesouro-selic", "tesouro-prefixado", "tesouro-ipca", "custodia"]
+    },
+    {
+      "id": "tesouro-selic", "nome": "Tesouro Selic", "categoria": "rf", "outrosNomes": ["LFT"],
+      "resumo": "Título público que rende a taxa Selic. Quase não oscila de preço e pode ser vendido em qualquer dia útil.",
+      "exemplo": "Vendido num dia útil até as 13h, o dinheiro cai na conta no mesmo dia.",
+      "importa": "É uma das opções mais seguras para a reserva de emergência.",
+      "relacionados": ["selic", "reserva-de-emergencia", "tesouro-direto", "pos-fixado"]
+    },
+    {
+      "id": "tesouro-prefixado", "nome": "Tesouro Prefixado", "categoria": "rf", "outrosNomes": ["LTN", "NTN-F"],
+      "resumo": "Título público com taxa fixa definida na compra. Paga R$ 1.000 por título no vencimento (a versão com juros semestrais paga cupons no caminho).",
+      "exemplo": "Comprar um título a R$ 780 que paga R$ 1.000 daqui a 2 anos dá cerca de 13,2% ao ano.",
+      "importa": "Levado até o vencimento, rende exatamente o combinado. Vendido antes, pode dar lucro ou prejuízo.",
+      "relacionados": ["prefixado", "marcacao-a-mercado", "tesouro-direto"]
+    },
+    {
+      "id": "tesouro-ipca", "nome": "Tesouro IPCA+", "categoria": "rf", "outrosNomes": ["NTN-B", "híbrido", "IPCA+"],
+      "resumo": "Título público que paga a inflação (IPCA) mais uma taxa fixa, como IPCA + 6% ao ano. É o chamado título híbrido.",
+      "exemplo": "Com IPCA de 4% e taxa de 6%, rende cerca de 10,2% no ano (1,04 × 1,06 − 1).",
+      "importa": "Garante ganho real se levado até o vencimento, por isso é usado para aposentadoria. Antes disso, o preço oscila bastante.",
+      "relacionados": ["ipca", "juros-reais", "marcacao-a-mercado", "tesouro-direto"]
+    },
+    {
+      "id": "marcacao-a-mercado", "nome": "Marcação a mercado", "categoria": "rf", "outrosNomes": ["valor na curva", "preço de mercado"],
+      "resumo": "A atualização diária do preço de um título pelo valor que o mercado pagaria por ele hoje. Quando os juros sobem, títulos prefixados e IPCA+ caem de preço, e vice-versa.",
+      "exemplo": "Um Tesouro IPCA+ longo pode cair 10% num mês de alta de juros e voltar a subir quando os juros recuam.",
+      "importa": "A Carteira mostra a renda fixa pelo valor na curva (o que o título vale se você esperar o vencimento). Vendendo antes, você recebe o valor de mercado, que pode ser maior ou menor.",
+      "relacionados": ["tesouro-ipca", "tesouro-prefixado", "liquidez", "copom"]
+    },
+    {
+      "id": "fgc", "nome": "FGC", "sigla": "Fundo Garantidor de Créditos", "categoria": "rf",
+      "resumo": "Fundo mantido pelos bancos que devolve seu dinheiro se a instituição quebrar: até R$ 250 mil por CPF por instituição, com limite total de R$ 1 milhão a cada 4 anos.",
+      "exemplo": "Cobre CDB, LCI, LCA, LC e poupança. Não cobre Tesouro Direto (que é do governo), CRI, CRA, debêntures, fundos nem ações.",
+      "importa": "Em bancos menores, que pagam taxas maiores, fique dentro do limite por instituição.",
+      "relacionados": ["cdb", "lci-lca", "risco-de-credito"]
+    },
+    {
+      "id": "poupanca", "nome": "Poupança", "categoria": "rf",
+      "resumo": "Aplicação mais tradicional do país. Com a Selic acima de 8,5% ao ano, rende 0,5% ao mês mais TR; abaixo disso, 70% da Selic mais TR. Isenta de imposto e coberta pelo FGC.",
+      "exemplo": "Só rende no “aniversário” mensal: tirar o dinheiro um dia antes faz perder o mês inteiro.",
+      "importa": "Costuma render menos que Tesouro Selic ou um CDB a 100% do CDI, mesmo depois do imposto deles.",
+      "relacionados": ["tesouro-selic", "cdb", "reserva-de-emergencia", "fgc"]
+    },
+    {
+      "id": "liquidez", "nome": "Liquidez", "categoria": "rf", "outrosNomes": ["liquidez diária", "carência"],
+      "resumo": "A facilidade de transformar um investimento em dinheiro, rápido e sem perder valor.",
+      "exemplo": "CDB com liquidez diária: resgate em qualquer dia. CDB com liquidez no vencimento: o dinheiro fica preso até a data final. Em ações, “liquidez diária” é o volume negociado por dia.",
+      "importa": "Dinheiro que pode ser necessário logo não deve ficar em aplicação sem liquidez.",
+      "relacionados": ["reserva-de-emergencia", "liquidacao", "marcacao-a-mercado"]
+    },
+    {
+      "id": "risco-de-credito", "nome": "Risco de crédito", "categoria": "rf", "outrosNomes": ["calote", "rating"],
+      "resumo": "A chance de quem pegou seu dinheiro emprestado (banco, empresa ou governo) não pagar.",
+      "exemplo": "Bancos pequenos e empresas endividadas pagam taxas maiores justamente por terem mais risco de crédito.",
+      "importa": "Taxa alta sempre tem um motivo. Agências de rating dão notas (AAA, AA…) que ajudam a medir esse risco.",
+      "relacionados": ["fgc", "debenture", "cri-cra"]
+    },
+
+    {
+      "id": "renda-variavel", "nome": "Renda variável", "categoria": "rv",
+      "resumo": "Investimentos sem rendimento combinado: o valor muda todo dia conforme o mercado.",
+      "exemplo": "Ações, FIIs, ETFs, BDRs e criptomoedas são renda variável.",
+      "importa": "Tem potencial de retorno maior que a renda fixa no longo prazo, com oscilações bem maiores no caminho.",
+      "relacionados": ["acao", "fii", "volatilidade", "renda-fixa"]
+    },
+    {
+      "id": "acao", "nome": "Ação", "categoria": "rv",
+      "resumo": "Um pedaço de uma empresa listada na bolsa. Quem tem ações é sócio e ganha com a valorização e com os proventos.",
+      "exemplo": "Com 100 ações de uma empresa que tem 1 bilhão de ações, você é dono de 0,00001% dela.",
+      "importa": "O preço segue os resultados esperados da empresa, mas no curto prazo oscila muito por outros motivos.",
+      "relacionados": ["on-pn-unit", "ticker", "proventos", "b3"]
+    },
+    {
+      "id": "on-pn-unit", "nome": "ON, PN e Unit", "categoria": "rv", "outrosNomes": ["ordinária", "preferencial"],
+      "resumo": "Tipos de ação. ON (final 3) é a ordinária, com direito a voto. PN (final 4, 5 ou 6) é a preferencial, sem voto e com preferência nos dividendos. Unit (final 11) é um pacote de ONs e PNs.",
+      "exemplo": "ITUB3 é a ON do Itaú, ITUB4 a PN. TAEE11 é a unit da Taesa.",
+      "importa": "O final 11 também é usado por FIIs e ETFs, então nem todo “11” é unit.",
+      "relacionados": ["acao", "ticker"]
+    },
+    {
+      "id": "ticker", "nome": "Ticker", "categoria": "rv", "outrosNomes": ["código de negociação"],
+      "resumo": "O código usado para negociar um ativo na bolsa: quatro letras mais um número.",
+      "exemplo": "BBDC4 (ação), KNRI11 (FII), IVVB11 (ETF), AAPL34 (BDR).",
+      "importa": "É o que você digita na página Ativos e na Carteira.",
+      "relacionados": ["on-pn-unit", "acao", "fii"]
+    },
+    {
+      "id": "fii", "nome": "FII", "sigla": "Fundo de Investimento Imobiliário", "categoria": "rv", "outrosNomes": ["fundo imobiliário"],
+      "resumo": "Fundo negociado na bolsa que junta dinheiro de muitos cotistas para investir em imóveis ou em títulos imobiliários. Distribui pelo menos 95% do lucro, em geral todo mês.",
+      "exemplo": "Com cotas de um FII de galpões logísticos, você recebe uma parte dos aluguéis pagos pelos inquilinos.",
+      "importa": "Para pessoa física, os rendimentos mensais são isentos de imposto (com condições); o lucro na venda das cotas paga 20%.",
+      "relacionados": ["fii-tijolo-papel", "ifix", "dividend-yield", "vacancia"]
+    },
+    {
+      "id": "fii-tijolo-papel", "nome": "FII de tijolo e de papel", "categoria": "rv", "outrosNomes": ["FOF", "fundo de fundos"],
+      "resumo": "FII de tijolo tem imóveis físicos (shoppings, galpões, escritórios) e vive de aluguel. FII de papel tem CRIs e vive de juros. FOFs compram cotas de outros FIIs.",
+      "exemplo": "Um fundo de papel atrelado ao CDI tende a pagar mais com juros altos; um de tijolo depende da ocupação dos imóveis.",
+      "importa": "Os riscos são diferentes: vacância e inquilinos no tijolo, calote dos devedores no papel.",
+      "relacionados": ["fii", "cri-cra", "vacancia", "cap-rate"]
+    },
+    {
+      "id": "vacancia", "nome": "Vacância", "categoria": "rv",
+      "resumo": "A parte da área de um FII de tijolo que está sem inquilino.",
+      "exemplo": "Vacância de 15% num fundo de escritórios: 15% da área não gera aluguel.",
+      "importa": "Vacância alta reduz os rendimentos. Aparece nos cards de FII na página Ativos.",
+      "relacionados": ["fii-tijolo-papel", "cap-rate", "fii"]
+    },
+    {
+      "id": "etf", "nome": "ETF", "sigla": "Exchange Traded Fund", "categoria": "rv", "outrosNomes": ["fundo de índice"],
+      "resumo": "Fundo negociado na bolsa que replica um índice. Com uma cota, você compra todas as empresas do índice de uma vez.",
+      "exemplo": "BOVA11 replica o Ibovespa; IVVB11 replica o S&P 500 em reais.",
+      "importa": "Diversifica com taxa baixa. O lucro na venda paga 15% e não tem a isenção de R$ 20 mil por mês das ações.",
+      "relacionados": ["ibovespa", "sp500", "diversificacao", "isencao-20-mil"]
+    },
+    {
+      "id": "bdr", "nome": "BDR", "sigla": "Brazilian Depositary Receipt", "categoria": "rv",
+      "resumo": "Certificado negociado na B3 que representa ações de uma empresa estrangeira.",
+      "exemplo": "AAPL34 representa ações da Apple e acompanha o preço delas lá fora e o dólar.",
+      "importa": "É uma forma de investir no exterior pela corretora brasileira, mas ganha ou perde também com o câmbio.",
+      "relacionados": ["cambio", "sp500", "ticker"]
+    },
+    {
+      "id": "proventos", "nome": "Proventos", "categoria": "rv",
+      "resumo": "Tudo o que uma empresa ou fundo distribui aos investidores: dividendos, JCP, rendimentos de FII e bonificações.",
+      "exemplo": "Um FII que paga R$ 0,80 por cota todo mês distribui R$ 80 a quem tem 100 cotas.",
+      "importa": "A página Ativos mostra o último provento e o total dos últimos 12 meses de cada ativo.",
+      "relacionados": ["dividendos", "jcp", "data-com", "dividend-yield"]
+    },
+    {
+      "id": "dividendos", "nome": "Dividendos", "categoria": "rv",
+      "resumo": "A parte do lucro que a empresa distribui aos acionistas. Por lei, em geral pelo menos 25% do lucro ajustado.",
+      "exemplo": "Empresa com lucro de R$ 1 bilhão e 500 milhões de ações que distribui metade paga R$ 1 por ação.",
+      "importa": "São isentos de imposto para pessoa física, mas desde 2026 há retenção de 10% sobre o que passar de R$ 50 mil por mês pagos por uma mesma empresa.",
+      "relacionados": ["jcp", "proventos", "dividend-yield", "data-com"]
+    },
+    {
+      "id": "jcp", "nome": "JCP", "sigla": "Juros sobre Capital Próprio", "categoria": "rv",
+      "resumo": "Outra forma de a empresa distribuir lucro. Para ela, reduz o imposto a pagar; para você, já vem com imposto retido na fonte.",
+      "exemplo": "Um JCP anunciado de R$ 1,00 por ação cai na conta já descontado do imposto.",
+      "importa": "Ao comparar proventos, lembre que o JCP anunciado é bruto e o dividendo não tem desconto.",
+      "relacionados": ["dividendos", "proventos"]
+    },
+    {
+      "id": "data-com", "nome": "Data com e data ex", "categoria": "rv",
+      "resumo": "Quem tem o ativo no fim do pregão da data com recebe o provento. No dia seguinte (data ex), ele passa a ser negociado sem esse direito e o preço costuma cair o valor do provento.",
+      "exemplo": "Data com em 10/03 e pagamento em 25/03: comprou até 10/03, recebe em 25/03 mesmo que venda no dia 11.",
+      "importa": "Comprar na véspera só para pegar o provento não é ganho: o preço se ajusta na data ex.",
+      "relacionados": ["proventos", "dividendos", "liquidacao"]
+    },
+    {
+      "id": "desdobramento", "nome": "Desdobramento e grupamento", "categoria": "rv", "outrosNomes": ["split", "inplit", "bonificação"],
+      "resumo": "Desdobramento divide cada ação em várias, com preço proporcionalmente menor. Grupamento faz o contrário. O valor total que você tem não muda.",
+      "exemplo": "Desdobramento de 1 para 2: 100 ações a R$ 40 viram 200 ações a R$ 20.",
+      "importa": "Mudam a quantidade e o preço médio, que precisam ser ajustados no registro da carteira e no imposto de renda.",
+      "relacionados": ["preco-medio", "acao"]
+    },
+
+    {
+      "id": "dividend-yield", "nome": "Dividend yield (DY)", "categoria": "indicadores", "outrosNomes": ["DY", "rendimento de dividendos"],
+      "resumo": "Proventos pagos nos últimos 12 meses divididos pelo preço atual do ativo.",
+      "exemplo": "Ação a R$ 40 que pagou R$ 2,80 em 12 meses tem DY de 7%.",
+      "importa": "Mostra o passado, não garante o futuro. DY muito alto pode vir de um preço que despencou ou de um provento extraordinário.",
+      "relacionados": ["dividendos", "proventos", "pl"]
+    },
+    {
+      "id": "pl", "nome": "P/L", "sigla": "Preço / Lucro", "categoria": "indicadores",
+      "resumo": "Preço da ação dividido pelo lucro por ação dos últimos 12 meses. Diz em quantos anos o lucro atual “pagaria” o preço.",
+      "exemplo": "Ação a R$ 30 com lucro de R$ 3 por ação: P/L 10.",
+      "importa": "Útil para comparar empresas do mesmo setor. P/L baixo pode ser barganha ou sinal de lucro em queda; com prejuízo, o número perde sentido.",
+      "relacionados": ["pvp", "roe", "ev-ebitda"]
+    },
+    {
+      "id": "pvp", "nome": "P/VP", "sigla": "Preço / Valor Patrimonial", "categoria": "indicadores",
+      "resumo": "Preço dividido pelo patrimônio líquido por ação (ou por cota, no caso de FIIs).",
+      "exemplo": "P/VP 0,9: o mercado paga R$ 0,90 por cada R$ 1,00 de patrimônio registrado.",
+      "importa": "Muito usado em FIIs e bancos. Abaixo de 1 pode indicar desconto ou desconfiança do mercado no valor dos ativos.",
+      "relacionados": ["pl", "roe", "fii"]
+    },
+    {
+      "id": "roe", "nome": "ROE", "sigla": "Return on Equity (retorno sobre o patrimônio)", "categoria": "indicadores",
+      "resumo": "Lucro dos últimos 12 meses dividido pelo patrimônio líquido. Mede quanto a empresa lucra com o dinheiro dos sócios.",
+      "exemplo": "ROE de 20%: R$ 20 de lucro por ano para cada R$ 100 de patrimônio.",
+      "importa": "ROE alto e estável costuma indicar um bom negócio. Dívida alta também infla o ROE, então olhe junto com o endividamento.",
+      "relacionados": ["pvp", "pl", "margem-liquida", "divida-patrimonio"]
+    },
+    {
+      "id": "margem-liquida", "nome": "Margem líquida", "categoria": "indicadores",
+      "resumo": "Quanto sobra de lucro para cada real vendido, depois de todos os custos, despesas e impostos.",
+      "exemplo": "Receita de R$ 1 bilhão e lucro de R$ 120 milhões: margem líquida de 12%.",
+      "importa": "Varia muito por setor (varejo tem margens baixas, software altas). Compare com empresas parecidas.",
+      "relacionados": ["roe", "pl", "crescimento-receita"]
+    },
+    {
+      "id": "ev-ebitda", "nome": "EV/EBITDA", "categoria": "indicadores", "outrosNomes": ["EBITDA", "valor da firma"],
+      "resumo": "Valor da empresa (valor de mercado mais a dívida líquida) dividido pelo EBITDA, o lucro operacional antes de juros, impostos e depreciação.",
+      "exemplo": "EV de R$ 50 bilhões e EBITDA de R$ 10 bilhões: EV/EBITDA 5.",
+      "importa": "Parecido com o P/L, mas considera a dívida, o que permite comparar empresas com endividamentos diferentes.",
+      "relacionados": ["pl", "valor-de-mercado", "divida-patrimonio"]
+    },
+    {
+      "id": "divida-patrimonio", "nome": "Dívida líquida / Patrimônio", "categoria": "indicadores", "outrosNomes": ["endividamento", "dívida líquida"],
+      "resumo": "Dívidas da empresa menos o caixa, divididas pelo patrimônio líquido.",
+      "exemplo": "Dívida líquida de R$ 4 bilhões e patrimônio de R$ 8 bilhões: 0,5. Valor negativo quer dizer que a empresa tem mais caixa que dívida.",
+      "importa": "Empresas muito endividadas sofrem mais com juros altos e crises.",
+      "relacionados": ["roe", "ev-ebitda", "juros"]
+    },
+    {
+      "id": "crescimento-receita", "nome": "Crescimento da receita (5 anos)", "categoria": "indicadores", "outrosNomes": ["CAGR"],
+      "resumo": "Quanto as vendas da empresa cresceram por ano, em média, nos últimos 5 anos.",
+      "exemplo": "Receita de R$ 1 bilhão que vira R$ 1,61 bilhão em 5 anos cresceu cerca de 10% ao ano.",
+      "importa": "Lucro e dividendos tendem a acompanhar a receita no longo prazo.",
+      "relacionados": ["margem-liquida", "pl"]
+    },
+    {
+      "id": "valor-de-mercado", "nome": "Valor de mercado", "categoria": "indicadores", "outrosNomes": ["market cap"],
+      "resumo": "Preço da ação vezes o número total de ações: quanto a bolsa diz que a empresa inteira vale hoje.",
+      "exemplo": "1 bilhão de ações a R$ 25: valor de mercado de R$ 25 bilhões.",
+      "importa": "Separa grandes empresas (blue chips) das pequenas (small caps), que costumam oscilar mais.",
+      "relacionados": ["ev-ebitda", "acao", "volatilidade"]
+    },
+    {
+      "id": "cap-rate", "nome": "Cap rate", "categoria": "indicadores", "outrosNomes": ["taxa de capitalização"],
+      "resumo": "Receita anual de aluguel de um imóvel dividida pelo valor dele. Mede quanto o imóvel “rende” por ano.",
+      "exemplo": "Galpão avaliado em R$ 100 milhões com aluguel de R$ 9 milhões por ano: cap rate de 9%.",
+      "importa": "Ajuda a ver se um FII de tijolo está caro ou barato em relação aos imóveis que tem.",
+      "relacionados": ["fii-tijolo-papel", "vacancia", "pvp"]
+    },
+
+    {
+      "id": "b3", "nome": "B3", "sigla": "Brasil, Bolsa, Balcão", "categoria": "mercado", "outrosNomes": ["bolsa de valores", "Área do Investidor"],
+      "resumo": "A bolsa de valores do Brasil. Além de ações, FIIs e ETFs, registra a custódia de títulos como Tesouro Direto e CDBs.",
+      "exemplo": "Na Área do Investidor da B3 dá para ver todos os seus ativos e movimentações, em todas as corretoras.",
+      "importa": "É de lá que virá a importação automática da carteira (item do roadmap).",
+      "relacionados": ["corretora", "custodia", "ibovespa", "pregao"]
+    },
+    {
+      "id": "corretora", "nome": "Corretora", "categoria": "mercado", "outrosNomes": ["home broker"],
+      "resumo": "Instituição que dá acesso à bolsa e ao Tesouro Direto. O home broker é o sistema dela para enviar ordens de compra e venda.",
+      "exemplo": "Você compra BBDC4 pelo app da corretora; a ação fica registrada no seu CPF na B3.",
+      "importa": "Ações, FIIs e títulos ficam no seu nome na B3, não no balanço da corretora: se ela quebrar, os ativos continuam seus.",
+      "relacionados": ["b3", "custodia", "corretagem"]
+    },
+    {
+      "id": "corretagem", "nome": "Corretagem e emolumentos", "categoria": "mercado", "outrosNomes": ["taxas da B3"],
+      "resumo": "Corretagem é a taxa da corretora por ordem executada (muitas zeraram). Emolumentos são taxas pequenas da B3 cobradas em toda operação.",
+      "exemplo": "Numa compra de R$ 10.000 em ações, os emolumentos da B3 ficam em poucos reais.",
+      "importa": "Esses custos entram no preço médio e reduzem o lucro tributável.",
+      "relacionados": ["preco-medio", "corretora", "custodia"]
+    },
+    {
+      "id": "custodia", "nome": "Custódia", "categoria": "mercado", "outrosNomes": ["taxa de custódia"],
+      "resumo": "A guarda dos seus ativos em seu nome. Algumas instituições cobram uma taxa anual por ela.",
+      "exemplo": "A B3 cobra 0,20% ao ano sobre títulos do Tesouro Direto; a maioria das corretoras não cobra custódia de ações.",
+      "importa": "É um custo pequeno, mas que reduz o rendimento todo ano.",
+      "relacionados": ["b3", "corretora", "tesouro-direto"]
+    },
+    {
+      "id": "pregao", "nome": "Pregão", "categoria": "mercado", "outrosNomes": ["after market"],
+      "resumo": "O período em que a bolsa está aberta para negociação, nos dias úteis, das 10h até 17h ou 18h (horário de Brasília), conforme a época do ano.",
+      "exemplo": "Ordens enviadas com a bolsa fechada ficam esperando a próxima abertura.",
+      "importa": "As cotações do app só mudam durante o pregão; fora dele, você vê o fechamento do último dia.",
+      "relacionados": ["b3", "liquidacao", "data-com"]
+    },
+    {
+      "id": "liquidacao", "nome": "Liquidação (D+1, D+2)", "categoria": "mercado",
+      "resumo": "O prazo para o dinheiro e o ativo trocarem de mãos de verdade depois da operação. “D+2” quer dizer dois dias úteis depois.",
+      "exemplo": "Vendeu ações na segunda-feira: o dinheiro fica disponível na quarta (D+2).",
+      "importa": "Importa para saber quando o dinheiro de uma venda estará disponível e para checar resgates de renda fixa.",
+      "relacionados": ["liquidez", "pregao", "data-com"]
+    },
+    {
+      "id": "lote-fracionario", "nome": "Lote padrão e fracionário", "categoria": "mercado",
+      "resumo": "Ações são negociadas em lotes de 100. Para comprar de 1 a 99 ações, usa-se o mercado fracionário, com um F no fim do código.",
+      "exemplo": "Para comprar 15 ações de PETR4, a ordem vai em PETR4F.",
+      "importa": "O preço no fracionário pode ser um pouco diferente do lote padrão, porque há menos negócios.",
+      "relacionados": ["ticker", "acao", "spread"]
+    },
+    {
+      "id": "spread", "nome": "Spread", "categoria": "mercado",
+      "resumo": "A diferença entre o preço de compra e o de venda de um ativo. Também é a diferença entre duas taxas.",
+      "exemplo": "Dólar a R$ 5,40 na compra e R$ 5,55 na venda numa casa de câmbio: spread de R$ 0,15.",
+      "importa": "É um custo escondido: quanto maior o spread, mais você perde ao comprar e vender logo em seguida.",
+      "relacionados": ["cambio", "lote-fracionario", "liquidez"]
+    },
+    {
+      "id": "ibovespa", "nome": "Ibovespa", "categoria": "mercado", "outrosNomes": ["IBOV"],
+      "resumo": "O principal índice da bolsa brasileira: uma carteira teórica com as ações mais negociadas, revista a cada 4 meses.",
+      "exemplo": "Quando o noticiário diz que “a bolsa subiu 1%”, está falando do Ibovespa.",
+      "importa": "É o benchmark das ações: a página Ativos compara a sua carteira com ele.",
+      "relacionados": ["ifix", "benchmark", "etf"]
+    },
+    {
+      "id": "ifix", "nome": "IFIX", "categoria": "mercado",
+      "resumo": "O índice dos fundos imobiliários negociados na B3.",
+      "exemplo": "O comparativo da página Ativos usa o XFIX11, um ETF que replica o IFIX.",
+      "importa": "É a régua para avaliar a sua carteira de FIIs.",
+      "relacionados": ["fii", "ibovespa", "benchmark"]
+    },
+    {
+      "id": "sp500", "nome": "S&P 500", "categoria": "mercado",
+      "resumo": "Índice com as 500 maiores empresas listadas nos Estados Unidos.",
+      "exemplo": "O IVVB11, negociado na B3, replica o S&P 500 convertido em reais.",
+      "importa": "É o jeito mais simples de diversificar para fora do Brasil.",
+      "relacionados": ["etf", "bdr", "cambio", "diversificacao"]
+    },
+    {
+      "id": "volatilidade", "nome": "Volatilidade", "categoria": "mercado",
+      "resumo": "O quanto o preço de um ativo sobe e desce. É a medida mais comum de risco.",
+      "exemplo": "Tesouro Selic quase não oscila; uma small cap pode variar 5% num dia; o bitcoin, 10%.",
+      "importa": "Volatilidade alta é um problema quando você precisa vender no momento errado. Para dinheiro de longo prazo, pesa menos.",
+      "relacionados": ["renda-variavel", "diversificacao", "reserva-de-emergencia"]
+    },
+    {
+      "id": "taxa-de-administracao", "nome": "Taxa de administração", "categoria": "mercado", "outrosNomes": ["taxa de performance"],
+      "resumo": "Percentual ao ano que um fundo (FII, ETF ou fundo comum) cobra sobre o patrimônio, já descontado do valor da cota. Alguns cobram também taxa de performance sobre o que passar de um índice.",
+      "exemplo": "Taxa de 1% ao ano num fundo que rende 12% brutos deixa cerca de 11% para você.",
+      "importa": "Em prazos longos, a diferença entre 0,2% e 2% ao ano vira uma fortuna por causa dos juros compostos.",
+      "relacionados": ["etf", "fii", "come-cotas", "juros-compostos"]
+    },
+
+    {
+      "id": "ir-regressivo", "nome": "Tabela regressiva do IR", "categoria": "ir", "outrosNomes": ["imposto de renda", "IR"],
+      "resumo": "O imposto da renda fixa cai quanto mais tempo o dinheiro fica aplicado: 22,5% até 180 dias, 20% até 360, 17,5% até 720 e 15% acima de 720 dias. Incide só sobre o rendimento.",
+      "exemplo": "R$ 1.000 de rendimento num CDB resgatado após 2 anos e meio pagam R$ 150 de imposto, retido na fonte.",
+      "importa": "Vale para CDB, Tesouro Direto, debêntures comuns e fundos de renda fixa. A página Projeção já desconta esse imposto.",
+      "relacionados": ["iof", "cdb", "lci-lca", "come-cotas"]
+    },
+    {
+      "id": "iof", "nome": "IOF", "sigla": "Imposto sobre Operações Financeiras", "categoria": "ir",
+      "resumo": "Em resgates de renda fixa com menos de 30 dias, cobra uma parte do rendimento: 96% no 1º dia, caindo até zero no 30º. Também existe IOF no câmbio.",
+      "exemplo": "Resgatar um CDB no 15º dia faz o IOF levar 50% do rendimento, antes do imposto de renda.",
+      "importa": "Evite resgatar aplicações nos primeiros 30 dias. Compras com cartão no exterior também pagam IOF.",
+      "relacionados": ["ir-regressivo", "liquidez", "cambio"]
+    },
+    {
+      "id": "isencao-20-mil", "nome": "Isenção de R$ 20 mil em ações", "categoria": "ir",
+      "resumo": "Se o total de vendas de ações no mês (operações comuns, não day trade) for de até R$ 20 mil, o lucro é isento de imposto. Acima disso, paga 15% sobre o lucro.",
+      "exemplo": "Vendeu R$ 18 mil com R$ 3 mil de lucro: isento. Vendeu R$ 25 mil com os mesmos R$ 3 mil de lucro: R$ 450 de imposto.",
+      "importa": "O limite é sobre o valor vendido, não sobre o lucro. Não vale para FIIs, ETFs, BDRs nem day trade.",
+      "relacionados": ["darf", "day-trade", "preco-medio", "compensacao-prejuizo"]
+    },
+    {
+      "id": "day-trade", "nome": "Day trade e swing trade", "categoria": "ir",
+      "resumo": "Day trade é comprar e vender o mesmo ativo no mesmo dia: paga 20% sobre o lucro, sem isenção. Swing trade (operação comum) é vender em outro dia: 15% sobre o lucro.",
+      "exemplo": "A corretora retém um pouco na fonte (o “dedo-duro”: 1% do lucro no day trade, 0,005% do valor vendido no swing), que é descontado do DARF.",
+      "importa": "Os dois tipos são apurados separadamente, inclusive os prejuízos.",
+      "relacionados": ["darf", "isencao-20-mil", "compensacao-prejuizo"]
+    },
+    {
+      "id": "darf", "nome": "DARF", "sigla": "Documento de Arrecadação de Receitas Federais", "categoria": "ir",
+      "resumo": "A guia para pagar o imposto sobre lucros na bolsa. Você mesmo calcula e paga até o último dia útil do mês seguinte ao da venda (código 6015).",
+      "exemplo": "Lucro tributável em março: o DARF vence no último dia útil de abril. Valores abaixo de R$ 10 ficam acumulados para o mês seguinte.",
+      "importa": "Pagar atrasado gera multa e juros. É o que a apuração mensal de imposto (item do roadmap) vai calcular.",
+      "relacionados": ["isencao-20-mil", "day-trade", "preco-medio", "compensacao-prejuizo"]
+    },
+    {
+      "id": "compensacao-prejuizo", "nome": "Compensação de prejuízo", "categoria": "ir",
+      "resumo": "Prejuízos em vendas na bolsa podem ser descontados dos lucros futuros, sem prazo para expirar, desde que informados na declaração anual.",
+      "exemplo": "Perdeu R$ 2 mil em março e lucrou R$ 5 mil em junho (com vendas acima de R$ 20 mil): paga imposto só sobre R$ 3 mil.",
+      "importa": "Swing trade compensa com swing trade, day trade com day trade e FII com FII.",
+      "relacionados": ["darf", "day-trade", "isencao-20-mil"]
+    },
+    {
+      "id": "come-cotas", "nome": "Come-cotas", "categoria": "ir",
+      "resumo": "Cobrança antecipada de imposto nos fundos de investimento, em maio e novembro: 15% (fundos de longo prazo) ou 20% (curto prazo) do rendimento do semestre, retirando cotas.",
+      "exemplo": "Num fundo de renda fixa que rendeu R$ 1.000 no semestre, cerca de R$ 150 em cotas somem em novembro.",
+      "importa": "Não vale para FIIs, ETFs de ações e fundos de ações. Reduz o efeito dos juros compostos, porque o imposto sai antes do resgate.",
+      "relacionados": ["ir-regressivo", "taxa-de-administracao"]
+    },
+    {
+      "id": "bens-e-direitos", "nome": "Bens e direitos", "categoria": "ir", "outrosNomes": ["declaração anual", "IRPF"],
+      "resumo": "A ficha da declaração anual de imposto de renda em que você lista cada investimento pelo custo de compra, na posição de 31 de dezembro.",
+      "exemplo": "100 ações compradas por preço médio de R$ 25 são declaradas por R$ 2.500, mesmo que valham R$ 4.000 no fim do ano.",
+      "importa": "Usa o custo, não o valor de mercado. Com as operações registradas, o app vai poder montar essa ficha (item do roadmap).",
+      "relacionados": ["preco-medio", "darf", "ptax"]
+    },
+
+    {
+      "id": "preco-medio", "nome": "Preço médio", "categoria": "carteira", "outrosNomes": ["custo médio"],
+      "resumo": "A média ponderada do que você pagou por um ativo, incluindo as taxas das compras.",
+      "exemplo": "100 ações a R$ 10 mais 100 a R$ 12: preço médio de R$ 11. Vender parte não muda o preço médio do que sobrou.",
+      "importa": "É a base para calcular lucro, prejuízo e imposto. Será o centro do registro de operações (próximo item do roadmap).",
+      "relacionados": ["rentabilidade", "isencao-20-mil", "bens-e-direitos", "desdobramento"]
+    },
+    {
+      "id": "rentabilidade", "nome": "Rentabilidade", "categoria": "carteira", "outrosNomes": ["retorno"],
+      "resumo": "Quanto um investimento rendeu, em porcentagem, num período. Pode ser bruta ou líquida (depois de impostos e taxas), nominal ou real (descontada a inflação).",
+      "exemplo": "Investiu R$ 10.000 e hoje tem R$ 11.500: rentabilidade de 15% no período.",
+      "importa": "Só faz sentido comparada a algo: ao CDI, à inflação ou a um índice.",
+      "relacionados": ["juros-reais", "benchmark", "preco-medio"]
+    },
+    {
+      "id": "benchmark", "nome": "Benchmark", "categoria": "carteira", "outrosNomes": ["índice de referência"],
+      "resumo": "O índice usado como régua para avaliar um investimento.",
+      "exemplo": "CDI para renda fixa, Ibovespa para ações, IFIX para FIIs, S&P 500 para ações americanas.",
+      "importa": "O comparativo da página Ativos mostra a sua carteira contra esses índices no mesmo período.",
+      "relacionados": ["cdi", "ibovespa", "ifix", "rentabilidade"]
+    },
+    {
+      "id": "patrimonio", "nome": "Patrimônio", "categoria": "carteira",
+      "resumo": "A soma de tudo o que você tem: investimentos, moedas, bens e saldo em conta.",
+      "exemplo": "A Carteira guarda uma foto diária do patrimônio total, que vira o gráfico de evolução.",
+      "importa": "Acompanhar a evolução mostra o efeito combinado de aportes e rendimentos.",
+      "relacionados": ["rentabilidade", "aporte", "diversificacao"]
+    },
+    {
+      "id": "aporte", "nome": "Aporte", "categoria": "carteira",
+      "resumo": "Dinheiro novo colocado nos investimentos.",
+      "exemplo": "Aportar R$ 1.000 por mês a 10% ao ano dá cerca de R$ 200 mil em 10 anos, dos quais R$ 120 mil saíram do seu bolso.",
+      "importa": "No começo, os aportes pesam mais que os rendimentos; com o tempo, os juros compostos passam à frente. É o que o simulador da página Projeção mostra.",
+      "relacionados": ["juros-compostos", "rebalanceamento", "patrimonio"]
+    },
+    {
+      "id": "diversificacao", "nome": "Diversificação", "categoria": "carteira", "outrosNomes": ["alocação de ativos", "classe de ativo"],
+      "resumo": "Espalhar o dinheiro entre tipos de investimento, setores, emissores e países para que um tropeço isolado não derrube tudo.",
+      "exemplo": "Uma carteira com renda fixa, ações, FIIs e uma parte no exterior sofre menos numa crise local do que uma só de ações brasileiras.",
+      "importa": "O gráfico de distribuição da Carteira mostra quanto você tem em cada classe.",
+      "relacionados": ["rebalanceamento", "volatilidade", "etf"]
+    },
+    {
+      "id": "rebalanceamento", "nome": "Rebalanceamento", "categoria": "carteira",
+      "resumo": "Trazer a carteira de volta às porcentagens-alvo de cada classe, aportando no que ficou para trás ou vendendo o que cresceu demais.",
+      "exemplo": "Meta de 50% em renda fixa e 50% em ações; as ações sobem e viram 60%: o próximo aporte vai todo para a renda fixa.",
+      "importa": "Força a comprar o que está mais barato e a vender o que está mais caro, sem tentar adivinhar o mercado.",
+      "relacionados": ["diversificacao", "aporte"]
+    },
+    {
+      "id": "reserva-de-emergencia", "nome": "Reserva de emergência", "categoria": "carteira",
+      "resumo": "Dinheiro guardado para imprevistos, em geral de 6 a 12 meses do custo de vida, numa aplicação segura e com resgate imediato.",
+      "exemplo": "Tesouro Selic ou um CDB de banco grande a 100% do CDI com liquidez diária.",
+      "importa": "Com ela montada, você não precisa vender ações ou títulos no pior momento para pagar uma conta inesperada.",
+      "relacionados": ["liquidez", "tesouro-selic", "pos-fixado"]
+    },
+
+    {
+      "id": "cambio", "nome": "Câmbio", "categoria": "exterior", "outrosNomes": ["taxa de câmbio"],
+      "resumo": "O preço de uma moeda em outra, como quantos reais custa um dólar.",
+      "exemplo": "A página Moedas mostra as cotações de dólar, euro, libra, peso argentino e iene.",
+      "importa": "Investimentos no exterior ganham ou perdem também com a variação do câmbio.",
+      "relacionados": ["ptax", "dolar-comercial-turismo", "spread", "bdr"]
+    },
+    {
+      "id": "ptax", "nome": "PTAX", "categoria": "exterior",
+      "resumo": "A média das cotações do dólar (e de outras moedas) no dia, calculada e divulgada pelo Banco Central.",
+      "exemplo": "Contratos em dólar e faturas de cartão costumam usar a PTAX como referência.",
+      "importa": "É a taxa usada para converter para reais os investimentos e rendimentos do exterior na declaração de imposto.",
+      "relacionados": ["cambio", "bens-e-direitos"]
+    },
+    {
+      "id": "dolar-comercial-turismo", "nome": "Dólar comercial e turismo", "categoria": "exterior",
+      "resumo": "Comercial é a cotação usada por empresas e no mercado financeiro. Turismo é a de compra de papel-moeda e cartões pré-pagos, mais cara por causa dos custos de transporte e do spread.",
+      "exemplo": "Com o comercial a R$ 5,40, o turismo pode estar perto de R$ 5,60.",
+      "importa": "As cotações do app são do dólar comercial; numa viagem, conte com um valor maior e com o IOF.",
+      "relacionados": ["cambio", "spread", "iof"]
+    },
+    {
+      "id": "cripto", "nome": "Criptomoedas", "categoria": "exterior", "outrosNomes": ["cripto", "criptoativos", "exchange"],
+      "resumo": "Ativos digitais registrados em uma blockchain, sem emissor central. São negociados 24 horas por dia em corretoras chamadas exchanges.",
+      "exemplo": "Bitcoin, Ethereum e Solana são criptomoedas; a página Carteira mostra os preços em reais.",
+      "importa": "São muito voláteis. Na regra geral, vendas de até R$ 35 mil por mês são isentas de imposto; as regras para cripto vêm mudando, então confira antes de declarar.",
+      "relacionados": ["bitcoin", "stablecoin", "carteira-fria", "volatilidade"]
+    },
+    {
+      "id": "bitcoin", "nome": "Bitcoin", "categoria": "exterior", "outrosNomes": ["BTC"],
+      "resumo": "A primeira e maior criptomoeda, criada em 2009. A quantidade máxima é fixa em 21 milhões de unidades.",
+      "exemplo": "Dá para comprar frações: 0,001 BTC é uma quantia comum.",
+      "importa": "Muita gente o vê como reserva de valor digital, mas o preço já caiu mais de 70% em alguns ciclos.",
+      "relacionados": ["cripto", "carteira-fria", "volatilidade"]
+    },
+    {
+      "id": "stablecoin", "nome": "Stablecoin", "categoria": "exterior", "outrosNomes": ["USDT", "USDC"],
+      "resumo": "Criptomoeda atrelada a uma moeda tradicional, quase sempre o dólar, para não oscilar.",
+      "exemplo": "1 USDC vale cerca de US$ 1; em reais, varia junto com o dólar.",
+      "importa": "Serve para sair da volatilidade sem deixar o mundo cripto. O risco é o emissor não ter as reservas que diz ter.",
+      "relacionados": ["cripto", "cambio"]
+    },
+    {
+      "id": "carteira-fria", "nome": "Carteira fria (cold wallet)", "categoria": "exterior", "outrosNomes": ["autocustódia", "chave privada", "seed"],
+      "resumo": "Dispositivo ou método que guarda offline as chaves privadas das suas criptomoedas, sem depender de uma exchange.",
+      "exemplo": "Uma carteira de hardware, protegida por uma frase de 12 ou 24 palavras (a seed).",
+      "importa": "Na exchange, quem guarda as chaves é ela. Na autocustódia o controle é seu, mas perder a seed é perder tudo.",
+      "relacionados": ["cripto", "bitcoin"]
+    }
+  ]
+}

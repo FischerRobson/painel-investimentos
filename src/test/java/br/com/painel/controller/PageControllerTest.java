@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThan;
 
 /** Testes que não dependem de rede (as fontes externas não são chamadas). */
 @QuarkusTest
@@ -13,9 +14,16 @@ class PageControllerTest {
 
     @Test
     void paginasServemOIndex() {
-        for (String p : new String[]{"/", "/carteira", "/projecao", "/ativos", "/moedas", "/bens", "/custos"}) {
+        for (String p : new String[]{"/", "/carteira", "/projecao", "/ativos", "/moedas", "/bens", "/custos", "/glossario"}) {
             given().when().get(p).then().statusCode(200).body(containsString("Meus Investimentos"));
         }
+    }
+
+    @Test
+    void glossarioEhPublicoEValido() {
+        given().when().get("/glossario.json").then().statusCode(200)
+                .body("termos.size()", greaterThan(50))
+                .body("categorias.size()", greaterThan(0));
     }
 
     @Test
