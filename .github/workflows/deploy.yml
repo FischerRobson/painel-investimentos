@@ -25,7 +25,7 @@ jobs:
       SAM_CLI_VERSION: 1.169.0
       SAM_CLI_SHA256: 3e921832e9fb39a6563380afc9855eac6dab163238ef3b2bec4a5ba223e4be8b
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Versão
         id: versao
@@ -39,7 +39,7 @@ jobs:
           echo "version=$v" >> "$GITHUB_OUTPUT"
           echo "Versão a publicar: $v"
 
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
@@ -56,7 +56,7 @@ jobs:
           sudo /tmp/sam/install --update
           sam --version
 
-      - uses: aws-actions/configure-aws-credentials@v5
+      - uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
