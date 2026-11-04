@@ -1,5 +1,6 @@
 package br.com.painel.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -8,21 +9,27 @@ import jakarta.validation.constraints.Size;
 
 import java.util.Map;
 
-public record Bem(
+public record Vehicle(
         @NotBlank @Size(max = 40) String id,
         @NotNull @Pattern(regexp = "cars|motorcycles|trucks") String type,
         @NotNull @Pattern(regexp = "[\\w-]{1,20}") String brand,
         @NotNull @Pattern(regexp = "[\\w-]{1,20}") String model,
         @NotNull @Pattern(regexp = "[\\w-]{1,20}") String year,
-        @Size(max = 40) String apelido,
+        @JsonProperty("apelido") @Size(max = 40) String nickname,
         Info info,
-        Ultimo last,
-        // valor FIPE de cada mês já consultado: "outubro de 2026" → 84753.0
-        Map<@Pattern(regexp = Datas.MES_FIPE) String, @NotNull @PositiveOrZero Double> hist) {
+        LastPrice last,
+        @JsonProperty("hist") Map<@Pattern(regexp = Formats.FIPE_MONTH) String, @NotNull @PositiveOrZero Double> history) {
 
     public record Info(String brand, String model, Integer modelYear, String fuel, String codeFipe) {
     }
 
-    public record Ultimo(String month, Double price) {
+    public record LastPrice(String month, Double price) {
+    }
+
+    public String label() {
+        if (nickname != null && !nickname.isBlank()) {
+            return nickname;
+        }
+        return info != null && info.model() != null ? info.model() : "Veículo";
     }
 }

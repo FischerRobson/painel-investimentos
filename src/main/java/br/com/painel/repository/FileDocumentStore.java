@@ -6,13 +6,15 @@ import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.stream.Stream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.locks.ReentrantLock;
 
-// Para desenvolvimento local. ETag = SHA-256 do conteúdo; o lock só garante o compare-and-set dentro de um processo.
+// Local development store. ETag = SHA-256 of the content; the lock only guarantees compare-and-set within one process.
 public class FileDocumentStore implements DocumentStore {
 
     private final Path root;
@@ -66,11 +68,24 @@ public class FileDocumentStore implements DocumentStore {
         }
     }
 
-    // Impede que a chave escape da pasta raiz (ex.: "../../etc/passwd")
+    @Override
+    public List<String> listFolders(String prefix) {
+        Path dir = resolve(prefix);
+        if (!Files.isDirectory(dir)) {
+            return List.of();
+        }
+        try (Stream<Path> children = Files.list(dir)) {
+            return children.filter(Files::isDirectory).map(p -> p.getFileName().toString()).sorted().toList();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    // Keeps keys inside the root folder (e.g. "../../etc/passwd")
     private Path resolve(String key) {
         Path file = root.resolve(key).normalize();
         if (!file.startsWith(root)) {
-            throw new IllegalArgumentException("chave inválida: " + key);
+            throw new IllegalArgumentException("invalid key: " + key);
         }
         return file;
     }

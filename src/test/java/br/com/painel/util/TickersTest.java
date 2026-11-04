@@ -12,25 +12,25 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class TickersTest {
 
     @Test
-    void parseNormalizaRemoveRepetidosEMantemOrdem() {
+    void parseNormalizesDedupesAndKeepsOrder() {
         assertEquals(List.of("BBDC4", "KNRI11", "AAPL"), Tickers.parse(" bbdc4.sa, KNRI11;aapl  BBDC4 "));
     }
 
     @Test
-    void rejeitaLixo() {
+    void rejectsGarbage() {
         assertNull(Tickers.normalize("../etc"));
         assertNull(Tickers.normalize("<script>"));
         assertEquals(List.of(), Tickers.parse(""));
     }
 
     @Test
-    void limitaEm30() {
+    void limitsTo30() {
         String many = String.join(",", java.util.stream.IntStream.range(0, 40).mapToObj(i -> "ABCD" + (i % 99 + 1)).toList());
         assertEquals(30, Tickers.parse(many).size());
     }
 
     @Test
-    void identificaB3() {
+    void detectsB3Tickers() {
         assertTrue(Tickers.isB3("BBDC4"));
         assertTrue(Tickers.isB3("KNRI11"));
         assertTrue(Tickers.isB3("AAPL34"));

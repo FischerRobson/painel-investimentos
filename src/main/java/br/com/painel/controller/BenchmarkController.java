@@ -33,11 +33,11 @@ public class BenchmarkController {
                                  @QueryParam("fx") @DefaultValue("") String fx,
                                  @QueryParam("crypto") @DefaultValue("") String crypto) {
         return service.get(BenchmarkService.RANGES.contains(range) ? range : "1y",
-                lista(fx, FxService.CODES::contains), lista(crypto, CryptoService.COINS::containsKey));
+                parseList(fx, FxService.CODES::contains), parseList(crypto, CryptoService.COINS::containsKey));
     }
 
-    private static List<String> lista(String raw, Predicate<String> valido) {
+    private static List<String> parseList(String raw, Predicate<String> valid) {
         return Arrays.stream(raw.split(",")).map(s -> s.strip().toUpperCase(Locale.ROOT))
-                .filter(valido).distinct().toList();
+                .filter(valid).distinct().toList();
     }
 }

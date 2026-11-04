@@ -11,19 +11,19 @@ import static org.hamcrest.Matchers.matchesPattern;
 @QuarkusTest
 class VersionControllerTest {
 
-    private static final String VERSAO = ConfigProvider.getConfig().getValue("quarkus.application.version", String.class);
+    private static final String VERSION = ConfigProvider.getConfig().getValue("quarkus.application.version", String.class);
 
     @Test
-    void devolveAVersaoDoPom() {
+    void returnsThePomVersion() {
         given().when().get("/api/version")
                 .then().statusCode(200)
-                .body("version", equalTo(VERSAO))
+                .body("version", equalTo(VERSION))
                 .body("version", matchesPattern("\\d+\\.\\d+\\.\\d+"));
     }
 
     @Test
-    void modoDemonstracaoMostraAVersaoReal() {
+    void demoModeShowsTheRealVersion() {
         given().header("X-Painel-Demo", "1").when().get("/api/version")
-                .then().statusCode(200).body("version", equalTo(VERSAO));
+                .then().statusCode(200).body("version", equalTo(VERSION));
     }
 }

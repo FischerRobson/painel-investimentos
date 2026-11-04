@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class NumbersTest {
 
     @Test
-    void parseiaFormatoBrasileiro() {
+    void parsesBrazilianFormat() {
         assertEquals(1234.56, Numbers.parseBr("1.234,56"));
         assertEquals(0.0958, Numbers.parseBr("9,58%"), 1e-12);
         assertEquals(-0.12, Numbers.parseBr(" -12,00% "), 1e-12);
@@ -16,7 +16,7 @@ class NumbersTest {
     }
 
     @Test
-    void textoQueNaoEhNumeroViraNull() {
+    void nonNumericTextIsNull() {
         assertNull(Numbers.parseBr("-"));
         assertNull(Numbers.parseBr(""));
         assertNull(Numbers.parseBr(null));
@@ -24,7 +24,7 @@ class NumbersTest {
     }
 
     @Test
-    void orSegueTruthyDoJs() {
+    void orFollowsJsTruthiness() {
         assertEquals(2.0, Numbers.or(0.0, 2.0));
         assertEquals(2.0, Numbers.or(null, 2.0));
         assertEquals(1.0, Numbers.or(1.0, 2.0));

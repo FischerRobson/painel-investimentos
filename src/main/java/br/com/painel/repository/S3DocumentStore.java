@@ -9,6 +9,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
+import java.util.List;
 import java.util.Optional;
 
 public class S3DocumentStore implements DocumentStore {
@@ -43,12 +44,21 @@ public class S3DocumentStore implements DocumentStore {
             PutObjectResponse res = s3.putObject(req.build(), RequestBody.fromBytes(body));
             return unquote(res.eTag());
         } catch (S3Exception e) {
-            // 412: a condição falhou; 409: outra escrita condicional no mesmo objeto ao mesmo tempo
+            // 412: condition failed; 409: concurrent conditional write on the same object
             if (e.statusCode() == 412 || e.statusCode() == 409) {
                 throw new PreconditionFailedException(key);
             }
             throw e;
         }
+    }
+
+    @Override
+    public List<String> listFolders(String prefix) {
+        String p = prefix.endsWith("/") ? prefix : prefix + "/";
+        return s3.listObjectsV2Paginator(b -> b.bucket(bucket).prefix(p).delimiter("/")).commonPrefixes().stream()
+                .map(cp -> cp.prefix().substring(p.length()).replace("/", ""))
+                .filter(name -> !name.isEmpty())
+                .toList();
     }
 
     private static String unquote(String etag) {

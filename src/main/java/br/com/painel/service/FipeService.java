@@ -3,6 +3,7 @@ package br.com.painel.service;
 import br.com.painel.client.FipeClient;
 import br.com.painel.dto.FipeMonth;
 import br.com.painel.dto.FipePrice;
+import br.com.painel.util.ProviderCall;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.quarkus.cache.CacheResult;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -21,8 +22,10 @@ public class FipeService {
 
     public static final Set<String> TYPES = Set.of("cars", "motorcycles", "trucks");
     private static final Pattern ID = Pattern.compile("[\\w-]{1,20}");
-    // o plano grátis libera o mês atual e os 2 anteriores
+    // the free plan covers the current month and the 2 previous ones
     private static final int PREVIOUS_MONTHS = 3;
+
+    private static final String PROVIDER = "fipe";
 
     private final FipeClient client;
 
@@ -45,27 +48,28 @@ public class FipeService {
 
     @CacheResult(cacheName = "fipe-lists")
     public JsonNode brands(String type) {
-        return client.brands(type);
+        return ProviderCall.run(PROVIDER, "brands " + type, () -> client.brands(type));
     }
 
     @CacheResult(cacheName = "fipe-lists")
     public JsonNode models(String type, String brand) {
-        return client.models(type, brand);
+        return ProviderCall.run(PROVIDER, "models " + type + "/" + brand, () -> client.models(type, brand));
     }
 
     @CacheResult(cacheName = "fipe-lists")
     public JsonNode years(String type, String brand, String model) {
-        return client.years(type, brand, model);
+        return ProviderCall.run(PROVIDER, "years " + type + "/" + brand + "/" + model, () -> client.years(type, brand, model));
     }
 
     @CacheResult(cacheName = "fipe-refs")
     public JsonNode references() {
-        return client.references();
+        return ProviderCall.run(PROVIDER, "references", client::references);
     }
 
     @CacheResult(cacheName = "fipe-price")
     public FipePrice price(String type, String brand, String model, String year) {
-        JsonNode cur = client.price(type, brand, model, year, null);
+        String vehicle = type + "/" + brand + "/" + model + "/" + year;
+        JsonNode cur = ProviderCall.run(PROVIDER, "price " + vehicle, () -> client.price(type, brand, model, year, null));
         if (!cur.has("price")) {
             throw new IllegalStateException(cur.path("error").asText("veículo não encontrado"));
         }
@@ -73,12 +77,14 @@ public class FipeService {
         JsonNode refs = references();
         for (int i = 1; i <= PREVIOUS_MONTHS && i < refs.size(); i++) {
             try {
-                JsonNode old = client.price(type, brand, model, year, refs.get(i).path("code").asInt());
+                int reference = refs.get(i).path("code").asInt();
+                JsonNode old = ProviderCall.run(PROVIDER, "price " + vehicle + " reference " + reference,
+                        () -> client.price(type, brand, model, year, reference));
                 if (old.has("price")) {
                     history.add(new FipeMonth(old.path("referenceMonth").asText(), money(old.path("price").asText())));
                 }
             } catch (RuntimeException e) {
-                // meses mais antigos são só para assinantes
+                // older months are subscribers only
                 break;
             }
         }

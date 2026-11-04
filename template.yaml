@@ -1,36 +1,36 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >-
-  Painel de investimentos: Quarkus no Lambda (Function URL + SnapStart), dados no S3,
-  login com Google via Cognito restrito a e-mails permitidos.
+  Investments dashboard: Quarkus on Lambda (Function URL + SnapStart), data on S3,
+  Google login through Cognito restricted to allowed e-mails, daily wallet snapshot at 18:00 Brasília time.
 
 Parameters:
   GoogleClientId:
     Type: String
-    Description: Client ID do OAuth do Google (Google Cloud Console > APIs e serviços > Credenciais)
+    Description: Google OAuth client ID (Google Cloud Console > APIs & Services > Credentials)
   GoogleClientSecret:
     Type: String
     NoEcho: true
-    Description: Client secret do OAuth do Google
+    Description: Google OAuth client secret
   AllowedEmails:
     Type: String
-    Description: E-mails que podem criar conta, separados por vírgula
+    Description: Comma-separated e-mails allowed to sign up
   BrapiToken:
     Type: String
     NoEcho: true
     Default: ""
-    Description: Token da brapi.dev (vazio = cotações só pelo Yahoo)
+    Description: brapi.dev token (empty = quotes from Yahoo only)
   AppVersion:
     Type: String
     Default: dev
     AllowedPattern: "^(dev|\\d+\\.\\d+\\.\\d+)$"
-    Description: Versão do app (pom.xml), gravada na descrição de cada versão publicada do Lambda
+    Description: App version (pom.xml), written to the description of each published Lambda version
 
 Resources:
-  # ------------------------------------------------------------------ dados
+  # ------------------------------------------------------------------ data
   DataBucket:
     Type: AWS::S3::Bucket
-    DeletionPolicy: Retain          # apagar o stack não apaga seus dados
+    DeletionPolicy: Retain          # deleting the stack keeps your data
     UpdateReplacePolicy: Retain
     Properties:
       BucketEncryption:
@@ -38,7 +38,7 @@ Resources:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
       VersioningConfiguration:
-        Status: Enabled             # cada gravação guarda a versão anterior (backup de graça)
+        Status: Enabled             # every write keeps the previous version (free backup)
       LifecycleConfiguration:
         Rules:
           - Id: limpa-versoes-antigas
@@ -78,7 +78,7 @@ Resources:
   PreSignUpFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Description: Recusa cadastro de e-mails fora da lista permitida
+      Description: Rejects sign-ups from e-mails outside the allow list
       Runtime: python3.13
       Handler: index.handler
       Timeout: 5
@@ -118,7 +118,7 @@ Resources:
       UserPoolName: painel-investimentos
       UserPoolTier: LITE
       AdminCreateUserConfig:
-        AllowAdminCreateUserOnly: true   # sem cadastro por usuário/senha; só entra via Google
+        AllowAdminCreateUserOnly: true   # no username/password sign-up; Google login only
       LambdaConfig:
         PreSignUp: !GetAtt PreSignUpFunction.Arn
 
@@ -142,7 +142,7 @@ Resources:
       UserPoolId: !Ref UserPool
       Domain: !Sub "painel-${AWS::AccountId}"
 
-  # Cliente público (sem secret): a página faz o fluxo authorization code com PKCE
+  # Public client (no secret): the page runs the authorization code flow with PKCE
   UserPoolClient:
     Type: AWS::Cognito::UserPoolClient
     DependsOn: GoogleIdentityProvider
@@ -166,35 +166,49 @@ Resources:
       EnableTokenRevocation: true
       PreventUserExistenceErrors: ENABLED
 
-  # Lido pela função em tempo de execução (passar o client id por variável de ambiente criaria um ciclo:
-  # função → client → URL da função → função)
+  # Read by the function at runtime (passing the client id as an environment variable would create a cycle:
+  # function -> client -> function URL -> function)
   AuthConfigParameter:
     Type: AWS::SSM::Parameter
     Properties:
       Name: /painel/auth-config
       Type: String
-      Description: Configuração pública do login do painel
+      Description: Public login configuration for the dashboard
       Value: !Sub '{"clientId":"${UserPoolClient}","domain":"https://${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com","region":"${AWS::Region}"}'
 
-  # ------------------------------------------------------------------ aplicação
+  # ------------------------------------------------------------------ application
   PainelFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Description: Painel de investimentos (Quarkus)
+      Description: Investments dashboard (Quarkus)
       Runtime: java21
       Architectures: [x86_64]
       Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
       CodeUri: target/function.zip
-      MemorySize: 512                # limite de contas novas; pedir aumento em Service Quotas se precisar
-      Timeout: 60                    # 1ª consulta ao Banco Central pode levar ~12 s
-      AutoPublishAlias: live         # SnapStart só vale em versões publicadas
-      VersionDescription: !Sub "v${AppVersion}"   # mostra qual versão do app cada versão do Lambda roda
+      MemorySize: 512                # new account limit; request an increase in Service Quotas if needed
+      Timeout: 120                   # the daily snapshot queries every provider; the first Central Bank call can take ~12 s
+      AutoPublishAlias: live         # SnapStart only applies to published versions
+      VersionDescription: !Sub "v${AppVersion}"   # shows which app version each Lambda version runs
       SnapStart:
         ApplyOn: PublishedVersions
       FunctionUrlConfig:
-        AuthType: NONE               # público na rede; /api/* exige token do Cognito (validado no Quarkus)
+        AuthType: NONE               # public; /api/* requires a Cognito token (checked in Quarkus)
       LoggingConfig:
         LogGroup: !Ref PainelLogGroup
+      # Daily wallet snapshot. The scheduler invokes the function directly with a Function URL style event for
+      # POST /internal/snapshots; the token is the random part of the stack id, known only inside the account.
+      Events:
+        DailySnapshot:
+          Type: ScheduleV2
+          Properties:
+            Description: Daily wallet snapshot at 18:00 Brasília time
+            ScheduleExpression: cron(0 18 * * ? *)
+            ScheduleExpressionTimezone: America/Sao_Paulo
+            RetryPolicy:
+              MaximumRetryAttempts: 2
+            Input: !Sub
+              - '{"version":"2.0","routeKey":"$default","rawPath":"/internal/snapshots","rawQueryString":"","headers":{"x-snapshot-token":"${Token}","content-type":"application/json"},"requestContext":{"http":{"method":"POST","path":"/internal/snapshots","protocol":"HTTP/1.1","sourceIp":"127.0.0.1","userAgent":"eventbridge-scheduler"},"requestId":"daily-snapshot","routeKey":"$default","stage":"$default"},"isBase64Encoded":false}'
+              - Token: !Select [2, !Split ["/", !Ref AWS::StackId]]
       Environment:
         Variables:
           QUARKUS_PROFILE: lambda
@@ -203,6 +217,7 @@ Resources:
           PAINEL_AUTH_CONFIG_PARAM: /painel/auth-config
           COGNITO_USER_POOL_ID: !Ref UserPool
           BRAPI_TOKEN: !Ref BrapiToken
+          PAINEL_SNAPSHOT_TOKEN: !Select [2, !Split ["/", !Ref AWS::StackId]]
           JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1
           QUARKUS_LOG_LEVEL: INFO
       Policies:
@@ -211,8 +226,8 @@ Resources:
               Effect: Allow
               Action: [s3:GetObject, s3:PutObject]
               Resource: !Sub "${DataBucket.Arn}/users/*"
-            # Sem ListBucket o S3 responde 403 (e não 404) para arquivo que ainda não existe.
-            # Sem condição de prefixo: nessa checagem o S3 não informa o prefixo, então ela nunca casaria.
+            # Without ListBucket S3 answers 403 (not 404) for a file that does not exist yet; the daily snapshot
+            # also lists users/. No prefix condition: S3 does not send the prefix on that check, so it would never match.
             - Sid: ListarBucketParaReceber404
               Effect: Allow
               Action: s3:ListBucket
@@ -233,11 +248,11 @@ Resources:
 
 Outputs:
   Url:
-    Description: Endereço do painel
+    Description: Dashboard URL
     Value: !GetAtt PainelFunctionUrl.FunctionUrl
   GoogleRedirectUri:
-    Description: Cadastre esta URL como "URI de redirecionamento autorizado" no OAuth do Google
+    Description: Register this URL as an "Authorized redirect URI" in the Google OAuth client
     Value: !Sub "https://painel-${AWS::AccountId}.auth.${AWS::Region}.amazoncognito.com/oauth2/idpresponse"
   DataBucketName:
-    Description: Bucket com os dados (mantido mesmo se o stack for apagado)
+    Description: Data bucket (kept even if the stack is deleted)
     Value: !Ref DataBucket

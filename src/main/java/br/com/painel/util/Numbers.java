@@ -5,7 +5,7 @@ public final class Numbers {
     private Numbers() {
     }
 
-    // Formato brasileiro: "1.234,56" → 1234.56 e "9,58%" → 0.0958; null se não for número
+    // Brazilian format: "1.234,56" -> 1234.56 and "9,58%" -> 0.0958; null when not a number
     public static Double parseBr(String s) {
         if (s == null) {
             return null;
@@ -22,7 +22,7 @@ public final class Numbers {
         return pct ? d / 100 : d;
     }
 
-    // Como no JS: nulo ou zero contam como "sem valor"
+    // Same as JS truthiness: null or zero mean "no value"
     public static boolean truthy(Double d) {
         return d != null && d != 0;
     }

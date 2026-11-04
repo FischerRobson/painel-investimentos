@@ -2,6 +2,7 @@ package br.com.painel.service;
 
 import br.com.painel.client.FundamentusClient;
 import br.com.painel.dto.Fundamentals;
+import br.com.painel.util.ProviderCall;
 import io.quarkus.cache.CacheResult;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
@@ -17,7 +18,7 @@ import java.util.Map;
 
 import static br.com.painel.util.Numbers.parseBr;
 
-// O Fundamentus não tem API: lemos a tabela HTML. Se o site mudar o layout, é aqui que quebra.
+// Fundamentus has no API: we scrape the HTML table. If the site layout changes, this is where it breaks.
 @ApplicationScoped
 public class FundamentusService {
 
@@ -31,7 +32,7 @@ public class FundamentusService {
     public Map<String, Fundamentals> all() {
         Map<String, Fundamentals> data = new HashMap<>();
         for (Map<String, String> r : table("resultado.php")) {
-            data.put(r.get("Papel"), Fundamentals.acao(
+            data.put(r.get("Papel"), Fundamentals.stock(
                     parseBr(r.get("P/L")), parseBr(r.get("P/VP")), parseBr(r.get("Div.Yield")),
                     parseBr(r.get("ROE")), parseBr(r.get("ROIC")), parseBr(r.get("Mrg.Líq.")),
                     parseBr(r.get("EV/EBITDA")), parseBr(r.get("Dív.Líq/Patrim.")),
@@ -47,13 +48,14 @@ public class FundamentusService {
     }
 
     private List<Map<String, String>> table(String page) {
-        Document doc = Jsoup.parse(new String(client.page(page), StandardCharsets.ISO_8859_1));
+        byte[] html = ProviderCall.run("fundamentus", "page " + page, () -> client.page(page));
+        Document doc = Jsoup.parse(new String(html, StandardCharsets.ISO_8859_1));
         Element table = doc.selectFirst("table#resultado");
         if (table == null) {
             table = doc.selectFirst("table");
         }
         if (table == null) {
-            throw new IllegalStateException("Fundamentus: tabela não encontrada em " + page);
+            throw new IllegalStateException("Fundamentus: table not found in " + page);
         }
         List<String> cols = table.select("thead th").stream().map(th -> key(th.text())).toList();
         List<Map<String, String>> rows = new ArrayList<>();
@@ -71,7 +73,7 @@ public class FundamentusService {
         return rows;
     }
 
-    // "Mrg. Líq." → "Mrg.Líq." (o HTML varia espaços e &nbsp;)
+    // "Mrg. Líq." -> "Mrg.Líq." (the HTML mixes spaces and &nbsp;)
     private static String key(String header) {
         return header.replaceAll("[\\s\\u00a0]+", "");
     }

@@ -38,7 +38,7 @@ public final class Tickers {
         return out.stream().limit(MAX).toList();
     }
 
-    // BBDC4, KNRI11, SANB3F…; o resto é tratado como exterior (AAPL, MSFT)
+    // BBDC4, KNRI11, SANB3F...; anything else is treated as a foreign ticker (AAPL, MSFT)
     public static boolean isB3(String ticker) {
         return B3.matcher(ticker).matches();
     }

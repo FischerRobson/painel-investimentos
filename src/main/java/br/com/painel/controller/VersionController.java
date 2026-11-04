@@ -7,8 +7,8 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-// Versão da API, a mesma do pom.xml. Pública (sem token): a página mostra antes do login
-// e o deploy confere se a versão no ar é a que acabou de ser publicada.
+// API version, the same as pom.xml. Public (no token): the page shows it before login
+// and the deploy checks that the live version is the one just published.
 @Path("/api/version")
 @Produces(MediaType.APPLICATION_JSON)
 public class VersionController {

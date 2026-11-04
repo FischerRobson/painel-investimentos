@@ -15,9 +15,9 @@ import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 public interface BcbClient {
 
     @GET
-    @Path("/bcdata.sgs.{serie}/dados")
-    JsonNode serie(@PathParam("serie") int serie,
-                   @QueryParam("formato") String formato,
-                   @QueryParam("dataInicial") String dataInicial,
-                   @QueryParam("dataFinal") String dataFinal);
+    @Path("/bcdata.sgs.{series}/dados")
+    JsonNode series(@PathParam("series") int series,
+                    @QueryParam("formato") String format,
+                    @QueryParam("dataInicial") String startDate,
+                    @QueryParam("dataFinal") String endDate);
 }

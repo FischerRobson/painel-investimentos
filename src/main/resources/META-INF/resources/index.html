@@ -726,7 +726,6 @@ let histW = {};                   // { "AAAA-MM-DD": { t, i, rv, rf, cr, fx, ben
 let simCfg = { ...SIM_DEFAULT };
 const saveMoedas = () => persist();
 const saveBens = () => persist();
-const saveHist = () => saveSnapshotToday();
 const saveSim = () => persist();
 let fx = null, fxErr = null, fxDays = Number(store.get("fxDays", "30")) || 30;
 let bensPrices = {}, bensErr = null;
@@ -771,7 +770,7 @@ const bemValue = b => bensPrices[b.id]?.price ?? b.last?.price ?? null;
 const bemNome = b => b.apelido || b.info?.model || "Veículo";
 
 // Gráfico de linha simples (1 ou mais séries), com crosshair
-function lineChart(canvas, datasets, { fmtY = v => brl(v), fmtTip = v => brl(v), fill = true, height = 150 } = {}) {
+function lineChart(canvas, datasets, { fmtY = v => brl(v), fmtTip = v => brl(v), fill = true, height = 150, tipFooter = null } = {}) {
   const all = datasets.flatMap(d => d.data);
   if (!all.length) return null;
   const min = Math.min(...all.map(p => p.x)), max = Math.max(...all.map(p => p.x));
@@ -784,14 +783,16 @@ function lineChart(canvas, datasets, { fmtY = v => brl(v), fmtTip = v => brl(v),
         bg.addColorStop(0, d.color + "33"); bg.addColorStop(1, d.color + "00");
       }
       return { label: d.label, data: d.data, borderColor: d.color, backgroundColor: bg, fill: fill && i === 0, borderWidth: 2,
-        borderDash: d.dash || [], pointRadius: d.data.length < 8 ? 3 : 0, pointBackgroundColor: d.color, pointHoverRadius: 4,
+        borderDash: d.dash || [], pointRadius: c => d.marked?.has(c.dataIndex) ? 5 : d.data.length < 8 ? 3 : 0,
+        pointBackgroundColor: c => d.marked?.has(c.dataIndex) ? d.markColor : d.color, pointHoverRadius: 4,
         pointHoverBorderColor: css("--surface"), pointHoverBorderWidth: 2, tension: 0.2 };
     }) },
     options: {
       maintainAspectRatio: false, animation: false, parsing: false,
       interaction: { mode: "index", intersect: false },
       plugins: { legend: { display: false }, tooltip: { ...tooltipOpts(), displayColors: datasets.length > 1,
-        callbacks: { title: i => new Date(i[0].parsed.x).toLocaleDateString("pt-BR"), label: i => (datasets.length > 1 ? " " + i.dataset.label + ": " : "") + fmtTip(i.parsed.y) } } },
+        callbacks: { title: i => new Date(i[0].parsed.x).toLocaleDateString("pt-BR"), label: i => (datasets.length > 1 ? " " + i.dataset.label + ": " : "") + fmtTip(i.parsed.y),
+        footer: i => tipFooter && i.length ? tipFooter(i[0].dataIndex) : "" } } },
       scales: {
         x: { type: "linear", min, max, grid: { display: false }, border: { display: false }, ticks: { ...tickOpts(), maxTicksLimit: 5, callback: timeTicks(min, max) } },
         y: { position: "right", grid: gridOpts(), border: { display: false }, ticks: { ...tickOpts(), maxTicksLimit: 4, callback: fmtY } },
@@ -1024,31 +1025,45 @@ function bindSimulator(def) {
 }
 
 // ---------- Carteira: evolução do patrimônio ----------
+function snapshotNote(snap, html = true) {
+  const e = html ? esc : String;
+  const since = d => /^\d{4}-\d{2}-\d{2}$/.test(d || "") ? isoBR(d) : d;
+  const stale = (snap.stale || []).map(s => e(s.asset) + (s.since ? ` (de ${e(since(s.since))})` : ""));
+  const missing = (snap.missing || []).map(e);
+  return [stale.length ? "valor anterior para " + stale.join(", ") : "", missing.length ? "sem valor para " + missing.join(", ") : ""]
+    .filter(Boolean).join("; ");
+}
 function historyPanelHtml() {
   const days = Object.keys(histW).sort();
+  const intro = "O painel tira uma foto do seu patrimônio todo dia às 18h (horário de Brasília), mesmo sem você abrir a página.";
   if (days.length < 2) return `<div class="panel"><h2>Evolução do patrimônio</h2>
-    <div class="hint" style="margin-top:6px">O painel guarda uma "foto" do seu patrimônio por dia, sempre que você abre a Carteira. ${days.length ? `A primeira foi em ${isoBR(days[0])}; o gráfico aparece a partir do segundo dia.` : "A primeira será salva quando todos os valores carregarem."}</div></div>`;
+    <div class="hint" style="margin-top:6px">${intro} ${days.length ? `A primeira foi em ${isoBR(days[0])}; o gráfico aparece a partir do segundo dia.` : "A primeira sai hoje às 18h."}</div></div>`;
   const first = histW[days[0]], last = histW[days[days.length - 1]];
   const d30 = days.filter(d => d <= addDays(todayISO(), -30)).pop();
   const delta = (a, b) => `<span class="${signCls(b - a)}">${b - a > 0 ? "+" : b - a < 0 ? "−" : ""}${money(Math.abs(b - a))}</span> <span class="muted">${a ? pct((b / a - 1) * 100) : ""}</span>`;
+  const flagged = days.filter(d => snapshotNote(histW[d])).slice(-5).reverse();
   return `<div class="panel"><h2>Evolução do patrimônio</h2>
-    <div class="hint">Uma foto por dia em que você abriu a Carteira. Inclui aportes e retiradas, então não é só rentabilidade.</div>
+    <div class="hint">${intro} Inclui aportes e retiradas, então não é só rentabilidade.</div>
     <div class="tiles">
       <div class="tile"><div class="k">Desde ${isoBR(days[0])}</div><div class="v" style="font-size:16px">${delta(first.t, last.t)}</div><div class="s">patrimônio total</div></div>
       ${d30 ? `<div class="tile"><div class="k">Últimos 30 dias</div><div class="v" style="font-size:16px">${delta(histW[d30].t, last.t)}</div><div class="s">patrimônio total</div></div>` : ""}
-      <div class="tile"><div class="k">Registros</div><div class="v">${days.length}</div><div class="s">dias salvos</div></div>
+      <div class="tile"><div class="k">Última foto</div><div class="v" style="font-size:16px">${isoBR(days[days.length - 1])}</div><div class="s">${days.length} dias salvos</div></div>
     </div>
-    ${legendHtml([["Patrimônio total", css("--s1")], ["Investimentos", css("--s2"), true]])}
-    <div class="proj-box"><canvas id="hist-chart" aria-label="Evolução do patrimônio"></canvas></div></div>`;
+    ${legendHtml([["Patrimônio total", css("--s1")], ["Investimentos", css("--s2"), true]].concat(flagged.length ? [["Usou valor anterior", css("--s4")]] : []))}
+    <div class="proj-box"><canvas id="hist-chart" aria-label="Evolução do patrimônio"></canvas></div>
+    ${flagged.length ? `<div class="hint" style="margin-top:8px">Quando uma cotação falha na hora da foto, o painel usa o último valor conhecido e marca o dia:</div>
+    <ul class="hint" style="margin:4px 0 0 18px">${flagged.map(d => `<li>${isoBR(d)}: ${snapshotNote(histW[d])}</li>`).join("")}</ul>` : ""}</div>`;
 }
 function drawHistory() {
   const cv = $("#hist-chart"); if (!cv) return;
   const days = Object.keys(histW).sort();
   const x = d => new Date(d + "T12:00:00").getTime();
+  const marked = new Set(days.flatMap((d, i) => snapshotNote(histW[d]) ? [i] : []));
   const ch = lineChart(cv, [
-    { label: "Patrimônio total", color: css("--s1"), data: days.map(d => ({ x: x(d), y: histW[d].t })) },
+    { label: "Patrimônio total", color: css("--s1"), data: days.map(d => ({ x: x(d), y: histW[d].t })), marked, markColor: css("--s4") },
     { label: "Investimentos", color: css("--s2"), dash: [5, 4], data: days.map(d => ({ x: x(d), y: histW[d].i })) },
-  ], { fmtY: v => "R$ " + big(v), fmtTip: v => money(v), height: 230 });
+  ], { fmtY: v => "R$ " + big(v), fmtTip: v => money(v), height: 230,
+    tipFooter: i => { const n = snapshotNote(histW[days[i]], false); return n ? "⚠ " + n : ""; } });
   if (ch) walletCharts.push(ch);
 }
 
@@ -1548,15 +1563,6 @@ function renderWallet() {
   walletCharts = [];
   el.querySelectorAll("details.acc").forEach(d => d.ontoggle = () => store.set("acc_" + d.dataset.acc, d.open ? "1" : "0"));
   if (cats.length) drawPie(cats);
-  // Foto diária do patrimônio (só quando todos os valores carregaram)
-  const complete = !empty && rv.every(r => r.ok) && cr.every(r => r.ok) && mo.every(r => r.ok) && (!rfW.length || rates) && bens.every(b => b.value != null);
-  if (complete) {
-    const snap = { t: patrimonio, i: total, rv: vAcoes + vFiis, rf: vRf, cr: vCripto, fx: vFx, bens: vBens };
-    const isNew = !histW[todayISO()];
-    histW[todayISO()] = Object.fromEntries(Object.entries(snap).map(([k, v]) => [k, Math.round(v * 100) / 100]));
-    saveHist();
-    if (isNew && Object.keys(histW).length === 2) return renderWallet(); // agora já dá para desenhar o gráfico
-  }
   drawHistory();
   bindComparativo();
 
@@ -2007,7 +2013,7 @@ function marcarOffline(r) {
 // A carteira é um documento único em /api/carteira, com controle de versão por ETag:
 // cada PUT manda If-Match com a versão lida; se outro dispositivo salvou antes, o servidor responde 412.
 let carteiraEtag = null;          // null = ainda não existe no servidor
-let persistTimer = null, persistChain = Promise.resolve(), lastSnapSent = null;
+let persistTimer = null, persistChain = Promise.resolve();
 const etagOf = r => (r.headers.get("ETag") || "").replace(/"/g, "") || null;
 
 function carteiraDoc() {
@@ -2054,14 +2060,6 @@ async function errorText(r) {
   if (j.violations?.length) return j.violations.map(v => `${v.field.split(".").slice(2).join(".")}: ${v.message}`).join("; ");
   return "HTTP " + r.status;
 }
-// Foto do dia: só envia se mudou desde o último envio
-function saveSnapshotToday() {
-  const d = todayISO(), snap = histW[d];
-  if (!snap || JSON.stringify(snap) === lastSnapSent) return;
-  lastSnapSent = JSON.stringify(snap);
-  fetch(`/api/historico/${d}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: lastSnapSent })
-    .then(r => { if (!r.ok) lastSnapSent = null; }).catch(() => { lastSnapSent = null; });
-}
 async function sendBackup(payload) {
   const r = await fetch("/api/backup/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
   if (!r.ok) throw new Error(await errorText(r));
@@ -2094,7 +2092,6 @@ async function loadState() {
   else if (r.status !== 404) throw new Error(await errorText(r));
   const h = await fetch("/api/historico");
   histW = h.ok ? await h.json() : {};
-  lastSnapSent = histW[todayISO()] ? JSON.stringify(histW[todayISO()]) : null;
 }
 
 // ---------- Glossário ----------
