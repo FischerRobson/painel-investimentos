@@ -1,9 +1,10 @@
 package br.com.painel.service;
 
-import br.com.painel.dto.CustosResponse;
-import br.com.painel.dto.CustosResponse.Dia;
-import br.com.painel.dto.CustosResponse.Mes;
-import br.com.painel.dto.CustosResponse.Servico;
+import br.com.painel.dto.CostResponse;
+import br.com.painel.dto.CostResponse.Day;
+import br.com.painel.dto.CostResponse.Month;
+import br.com.painel.dto.CostResponse.Service;
+import br.com.painel.util.ProviderCall;
 import io.quarkus.cache.CacheResult;
 import jakarta.enterprise.context.ApplicationScoped;
 import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
@@ -20,71 +21,72 @@ import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 
-// Custos da conta AWS pelo Cost Explorer. Cada chamada à API custa US$ 0,01: são 3 por atualização,
-// guardadas em cache por 12 h. A conta tem só este app, então o total da conta é o custo dele.
+// AWS account costs from Cost Explorer. Each API call costs US$ 0.01: three per refresh, cached for 12 h.
+// The account only runs this app, so the account total is the app cost.
 @ApplicationScoped
 public class CostService {
 
-    private static final String METRICA = "UnblendedCost";
-    private static final int MESES = 6;
+    private static final String PROVIDER = "cost-explorer";
+    private static final String METRIC = "UnblendedCost";
+    private static final int MONTHS = 6;
 
     private volatile CostExplorerClient client;
 
     @CacheResult(cacheName = "custos")
-    public CustosResponse custos() {
-        LocalDate hoje = LocalDate.now();
-        LocalDate amanha = hoje.plusDays(1);
-        LocalDate inicioMes = hoje.withDayOfMonth(1);
+    public CostResponse costs() {
+        LocalDate today = LocalDate.now();
+        LocalDate tomorrow = today.plusDays(1);
+        LocalDate monthStart = today.withDayOfMonth(1);
         try {
-            List<Mes> meses = client().getCostAndUsage(b -> b
-                            .timePeriod(periodo(inicioMes.minusMonths(MESES - 1), amanha))
+            List<Month> months = ProviderCall.run(PROVIDER, "getCostAndUsage monthly", () -> client().getCostAndUsage(b -> b
+                            .timePeriod(period(monthStart.minusMonths(MONTHS - 1), tomorrow))
                             .granularity(Granularity.MONTHLY)
-                            .metrics(METRICA)
-                            .groupBy(g -> g.type(GroupDefinitionType.DIMENSION).key("SERVICE")))
-                    .resultsByTime().stream().map(CostService::mes).toList();
-            List<Dia> diario = client().getCostAndUsage(b -> b
-                            .timePeriod(periodo(inicioMes, amanha))
+                            .metrics(METRIC)
+                            .groupBy(g -> g.type(GroupDefinitionType.DIMENSION).key("SERVICE"))))
+                    .resultsByTime().stream().map(CostService::month).toList();
+            List<Day> daily = ProviderCall.run(PROVIDER, "getCostAndUsage daily", () -> client().getCostAndUsage(b -> b
+                            .timePeriod(period(monthStart, tomorrow))
                             .granularity(Granularity.DAILY)
-                            .metrics(METRICA))
+                            .metrics(METRIC)))
                     .resultsByTime().stream()
-                    .map(r -> new Dia(r.timePeriod().start(), valor(r.total().get(METRICA).amount())))
+                    .map(r -> new Day(r.timePeriod().start(), amount(r.total().get(METRIC).amount())))
                     .toList();
-            return new CustosResponse(meses, diario, previsao(amanha, inicioMes.plusMonths(1)), System.currentTimeMillis(), null);
+            return new CostResponse(months, daily, forecast(tomorrow, monthStart.plusMonths(1)), System.currentTimeMillis(), null);
         } catch (DataUnavailableException e) {
-            return new CustosResponse(List.of(), List.of(), null, System.currentTimeMillis(),
+            return new CostResponse(List.of(), List.of(), null, System.currentTimeMillis(),
                     "A AWS ainda está processando os dados de custo da conta (leva até 24 h depois de ativar o Cost Explorer).");
         }
     }
 
-    // Previsão do total do mês; a AWS não prevê com poucos dados ou no último dia do mês
-    private Double previsao(LocalDate de, LocalDate ate) {
-        if (!de.isBefore(ate)) {
+    // Month total forecast; AWS does not forecast with little data or on the last day of the month
+    private Double forecast(LocalDate from, LocalDate to) {
+        if (!from.isBefore(to)) {
             return null;
         }
         try {
-            return valor(client().getCostForecast(b -> b
-                    .timePeriod(periodo(de, ate))
+            return amount(ProviderCall.run(PROVIDER, "getCostForecast", () -> client().getCostForecast(b -> b
+                    .timePeriod(period(from, to))
                     .granularity(Granularity.MONTHLY)
-                    .metric(Metric.UNBLENDED_COST)).total().amount());
+                    .metric(Metric.UNBLENDED_COST))).total().amount());
         } catch (RuntimeException e) {
             return null;
         }
     }
 
-    private static Mes mes(ResultByTime r) {
-        List<Servico> servicos = r.groups().stream()
-                .map(g -> new Servico(g.keys().get(0), valor(g.metrics().get(METRICA).amount())))
-                .filter(s -> s.valor() > 0)
-                .sorted(Comparator.comparingDouble(Servico::valor).reversed())
+    private static Month month(ResultByTime r) {
+        List<Service> services = r.groups().stream()
+                .map(g -> new Service(g.keys().get(0), amount(g.metrics().get(METRIC).amount())))
+                .filter(s -> s.value() > 0)
+                .sorted(Comparator.comparingDouble(Service::value).reversed())
                 .toList();
-        return new Mes(r.timePeriod().start().substring(0, 7), servicos.stream().mapToDouble(Servico::valor).sum(), servicos);
+        return new Month(r.timePeriod().start().substring(0, 7), services.stream().mapToDouble(Service::value).sum(), services);
     }
 
-    private static DateInterval periodo(LocalDate inicio, LocalDate fim) {
-        return DateInterval.builder().start(inicio.toString()).end(fim.toString()).build();
+    private static DateInterval period(LocalDate start, LocalDate end) {
+        return DateInterval.builder().start(start.toString()).end(end.toString()).build();
     }
 
-    private static double valor(String amount) {
+    private static double amount(String amount) {
         return amount == null ? 0 : Double.parseDouble(amount);
     }
 
@@ -92,7 +94,7 @@ public class CostService {
         if (client == null) {
             synchronized (this) {
                 if (client == null) {
-                    // o Cost Explorer só existe em us-east-1
+                    // Cost Explorer only exists in us-east-1
                     client = CostExplorerClient.builder().region(Region.US_EAST_1)
                             .httpClientBuilder(UrlConnectionHttpClient.builder()).build();
                 }

@@ -24,7 +24,7 @@ public interface BrapiClient {
                    @QueryParam("modules") String modules,
                    @HeaderParam("Authorization") String authorization);
 
-    /** Consumo do plano (não conta como consulta). */
+    // Plan usage; does not count as a request
     @GET
     @Path("/v2/user/usage")
     JsonNode usage(@HeaderParam("Authorization") String authorization);

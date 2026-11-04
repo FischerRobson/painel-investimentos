@@ -20,9 +20,9 @@ public class BrapiController {
 
     @GET
     @RunOnVirtualThread
-    public Object uso() {
+    public Object usage() {
         try {
-            return service.uso();
+            return service.usage();
         } catch (RuntimeException e) {
             return new ErrorResponse("Não consegui consultar o consumo da brapi: " + e.getMessage());
         }

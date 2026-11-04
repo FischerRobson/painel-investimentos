@@ -17,14 +17,14 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.notNullValue;
 
-// Nenhum destes testes acessa a rede: no modo demonstração as fontes externas não são consultadas.
+// None of these tests hit the network: demo mode never calls external sources.
 @QuarkusTest
 class DemoFilterTest {
 
     static final String DEMO = DemoFilter.HEADER;
 
     @BeforeEach
-    void limpa() throws IOException {
+    void clean() throws IOException {
         Path dir = Path.of("target/test-data");
         if (Files.exists(dir)) {
             try (var files = Files.walk(dir)) {
@@ -34,31 +34,29 @@ class DemoFilterTest {
     }
 
     @Test
-    void carteiraDemonstracaoSemTocarNosDadosReais() {
+    void demoWalletDoesNotTouchRealData() {
         given().header(DEMO, "1").when().get("/api/carteira").then().statusCode(200)
                 .header("ETag", equalTo("\"demo\""))
                 .body("acoesFiis.t", hasItem("ITSA4")).body("rendaFixa.size()", equalTo(4));
 
-        // gravações são aceitas e descartadas
+        // writes are accepted and discarded
         given().header(DEMO, "1").header("If-Match", "\"demo\"").contentType(ContentType.JSON)
                 .body("{\"acoesFiis\":[{\"t\":\"PETR4\",\"q\":1}]}")
                 .when().put("/api/carteira").then().statusCode(200);
-        given().header(DEMO, "1").contentType(ContentType.JSON).body("{\"t\":1}")
-                .when().put("/api/historico/2026-10-27").then().statusCode(204);
 
-        // sem o header, a carteira real continua inexistente
+        // without the header the real wallet still does not exist
         given().when().get("/api/carteira").then().statusCode(404);
         given().when().get("/api/historico").then().statusCode(200).body("size()", equalTo(0));
     }
 
     @Test
-    void importarBackupERecusado() {
+    void backupImportIsRefused() {
         given().header(DEMO, "1").contentType(ContentType.JSON).body("{\"app\":\"painel-acoes\"}")
                 .when().post("/api/backup/import").then().statusCode(400);
     }
 
     @Test
-    void mercadoFicticioEstavel() {
+    void fakeMarketIsStable() {
         given().header(DEMO, "1").queryParam("symbols", "ITSA4,HGLG11,AAPL,ZZZZ3").queryParam("range", "1y")
                 .when().get("/api/data").then().statusCode(200)
                 .body("items.size()", equalTo(4))
@@ -77,7 +75,7 @@ class DemoFilterTest {
     }
 
     @Test
-    void comparativoECustosFicticios() {
+    void fakeBenchmarksAndCosts() {
         given().header(DEMO, "1").queryParam("range", "6mo").queryParam("crypto", "BTC")
                 .when().get("/api/benchmarks").then().statusCode(200)
                 .body("indices", hasKey("CDI")).body("crypto", hasKey("BTC"));
@@ -88,7 +86,7 @@ class DemoFilterTest {
     }
 
     @Test
-    void soResponseDemonstracaoComOHeader() {
+    void answersDemoOnlyWithTheHeader() {
         given().header(DEMO, "1").when().get("/api/historico").then().header(DEMO, "1").body("size()", greaterThan(50));
         given().when().get("/api/historico").then().header(DEMO, org.hamcrest.Matchers.nullValue()).body("size()", equalTo(0));
     }

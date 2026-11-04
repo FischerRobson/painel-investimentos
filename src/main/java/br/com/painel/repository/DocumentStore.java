@@ -1,5 +1,6 @@
 package br.com.painel.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface DocumentStore {
@@ -26,4 +27,6 @@ public interface DocumentStore {
     Optional<Document> read(String key);
 
     String write(String key, byte[] body, Condition condition);
+
+    List<String> listFolders(String prefix);
 }

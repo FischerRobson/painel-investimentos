@@ -1,13 +1,14 @@
 package br.com.painel.service;
 
-import br.com.painel.config.PainelConfig;
+import br.com.painel.config.AppConfig;
 import br.com.painel.dto.RatePoint;
 import br.com.painel.dto.RatesResponse;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.cache.CacheResult;
 import jakarta.enterprise.context.ApplicationScoped;
-import org.jboss.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -24,31 +25,31 @@ import java.util.Map;
 @ApplicationScoped
 public class RatesService {
 
-    private static final Logger LOG = Logger.getLogger(RatesService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(RatesService.class);
     private static final DateTimeFormatter STALE_FMT = DateTimeFormatter.ofPattern("dd/MM HH:mm");
 
     private final BcbService bcb;
     private final ObjectMapper mapper;
     private final Path diskFile;
 
-    public RatesService(BcbService bcb, ObjectMapper mapper, PainelConfig config) {
+    public RatesService(BcbService bcb, ObjectMapper mapper, AppConfig config) {
         this.bcb = bcb;
         this.mapper = mapper;
         this.diskFile = Path.of(config.ratesCacheFile());
     }
 
     public RatesResponse rates(LocalDate start) {
-        // o IPCA é mensal
+        // IPCA is monthly
         LocalDate monthStart = start.withDayOfMonth(1);
         try {
             return fresh(monthStart);
         } catch (RuntimeException e) {
-            // BCB fora do ar: usa a última resposta boa salva em disco e avisa a data (stale)
+            // BCB is down: use the last good response saved on disk and report its date (stale)
             RatesResponse fallback = fromDisk(monthStart);
             if (fallback == null) {
                 throw e;
             }
-            LOG.warnf("Banco Central indisponível (%s); usando taxas salvas em %s", e.getMessage(), fallback.stale());
+            LOG.warn("Central Bank unavailable ({}); using rates saved at {}", e.getMessage(), fallback.stale());
             return fallback;
         }
     }
@@ -69,7 +70,7 @@ public class RatesService {
         try {
             mapper.writeValue(diskFile.toFile(), file);
         } catch (IOException e) {
-            LOG.warnf("Não consegui salvar %s: %s", diskFile, e.getMessage());
+            LOG.warn("Could not save {}: {}", diskFile, e.getMessage());
         }
     }
 

@@ -1,7 +1,9 @@
 package br.com.painel.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
@@ -10,16 +12,16 @@ import java.util.Map;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record Backup(
-        @jakarta.validation.constraints.NotNull(message = "não é um backup deste painel")
+        @NotNull(message = "não é um backup deste painel")
         @Pattern(regexp = "painel-acoes", message = "não é um backup deste painel") String app,
-        Integer versao,
-        String exportadoEm,
-        @Size(max = 500) List<@Valid Posicao> acoesFiis,
-        @Size(max = 100) List<@Valid Posicao> cripto,
-        @Size(max = 500) List<@Valid TituloRf> rendaFixa,
-        @Size(max = 10) List<@Valid Moeda> moedas,
-        @Size(max = 50) List<@Valid Bem> bens,
-        Map<@Pattern(regexp = Datas.ISO) String, @Valid Snapshot> historico,
-        String listaPainel,
-        Map<String, Object> preferencias) {
+        @JsonProperty("versao") Integer version,
+        @JsonProperty("exportadoEm") String exportedAt,
+        @JsonProperty("acoesFiis") @Size(max = 500) List<@Valid Position> stocks,
+        @JsonProperty("cripto") @Size(max = 100) List<@Valid Position> crypto,
+        @JsonProperty("rendaFixa") @Size(max = 500) List<@Valid FixedIncome> fixedIncome,
+        @JsonProperty("moedas") @Size(max = 10) List<@Valid CurrencyHolding> currencies,
+        @JsonProperty("bens") @Size(max = 50) List<@Valid Vehicle> vehicles,
+        @JsonProperty("historico") Map<@Pattern(regexp = Formats.ISO_DATE) String, @Valid Snapshot> history,
+        @JsonProperty("listaPainel") String watchlist,
+        @JsonProperty("preferencias") Map<String, Object> preferences) {
 }

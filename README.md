@@ -10,8 +10,9 @@ Frontend em uma página (PWA instalável no iPhone) e backend em **Quarkus** rod
 Navegador / PWA ──HTTPS──► Lambda Function URL ──► Quarkus (Java 21, SnapStart)
                                                    ├── index.html, service worker, ícones
                                                    ├── /api/*  (token do Cognito validado pelo quarkus-oidc)
-                                                   ├── S3: users/{sub}/carteira.json e historico.json
+                                                   ├── S3: users/{sub}/carteira.json, historico.json e precos.json
                                                    └── brapi · Yahoo · Fundamentus · Banco Central · AwesomeAPI · CoinGecko · FIPE
+EventBridge Scheduler (18h, Brasília) ──invoke──► POST /internal/snapshots (foto diária de todos os usuários)
 Login: Cognito (Google) com authorization code + PKCE; só e-mails da lista ALLOWED_EMAILS criam conta
 ```
 
@@ -19,6 +20,7 @@ Login: Cognito (Google) com authorization code + PKCE; só e-mails da lista ALLO
 |---|---|---|
 | Controller | `controller` | Recursos REST, validação de entrada, mapeamento de erros |
 | Service | `service` | Regras de negócio, cache (`@CacheResult`), tolerância a falhas (`@Retry`) |
+| Snapshot | `snapshot` | Foto diária do patrimônio: avaliação no servidor, valor anterior quando uma cotação falha |
 | Repository | `repository` | Documentos JSON com concorrência otimista por ETag: arquivo local ou S3 |
 | Client | `client` | MicroProfile REST Clients, um por provedor externo |
 | Model / DTO | `model`, `dto` | Dados do usuário (com Bean Validation) e contratos de resposta |
@@ -33,7 +35,8 @@ Login: Cognito (Google) com authorization code + PKCE; só e-mails da lista ALLO
 | `GET /api/fx?days=` | Câmbio (USD, EUR, GBP, ARS, JPY) |
 | `GET /api/fipe/{brands,models,years,price}` | Tabela FIPE |
 | `GET/PUT /api/carteira` | Carteira do usuário (`If-Match` obrigatório no PUT; 412 em conflito) |
-| `GET /api/historico`, `PUT /api/historico/{data}` | Foto diária do patrimônio |
+| `GET /api/historico` | Fotos diárias do patrimônio (geradas pelo servidor, só leitura) |
+| `POST /internal/snapshots` | Gera a foto do dia para todos os usuários; chamado pelo agendamento com o header `X-Snapshot-Token` |
 | `GET /api/backup`, `POST /api/backup/import` | Exporta/importa tudo |
 | `GET /api/benchmarks?range=&fx=&crypto=` | CDI, Ibovespa, IFIX (via XFIX11), câmbio e cripto em reais no período, para comparar a carteira |
 | `GET /api/custos` | Custos da conta AWS pelo Cost Explorer (cache de 12 h: cada consulta custa US$ 0,01) |
@@ -57,6 +60,35 @@ sem expor os dados reais. A página envia `X-Painel-Demo: 1` em toda chamada à 
 carteira, histórico, cotações, câmbio, cripto, taxas, FIPE, comparativo e custos. Gravações são aceitas e
 descartadas, importar backup é recusado, o e-mail do usuário fica oculto e o service worker não guarda
 essas respostas. O login continua exigido.
+
+### Foto diária do patrimônio
+
+Todo dia às **18h (horário de Brasília)** o EventBridge Scheduler (evento `DailySnapshot` no `template.yaml`)
+invoca a função com um evento no formato da Function URL para `POST /internal/snapshots`. O `SnapshotService`
+percorre `users/` no S3 e, para cada carteira, avalia no servidor ações/FIIs (brapi, com o Yahoo de reserva),
+cripto (CoinGecko), moedas (AwesomeAPI), renda fixa (CDI/IPCA do Banco Central, mesmas regras do `rfCalc`
+da página) e bens (FIPE). O resultado vai para `historico.json` no dia de hoje.
+
+- **Cotação que falha**: usa o último valor conhecido, guardado em `precos.json` a cada foto (para bens, o
+  último valor FIPE salvo na carteira). O dia fica marcado em `stale` (`[{"asset": "BTC", "since": "2026-11-03"}]`);
+  sem nenhum valor anterior, o ativo vai para `missing`. O gráfico destaca esses dias e lista o motivo.
+- **Proteção**: `/internal/*` fica fora de `/api/*`, então não pede token do Cognito; exige o header
+  `X-Snapshot-Token` igual a `PAINEL_SNAPSHOT_TOKEN` (a parte aleatória do id do stack, só visível dentro da conta).
+  Sem o token certo, responde 404.
+- **Local**: o `@Scheduled` do Quarkus roda no mesmo horário (`painel.snapshot.cron`). Para gerar na hora:
+  `curl -X POST localhost:8765/internal/snapshots` (localmente não há token).
+
+### Logs dos provedores
+
+Toda chamada a um provedor externo (brapi, Yahoo, Fundamentus, Banco Central, AwesomeAPI, CoinGecko, FIPE,
+Cost Explorer, SSM) passa por `ProviderCall` e gera uma linha SLF4J, em inglês:
+
+```
+provider=coingecko operation=price bitcoin,ethereum outcome=success durationMs=212
+provider=awesomeapi operation=last USD-BRL,... outcome=error durationMs=48 error="Connection refused"
+```
+
+Respostas que vêm do cache não geram log. No CloudWatch: filtre por `provider=` ou `outcome=error`.
 
 Erros das fontes externas voltam com HTTP 200 e `{"error": "..."}` (a página exibe a mensagem);
 os endpoints de dados do usuário usam status HTTP normais (400, 404, 412, 428).

@@ -6,8 +6,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-// Remove cotações erradas das séries (o Yahoo às vezes registra R$ 1,06 numa cota de R$ 100):
-// mantém só pontos entre 60% e 160% da mediana dos 5 vizinhos de cada lado.
+// Drops bad quotes from series (Yahoo sometimes records R$ 1.06 for a R$ 100 share):
+// keeps only points between 60% and 160% of the median of the 5 neighbours on each side.
 public final class PriceCleaner {
 
     private static final int WINDOW = 5;

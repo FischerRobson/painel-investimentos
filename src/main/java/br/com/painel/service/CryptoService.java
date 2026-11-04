@@ -2,6 +2,7 @@ package br.com.painel.service;
 
 import br.com.painel.client.CoinGeckoClient;
 import br.com.painel.dto.CryptoPrice;
+import br.com.painel.util.ProviderCall;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.quarkus.cache.CacheResult;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -49,7 +50,7 @@ public class CryptoService {
 
     @CacheResult(cacheName = "crypto")
     public JsonNode fetch(String ids) {
-        return client.price(ids, "brl", true);
+        return ProviderCall.run("coingecko", "price " + ids, () -> client.price(ids, "brl", true));
     }
 
     private static Map<String, String> linked(String... kv) {

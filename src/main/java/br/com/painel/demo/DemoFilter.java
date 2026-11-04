@@ -5,9 +5,9 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.jboss.resteasy.reactive.server.ServerRequestFilter;
 
-// Modo demonstração: com o header X-Painel-Demo: 1, toda chamada à API é respondida com dados fictícios,
-// sem ler nem gravar os dados do usuário e sem consultar fontes externas. Roda antes do roteamento
-// (preMatching), então nenhum controller é chamado. O login continua exigido.
+// Demo mode: with the X-Painel-Demo: 1 header, every API call is answered with fake data, without reading or
+// writing user data and without calling external sources. Runs before routing (preMatching), so no controller
+// is called. Login is still required.
 public class DemoFilter {
 
     public static final String HEADER = "X-Painel-Demo";
@@ -25,10 +25,10 @@ public class DemoFilter {
                 || path.equals("/api/version")) {
             return null;
         }
-        DemoDataService.Resposta r = demo.responder(ctx.getMethod(), path, ctx.getUriInfo().getQueryParameters());
+        DemoDataService.Reply r = demo.reply(ctx.getMethod(), path, ctx.getUriInfo().getQueryParameters());
         Response.ResponseBuilder b = Response.status(r.status());
-        if (r.corpo() != null) {
-            b.entity(r.corpo()).type(MediaType.APPLICATION_JSON_TYPE);
+        if (r.body() != null) {
+            b.entity(r.body()).type(MediaType.APPLICATION_JSON_TYPE);
         }
         if (r.etag() != null) {
             b.header("ETag", "\"" + r.etag() + "\"");

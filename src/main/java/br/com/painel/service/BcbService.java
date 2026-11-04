@@ -2,6 +2,7 @@ package br.com.painel.service;
 
 import br.com.painel.client.BcbClient;
 import br.com.painel.dto.RatePoint;
+import br.com.painel.util.ProviderCall;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.WebApplicationException;
@@ -27,26 +28,27 @@ public class BcbService {
         this.client = client;
     }
 
-    // A API do SGS aceita no máximo 10 anos por consulta
-    public List<RatePoint> series(int serie, LocalDate start) {
+    // The SGS API accepts at most 10 years per query
+    public List<RatePoint> series(int series, LocalDate start) {
         List<RatePoint> out = new ArrayList<>();
         LocalDate today = LocalDate.now();
         LocalDate from = start;
         while (!from.isAfter(today)) {
             LocalDate to = from.plusYears(9).isBefore(today) ? from.plusYears(9) : today;
-            // chamada no próprio bean: o ArC intercepta (self-interception), então o @Retry vale
-            out.addAll(window(serie, from, to));
+            // self-invocation is intercepted by ArC, so @Retry applies
+            out.addAll(window(series, from, to));
             from = to.plusDays(1);
         }
         return out;
     }
 
-    // A API do BCB oscila (502/timeout). 404 significa janela sem dados (ex.: IPCA do mês ainda não divulgado).
+    // The BCB API is flaky (502/timeout). 404 means a window with no data (e.g. this month's IPCA not published yet).
     @Retry(maxRetries = 2, delay = 1500, jitter = 0)
-    public List<RatePoint> window(int serie, LocalDate from, LocalDate to) {
+    public List<RatePoint> window(int series, LocalDate from, LocalDate to) {
         JsonNode rows;
         try {
-            rows = client.serie(serie, "json", from.format(BR), to.format(BR));
+            rows = ProviderCall.run("bcb", "series " + series + " " + from + ".." + to,
+                    () -> client.series(series, "json", from.format(BR), to.format(BR)));
         } catch (WebApplicationException e) {
             if (e.getResponse() != null && e.getResponse().getStatus() == 404) {
                 return List.of();

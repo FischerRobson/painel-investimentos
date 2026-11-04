@@ -1,5 +1,5 @@
 package br.com.painel.dto;
 
-// Erros de fontes externas voltam com HTTP 200 e este corpo: a página mostra a mensagem em vez de quebrar.
+// External source errors come back as HTTP 200 with this body so the page shows the message instead of breaking.
 public record ErrorResponse(String error) {
 }

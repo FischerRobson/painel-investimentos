@@ -1,7 +1,7 @@
 package br.com.painel.controller;
 
 import br.com.painel.model.Backup;
-import br.com.painel.service.CarteiraService;
+import br.com.painel.service.WalletService;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -17,22 +17,22 @@ import jakarta.ws.rs.core.MediaType;
 @Consumes(MediaType.APPLICATION_JSON)
 public class BackupController {
 
-    private final CarteiraService service;
+    private final WalletService service;
 
-    public BackupController(CarteiraService service) {
+    public BackupController(WalletService service) {
         this.service = service;
     }
 
     @GET
     @RunOnVirtualThread
-    public Backup exportar() {
-        return service.exportar();
+    public Backup exportBackup() {
+        return service.exportBackup();
     }
 
     @POST
     @Path("/import")
     @RunOnVirtualThread
-    public void importar(@Valid @NotNull Backup backup) {
-        service.importar(backup);
+    public void importBackup(@Valid @NotNull Backup backup) {
+        service.importBackup(backup);
     }
 }

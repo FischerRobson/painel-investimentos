@@ -1,12 +1,13 @@
 package br.com.painel.service;
 
 import br.com.painel.client.BrapiClient;
-import br.com.painel.config.PainelConfig;
+import br.com.painel.config.AppConfig;
 import br.com.painel.dto.BrapiInfo;
 import br.com.painel.dto.BrapiQuote;
-import br.com.painel.dto.BrapiUso;
+import br.com.painel.dto.BrapiUsage;
 import br.com.painel.dto.Point;
 import br.com.painel.util.PriceCleaner;
+import br.com.painel.util.ProviderCall;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.quarkus.cache.CacheResult;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -22,14 +23,16 @@ import java.util.concurrent.locks.ReentrantLock;
 @ApplicationScoped
 public class BrapiService {
 
-    private final BrapiClient client;
-    private final PainelConfig config;
+    private static final String PROVIDER = "brapi";
 
-    // O plano grátis aceita 1 requisição por vez. O lock justo enfileira as chamadas (o @Bulkhead síncrono
-    // rejeitaria em vez de esperar); ReentrantLock em vez de synchronized para não prender virtual threads.
+    private final BrapiClient client;
+    private final AppConfig config;
+
+    // The free plan allows one request at a time. The fair lock queues calls (a synchronous @Bulkhead would reject
+    // instead of waiting); ReentrantLock instead of synchronized so virtual threads are not pinned.
     private final ReentrantLock lock = new ReentrantLock(true);
 
-    public BrapiService(@RestClient BrapiClient client, PainelConfig config) {
+    public BrapiService(@RestClient BrapiClient client, AppConfig config) {
         this.client = client;
         this.config = config;
     }
@@ -42,16 +45,16 @@ public class BrapiService {
         return new BrapiInfo(enabled());
     }
 
-    // Os headers RateLimit-* das cotações são do limite por minuto, não da cota do mês;
-    // a cota vem desta rota própria da brapi, que não gasta consulta.
+    // The RateLimit-* headers on quotes are the per-minute limit, not the monthly quota;
+    // the quota comes from this dedicated route, which does not consume a request.
     @CacheResult(cacheName = "brapi-uso")
-    public BrapiUso uso() {
+    public BrapiUsage usage() {
         if (!enabled()) {
-            return BrapiUso.DESATIVADO;
+            return BrapiUsage.DISABLED;
         }
         lock.lock();
         try {
-            return parseUso(client.usage(auth()), System.currentTimeMillis());
+            return parseUsage(ProviderCall.run(PROVIDER, "usage", () -> client.usage(auth())), System.currentTimeMillis());
         } catch (WebApplicationException e) {
             throw new BrapiException("brapi: " + errorMessage(e));
         } finally {
@@ -59,16 +62,16 @@ public class BrapiService {
         }
     }
 
-    static BrapiUso parseUso(JsonNode body, long agora) {
+    static BrapiUsage parseUsage(JsonNode body, long now) {
         JsonNode u = body == null ? null : body.get("usage");
         if (u == null || !u.path("planLimit").isNumber() || !u.path("currentUsage").isNumber()) {
             throw new BrapiException("brapi: resposta de consumo inesperada");
         }
-        JsonNode janela = u.path("usageWindow");
-        long limite = u.get("planLimit").asLong(), usado = u.get("currentUsage").asLong();
-        long restante = u.path("remainingUsage").isNumber() ? u.get("remainingUsage").asLong() : Math.max(0, limite - usado);
-        return new BrapiUso(true, u.path("planName").asText(null), limite, usado, restante,
-                janela.path("type").asText(null), janela.path("start").asText(null), janela.path("end").asText(null), agora);
+        JsonNode window = u.path("usageWindow");
+        long limit = u.get("planLimit").asLong(), used = u.get("currentUsage").asLong();
+        long remaining = u.path("remainingUsage").isNumber() ? u.get("remainingUsage").asLong() : Math.max(0, limit - used);
+        return new BrapiUsage(true, u.path("planName").asText(null), limit, used, remaining,
+                window.path("type").asText(null), window.path("start").asText(null), window.path("end").asText(null), now);
     }
 
     private String auth() {
@@ -79,8 +82,12 @@ public class BrapiService {
     public BrapiQuote quote(String ticker) {
         JsonNode body;
         lock.lock();
-        try (Response r = client.quote(ticker, "3mo", "1d", "summaryProfile", auth())) {
-            body = r.readEntity(JsonNode.class);
+        try {
+            body = ProviderCall.run(PROVIDER, "quote " + ticker, () -> {
+                try (Response r = client.quote(ticker, "3mo", "1d", "summaryProfile", auth())) {
+                    return r.readEntity(JsonNode.class);
+                }
+            });
         } catch (WebApplicationException e) {
             throw new BrapiException("brapi: " + errorMessage(e));
         } finally {

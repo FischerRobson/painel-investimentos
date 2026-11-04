@@ -8,33 +8,33 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 
-/** Testes que não dependem de rede (as fontes externas não são chamadas). */
+// Tests that need no network (external sources are not called).
 @QuarkusTest
 class PageControllerTest {
 
     @Test
-    void paginasServemOIndex() {
+    void pagesServeTheIndex() {
         for (String p : new String[]{"/", "/carteira", "/projecao", "/ativos", "/moedas", "/bens", "/custos", "/glossario"}) {
             given().when().get(p).then().statusCode(200).body(containsString("Meus Investimentos"));
         }
     }
 
     @Test
-    void glossarioEhPublicoEValido() {
+    void glossaryIsPublicAndValid() {
         given().when().get("/glossario.json").then().statusCode(200)
                 .body("termos.size()", greaterThan(50))
                 .body("categorias.size()", greaterThan(0));
     }
 
     @Test
-    void naoExpoeOutrosArquivos() {
+    void doesNotExposeOtherFiles() {
         given().when().get("/.env").then().statusCode(404);
         given().when().get("/application.properties").then().statusCode(404);
         given().when().get("/qualquer-coisa").then().statusCode(404);
     }
 
     @Test
-    void fipeRejeitaParametrosMaliciosos() {
+    void fipeRejectsMaliciousParameters() {
         given().queryParam("type", "cars").queryParam("brand", "../../x")
                 .when().get("/api/fipe/models")
                 .then().statusCode(200).body("error", equalTo("parâmetros inválidos"));
@@ -43,13 +43,13 @@ class PageControllerTest {
     }
 
     @Test
-    void ratesValidaData() {
+    void ratesValidatesTheDate() {
         given().queryParam("from", "ontem").when().get("/api/rates")
                 .then().statusCode(200).body("error", equalTo("data inválida"));
     }
 
     @Test
-    void dataSemTickersNaoChamaNada() {
+    void dataWithoutTickersCallsNothing() {
         given().when().get("/api/data").then().statusCode(200)
                 .body("range", equalTo("1y")).body("items.size()", equalTo(0));
     }

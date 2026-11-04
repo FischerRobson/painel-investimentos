@@ -7,6 +7,7 @@ import br.com.painel.dto.YahooChart;
 import br.com.painel.dto.YahooHistory;
 import br.com.painel.util.Numbers;
 import br.com.painel.util.PriceCleaner;
+import br.com.painel.util.ProviderCall;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.quarkus.cache.CacheResult;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -22,6 +23,7 @@ public class YahooService {
 
     public static final Map<String, String> RANGES = Map.of("6mo", "1d", "1y", "1d", "5y", "1wk", "max", "1mo");
 
+    private static final String PROVIDER = "yahoo";
     private static final long YEAR_MS = 365L * 86_400_000;
 
     private final YahooClient client;
@@ -32,13 +34,13 @@ public class YahooService {
 
     @CacheResult(cacheName = "yahoo-chart")
     public YahooChart chart(String symbol, String range) {
-        JsonNode res = result(client.chart(symbol, range, RANGES.get(range), "div"));
+        JsonNode res = result(ProviderCall.run(PROVIDER, "chart " + symbol + " " + range, () -> client.chart(symbol, range, RANGES.get(range), "div")));
         return new YahooChart(res.path("meta"), points(res));
     }
 
     @CacheResult(cacheName = "yahoo-history")
     public YahooHistory history(String symbol) {
-        JsonNode res = result(client.chart(symbol, "2y", "1d", "div"));
+        JsonNode res = result(ProviderCall.run(PROVIDER, "history " + symbol, () -> client.chart(symbol, "2y", "1d", "div")));
 
         List<Dividend> dividends = new ArrayList<>();
         res.path("events").path("dividends").forEach(d ->

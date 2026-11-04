@@ -22,7 +22,7 @@ class FileDocumentStoreTest {
     }
 
     @Test
-    void escritaCondicional() {
+    void conditionalWrites() {
         FileDocumentStore store = new FileDocumentStore(dir);
         assertTrue(store.read("u/a.json").isEmpty());
 
@@ -31,7 +31,7 @@ class FileDocumentStoreTest {
 
         String v2 = store.write("u/a.json", b("{\"v\":2}"), Condition.matches(v1));
         assertNotEquals(v1, v2);
-        // quem ainda tem a versão 1 não pode sobrescrever a 2
+        // a writer still on version 1 cannot overwrite version 2
         assertThrows(PreconditionFailedException.class, () -> store.write("u/a.json", b("{\"v\":3}"), Condition.matches(v1)));
         assertEquals("{\"v\":2}", new String(store.read("u/a.json").orElseThrow().body(), StandardCharsets.UTF_8));
 
@@ -40,8 +40,17 @@ class FileDocumentStoreTest {
     }
 
     @Test
-    void naoSaiDaPastaRaiz() {
+    void staysInsideRootFolder() {
         FileDocumentStore store = new FileDocumentStore(dir);
-        assertThrows(IllegalArgumentException.class, () -> store.read("../fora.json"));
+        assertThrows(IllegalArgumentException.class, () -> store.read("../outside.json"));
+    }
+
+    @Test
+    void listsFolders() {
+        FileDocumentStore store = new FileDocumentStore(dir);
+        store.write("users/b/a.json", b("{}"), Condition.any());
+        store.write("users/a/a.json", b("{}"), Condition.any());
+        assertEquals(java.util.List.of("a", "b"), store.listFolders("users"));
+        assertEquals(java.util.List.of(), store.listFolders("nothing"));
     }
 }

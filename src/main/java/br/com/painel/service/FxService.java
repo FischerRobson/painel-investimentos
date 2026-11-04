@@ -4,6 +4,7 @@ import br.com.painel.client.AwesomeApiClient;
 import br.com.painel.dto.FxQuote;
 import br.com.painel.dto.FxResponse;
 import br.com.painel.dto.Point;
+import br.com.painel.util.ProviderCall;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.quarkus.cache.CacheResult;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -19,6 +20,8 @@ import java.util.stream.Collectors;
 public class FxService {
 
     public static final List<String> CODES = List.of("USD", "EUR", "GBP", "ARS", "JPY");
+
+    private static final String PROVIDER = "awesomeapi";
 
     private final AwesomeApiClient client;
 
@@ -41,7 +44,8 @@ public class FxService {
 
     @CacheResult(cacheName = "fx-last")
     public Map<String, FxQuote> last() {
-        JsonNode d = client.last(CODES.stream().map(c -> c + "-BRL").collect(Collectors.joining(",")));
+        String pairs = CODES.stream().map(c -> c + "-BRL").collect(Collectors.joining(","));
+        JsonNode d = ProviderCall.run(PROVIDER, "last " + pairs, () -> client.last(pairs));
         Map<String, FxQuote> out = new LinkedHashMap<>();
         for (String c : CODES) {
             JsonNode q = d.get(c + "BRL");
@@ -57,13 +61,13 @@ public class FxService {
     @CacheResult(cacheName = "fx-history")
     public List<Point> history(String code, int days) {
         TreeMap<Long, Double> byTime = new TreeMap<>();
-        for (JsonNode r : client.daily(code + "-BRL", days)) {
+        for (JsonNode r : ProviderCall.run(PROVIDER, "daily " + code + " " + days + "d", () -> client.daily(code + "-BRL", days))) {
             byTime.put(Long.parseLong(r.path("timestamp").asText("0")) * 1000, dbl(r, "bid"));
         }
         return byTime.entrySet().stream().map(e -> new Point(e.getKey(), e.getValue())).toList();
     }
 
-    // a AwesomeAPI manda números como texto ("5.3488")
+    // AwesomeAPI sends numbers as text ("5.3488")
     private static double dbl(JsonNode n, String field) {
         return Double.parseDouble(n.path(field).asText("0"));
     }
