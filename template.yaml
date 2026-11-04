@@ -201,6 +201,7 @@ Resources:
         DailySnapshot:
           Type: ScheduleV2
           Properties:
+            Name: !Sub "${AWS::StackName}-daily-snapshot"
             Description: Daily wallet snapshot at 18:00 Brasília time
             ScheduleExpression: cron(0 18 * * ? *)
             ScheduleExpressionTimezone: America/Sao_Paulo
