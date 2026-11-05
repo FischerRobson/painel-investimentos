@@ -1,7 +1,7 @@
 # Meus Investimentos
 
 Painel pessoal de investimentos: carteira (ações, FIIs, exterior, cripto, renda fixa, moedas e bens),
-projeção de renda fixa, simulador de aportes, pesquisa de ativos, cotações de moedas e um glossário de termos financeiros.
+orçamento mensal (entradas × saídas com metas por área), projeção de renda fixa, simulador de aportes, pesquisa de ativos, cotações de moedas e um glossário de termos financeiros.
 Frontend em uma página (PWA instalável no iPhone) e backend em **Quarkus** rodando no **AWS Lambda**.
 
 ## Arquitetura
@@ -10,7 +10,7 @@ Frontend em uma página (PWA instalável no iPhone) e backend em **Quarkus** rod
 Navegador / PWA ──HTTPS──► Lambda Function URL ──► Quarkus (Java 21, SnapStart)
                                                    ├── index.html, service worker, ícones
                                                    ├── /api/*  (token do Cognito validado pelo quarkus-oidc)
-                                                   ├── S3: users/{sub}/carteira.json, historico.json e precos.json
+                                                   ├── S3: users/{sub}/carteira.json, historico.json, precos.json e budget/
                                                    └── brapi · Yahoo · Fundamentus · Banco Central · AwesomeAPI · CoinGecko · FIPE
 EventBridge Scheduler (18h, Brasília) ──invoke──► POST /internal/snapshots (foto diária de todos os usuários)
 Login: Cognito (Google) com authorization code + PKCE; só e-mails da lista ALLOWED_EMAILS criam conta
@@ -35,6 +35,12 @@ Login: Cognito (Google) com authorization code + PKCE; só e-mails da lista ALLO
 | `GET /api/fx?days=` | Câmbio (USD, EUR, GBP, ARS, JPY) |
 | `GET /api/fipe/{brands,models,years,price}` | Tabela FIPE |
 | `GET/PUT /api/carteira` | Carteira do usuário (`If-Match` obrigatório no PUT; 412 em conflito) |
+| `GET/PUT /api/budget/settings` | Metas do orçamento em % da renda líquida (somam 100%; `If-Match` no PUT) |
+| `GET/PUT /api/budget/months/{AAAA-MM}` | Entradas e saídas do mês (`If-Match` no PUT; mês sem dados volta vazio e sem ETag) |
+| `GET /api/budget/summary?to=AAAA-MM&months=12` | Entradas, saídas e gasto por área dos últimos meses (até 24) |
+| `GET/PUT /api/budget/rules` | Regras de descrição "de → para" (`If-Match` no PUT) |
+| `POST /api/budget/import/preview?name=` | Lê um extrato/fatura (corpo binário, até 5 MB) e devolve os lançamentos sugeridos, sem gravar |
+| `POST /api/budget/import/commit` | Grava os lançamentos escolhidos na prévia (ignora os já importados) |
 | `GET /api/historico` | Fotos diárias do patrimônio (geradas pelo servidor, só leitura) |
 | `POST /internal/snapshots` | Gera a foto do dia para todos os usuários; chamado pelo agendamento com o header `X-Snapshot-Token` |
 | `GET /api/backup`, `POST /api/backup/import` | Exporta/importa tudo |
@@ -52,12 +58,52 @@ login, funciona offline). Para incluir um termo, adicione um item em `termos` co
 `resumo` e, se quiser, `sigla`, `outrosNomes` (entram na busca), `exemplo`, `importa` e `relacionados`
 (ids de outros termos). O CI confere ids, categorias e relacionados. Link direto: `/glossario#selic`.
 
+### Orçamento
+
+A página **Orçamento** (`/orcamento`, link direto para um mês: `/orcamento#2026-11`) controla entradas e saídas
+mês a mês, divididas em cinco áreas com uma meta em % da **renda líquida** (as entradas do mês):
+Custos fixos, Conforto, Prazeres, Educação e Liberdade financeira. As metas somam 100% e começam em 50/10/10/5/25.
+
+- **Saídas** têm data, descrição, valor e área. Gastos do cartão entram no **mês da fatura**; a data mostrada é a da compra.
+- **Liberdade financeira** não recebe lançamentos manuais (o servidor recusa): ela virá dos aportes da Carteira.
+- **Dados**: `users/{sub}/budget/settings.json` (metas) e `users/{sub}/budget/months/AAAA-MM.json` (um arquivo por mês),
+  com a mesma concorrência otimista por ETag da carteira. O backup inclui o orçamento no campo `budget`.
+
+#### Importação de extrato e fatura
+
+O painel **Importar extrato ou fatura** aceita, do BTG Pactual, o extrato da conta corrente (XLSX, XLS ou PDF; a
+planilha é a leitura mais confiável) e a fatura do cartão (PDF). O fluxo tem dois passos: a **prévia** lê o arquivo
+e lista tudo; o usuário desmarca o que não quer, ajusta a área e confirma.
+
+- Cada lançamento leva o **meio** (`method`): `creditCard` (Cartão), `creditPix` (Pix no crédito), `pix`,
+  `debitCard` (Débito), `transfer`, `bill` (boleto/conta) ou `other`. Aparece como etiqueta nas tabelas.
+- Vêm **desmarcados**: o pagamento da fatura (os gastos entram pela fatura), transferências de/para o próprio
+  titular e estornos do cartão.
+- **Regras de descrição (de → para)**: "quando a descrição contém X, troca por Y" e, opcionalmente, fixa a área
+  (ex.: `Auto Posto Major` → `Combustível`, Custos fixos). Sem diferenciar maiúsculas e acentos; o trecho mais longo
+  vence. Valem na prévia da importação (a descrição original aparece como "era: …") e podem ser aplicadas aos
+  lançamentos do mês aberto. Ficam em `users/{sub}/budget/rules.json` e entram no backup. O botão ⇄ em qualquer
+  lançamento cria a regra já preenchida.
+- **Área sugerida** (sem regra): a mesma de uma saída com a mesma descrição nos últimos 6 meses; senão, pela categoria do banco.
+- **Fatura**: tudo entra no mês da fatura, com a data da compra. Compras parceladas `(n/N)` podem lançar as
+  parcelas futuras nos meses seguintes.
+- **Sem duplicar**: cada lançamento importado guarda um `importKey` (hash de data, hora, descrição, valor e
+  parcela). Reimportar o mesmo período, mesmo em outro formato, marca os itens como "já importado".
+
+Arquitetura (`br.com.painel.statement`): `document/` transforma o arquivo em texto com posição (`PdfText`, PDFBox)
+ou linhas de células (`SheetRows`, Apache POI, XLS e XLSX); `parser/` tem uma estratégia por layout
+(`StatementParser`: `supports` + `parse`). O `StatementParsers` recebe todos os beans via CDI e usa o primeiro
+que reconhece o arquivo. **Novo formato** = nova classe `@ApplicationScoped` que implementa `StatementParser`,
+sem mexer no resto. O `StatementImportService` aplica regras (desmarcar, área, duplicados) e grava os meses.
+
+Próximas etapas: aportes automáticos vindos da Carteira (com correção do valor) e lançamentos recorrentes.
+
 ### Modo demonstração
 
 O botão **"Modo demonstração"** (topo da página) faz o app mostrar dados fictícios, para testar ou apresentar
 sem expor os dados reais. A página envia `X-Painel-Demo: 1` em toda chamada à API, e o `DemoFilter`
 (`@ServerRequestFilter` pré-roteamento) responde com dados gerados pelo `DemoDataService`:
-carteira, histórico, cotações, câmbio, cripto, taxas, FIPE, comparativo e custos. Gravações são aceitas e
+carteira, histórico, orçamento, cotações, câmbio, cripto, taxas, FIPE, comparativo e custos. Gravações são aceitas e
 descartadas, importar backup é recusado, o e-mail do usuário fica oculto e o service worker não guarda
 essas respostas. O login continua exigido.
 

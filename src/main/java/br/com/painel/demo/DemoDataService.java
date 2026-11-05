@@ -5,11 +5,21 @@ import br.com.painel.dto.Fundamentals;
 import br.com.painel.dto.Point;
 import br.com.painel.dto.RatePoint;
 import br.com.painel.dto.StockItem;
+import br.com.painel.dto.BudgetMonthSummary;
+import br.com.painel.model.BudgetArea;
+import br.com.painel.model.BudgetMonth;
+import br.com.painel.model.BudgetRules;
+import br.com.painel.model.DescriptionRule;
+import br.com.painel.model.BudgetSettings;
 import br.com.painel.model.CurrencyHolding;
+import br.com.painel.model.Expense;
+import br.com.painel.model.Formats;
+import br.com.painel.model.Income;
 import br.com.painel.model.FixedIncome;
 import br.com.painel.model.Position;
 import br.com.painel.model.Vehicle;
 import br.com.painel.model.Wallet;
+import br.com.painel.service.BudgetService;
 import br.com.painel.service.CryptoService;
 import br.com.painel.service.FxService;
 import br.com.painel.util.Tickers;
@@ -19,7 +29,9 @@ import jakarta.ws.rs.core.MultivaluedMap;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.YearMonth;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -36,6 +48,27 @@ public class DemoDataService {
 
     public record Reply(int status, Object body, String etag) {
     }
+
+    private static final String BUDGET_MONTHS = "/api/budget/months/";
+    private static final BudgetRules DEMO_RULES = new BudgetRules(List.of(
+            new DescriptionRule("demo-rule-1", "Posto Shell", "Combustível", BudgetArea.FIXED_COSTS),
+            new DescriptionRule("demo-rule-2", "Uber", "Aplicativo de transporte", BudgetArea.COMFORT)));
+    private record DemoExpense(String description, BudgetArea area, double amount, int day, boolean fixed) {
+    }
+
+    private static final List<DemoExpense> DEMO_EXPENSES = List.of(
+            new DemoExpense("Aluguel", BudgetArea.FIXED_COSTS, 2400.0, 5, true),
+            new DemoExpense("Condomínio", BudgetArea.FIXED_COSTS, 650.0, 5, true),
+            new DemoExpense("Energia elétrica", BudgetArea.FIXED_COSTS, 210.0, 12, false),
+            new DemoExpense("Internet e celular", BudgetArea.FIXED_COSTS, 180.0, 15, true),
+            new DemoExpense("Supermercado", BudgetArea.FIXED_COSTS, 1150.0, 8, false),
+            new DemoExpense("Plano de saúde", BudgetArea.FIXED_COSTS, 480.0, 10, true),
+            new DemoExpense("Faxina", BudgetArea.COMFORT, 400.0, 20, true),
+            new DemoExpense("Aplicativo de transporte", BudgetArea.COMFORT, 260.0, 18, false),
+            new DemoExpense("Restaurante", BudgetArea.PLEASURES, 340.0, 14, false),
+            new DemoExpense("Cinema e streaming", BudgetArea.PLEASURES, 120.0, 22, false),
+            new DemoExpense("Curso de inglês", BudgetArea.EDUCATION, 390.0, 7, true),
+            new DemoExpense("Livros", BudgetArea.EDUCATION, 95.0, 25, false));
 
     private static final String[] MONTHS = {"janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho",
             "agosto", "setembro", "outubro", "novembro", "dezembro"};
@@ -54,7 +87,8 @@ public class DemoDataService {
                     : new Reply(200, Map.of("etag", "demo"), "demo");
             case "/api/historico" -> new Reply(200, history(), null);
             case "/api/backup" -> new Reply(200, backup(), null);
-            case "/api/backup/import" -> new Reply(400, Map.of("error", "Indisponível no modo demonstração"), null);
+            case "/api/backup/import", "/api/budget/import/preview", "/api/budget/import/commit" ->
+                    new Reply(400, Map.of("error", "Indisponível no modo demonstração"), null);
             case "/api/data" -> new Reply(200, data(q.getFirst("symbols"), param(q, "range", "1y")), null);
             case "/api/crypto" -> new Reply(200, crypto(q.getFirst("coins")), null);
             case "/api/fx" -> new Reply(200, fx(Integer.parseInt(param(q, "days", "30").replaceAll("\\D", "0"))), null);
@@ -62,8 +96,21 @@ public class DemoDataService {
             case "/api/benchmarks" -> new Reply(200, benchmarks(param(q, "range", "1y"), q.getFirst("fx"), q.getFirst("crypto")), null);
             case "/api/custos" -> new Reply(200, costs(), null);
             case "/api/brapi/uso" -> new Reply(200, brapiUsage(), null);
-            default -> path.startsWith("/api/fipe/") ? new Reply(200, Map.of("data", fipe(path.substring(10), q)), null)
-                    : new Reply(404, Map.of("error", "não disponível no modo demonstração"), null);
+            case "/api/budget/settings" -> get ? new Reply(200, BudgetSettings.DEFAULT, "demo")
+                    : new Reply(200, Map.of("etag", "demo"), "demo");
+            case "/api/budget/rules" -> get ? new Reply(200, DEMO_RULES, "demo")
+                    : new Reply(200, Map.of("etag", "demo"), "demo");
+            case "/api/budget/summary" -> new Reply(200, budgetSummary(q.getFirst("to"), param(q, "months", "12")), null);
+            default -> {
+                if (path.startsWith("/api/fipe/")) {
+                    yield new Reply(200, Map.of("data", fipe(path.substring(10), q)), null);
+                }
+                if (path.startsWith(BUDGET_MONTHS) && yearMonth(path.substring(BUDGET_MONTHS.length())) != null) {
+                    yield get ? new Reply(200, budgetMonth(yearMonth(path.substring(BUDGET_MONTHS.length()))), "demo")
+                            : new Reply(200, Map.of("etag", "demo"), "demo");
+                }
+                yield new Reply(404, Map.of("error", "não disponível no modo demonstração"), null);
+            }
         };
     }
 
@@ -111,6 +158,41 @@ public class DemoDataService {
             out.put(d.toString(), day);
         }
         return out;
+    }
+
+    BudgetMonth budgetMonth(YearMonth month) {
+        Random r = new Random(month.hashCode());
+        List<Income> incomes = new ArrayList<>(List.of(new Income("demo-salary", month.atDay(5).toString(), "Salário", 9800.0)));
+        if (month.getMonthValue() % 3 == 0) {
+            incomes.add(new Income("demo-freelance", month.atDay(20).toString(), "Freelance", 1500.0 + r.nextInt(8) * 100));
+        }
+        List<Expense> expenses = new ArrayList<>();
+        for (int i = 0; i < DEMO_EXPENSES.size(); i++) {
+            DemoExpense e = DEMO_EXPENSES.get(i);
+            double amount = e.fixed() ? e.amount() : Math.round(e.amount() * (0.7 + r.nextDouble() * 0.6) * 100) / 100.0;
+            String date = month.atDay(Math.min(e.day(), month.lengthOfMonth())).toString();
+            expenses.add(new Expense("demo-" + i, date, e.description(), amount, e.area()));
+        }
+        return new BudgetMonth(incomes, expenses);
+    }
+
+    List<BudgetMonthSummary> budgetSummary(String to, String months) {
+        YearMonth end = to == null || yearMonth(to) == null ? YearMonth.now() : yearMonth(to);
+        int count = Math.clamp(months.matches("\\d{1,2}") ? Integer.parseInt(months) : 12, 1, BudgetService.MAX_SUMMARY_MONTHS);
+        List<BudgetMonthSummary> result = new ArrayList<>();
+        for (int i = count - 1; i >= 0; i--) {
+            YearMonth m = end.minusMonths(i);
+            result.add(BudgetService.summarize(m, budgetMonth(m)));
+        }
+        return result;
+    }
+
+    private static YearMonth yearMonth(String text) {
+        try {
+            return text.matches(Formats.YEAR_MONTH) ? YearMonth.parse(text) : null;
+        } catch (DateTimeParseException e) {
+            return null;
+        }
     }
 
     Map<String, Object> backup() {

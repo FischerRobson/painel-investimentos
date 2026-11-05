@@ -2,7 +2,6 @@ package br.com.painel.controller;
 
 import br.com.painel.dto.ErrorResponse;
 import br.com.painel.model.Wallet;
-import br.com.painel.repository.DocumentStore.Condition;
 import br.com.painel.service.WalletService;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.validation.Valid;
@@ -33,7 +32,7 @@ public class WalletController {
     @RunOnVirtualThread
     public Response get() {
         return service.wallet()
-                .map(v -> Response.ok(v.value()).header("ETag", quote(v.etag())).build())
+                .map(v -> Response.ok(v.value()).header("ETag", Preconditions.quote(v.etag())).build())
                 .orElseGet(() -> Response.status(Response.Status.NOT_FOUND).entity(new ErrorResponse("carteira ainda não criada")).build());
     }
 
@@ -42,20 +41,7 @@ public class WalletController {
     public Response put(@Valid @NotNull Wallet wallet,
                         @HeaderParam("If-Match") String ifMatch,
                         @HeaderParam("If-None-Match") String ifNoneMatch) {
-        Condition condition;
-        if (ifMatch != null && !ifMatch.isBlank()) {
-            condition = Condition.matches(ifMatch.replace("\"", "").strip());
-        } else if (ifNoneMatch != null && ifNoneMatch.strip().equals("*")) {
-            condition = Condition.absent();
-        } else {
-            return Response.status(428)
-                    .entity(new ErrorResponse("envie If-Match com o ETag da última leitura (ou If-None-Match: * para criar)")).build();
-        }
-        String etag = service.save(wallet, condition);
-        return Response.ok(Map.of("etag", etag)).header("ETag", quote(etag)).build();
-    }
-
-    private static String quote(String etag) {
-        return "\"" + etag + "\"";
+        String etag = service.save(wallet, Preconditions.from(ifMatch, ifNoneMatch));
+        return Response.ok(Map.of("etag", etag)).header("ETag", Preconditions.quote(etag)).build();
     }
 }

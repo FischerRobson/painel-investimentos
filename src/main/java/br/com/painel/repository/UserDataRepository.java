@@ -1,5 +1,8 @@
 package br.com.painel.repository;
 
+import br.com.painel.model.BudgetMonth;
+import br.com.painel.model.BudgetRules;
+import br.com.painel.model.BudgetSettings;
 import br.com.painel.model.KnownPrice;
 import br.com.painel.model.Snapshot;
 import br.com.painel.model.Wallet;
@@ -11,8 +14,11 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.time.YearMonth;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.function.Consumer;
@@ -30,6 +36,7 @@ public class UserDataRepository {
     private static final TypeReference<TreeMap<String, KnownPrice>> PRICES = new TypeReference<>() {
     };
     private static final int UPDATE_ATTEMPTS = 3;
+    private static final String JSON = ".json";
     private static final Pattern VALID_OWNER = Pattern.compile("[A-Za-z0-9-]{1,64}");
 
     private final DocumentStore store;
@@ -72,6 +79,39 @@ public class UserDataRepository {
         update(pricesKey(owner), PRICES, current -> current.putAll(prices));
     }
 
+    public Optional<Versioned<BudgetSettings>> budgetSettings(String owner) {
+        return store.read(budgetSettingsKey(owner)).map(d -> new Versioned<>(parse(d.body(), BudgetSettings.class), d.etag()));
+    }
+
+    public String saveBudgetSettings(String owner, BudgetSettings settings, Condition condition) {
+        return store.write(budgetSettingsKey(owner), json(settings), condition);
+    }
+
+    public Optional<Versioned<BudgetRules>> budgetRules(String owner) {
+        return store.read(budgetRulesKey(owner)).map(d -> new Versioned<>(parse(d.body(), BudgetRules.class), d.etag()));
+    }
+
+    public String saveBudgetRules(String owner, BudgetRules rules, Condition condition) {
+        return store.write(budgetRulesKey(owner), json(rules), condition);
+    }
+
+    public Optional<Versioned<BudgetMonth>> budgetMonth(String owner, YearMonth month) {
+        return store.read(budgetMonthKey(owner, month)).map(d -> new Versioned<>(parse(d.body(), BudgetMonth.class), d.etag()));
+    }
+
+    public String saveBudgetMonth(String owner, YearMonth month, BudgetMonth data, Condition condition) {
+        return store.write(budgetMonthKey(owner, month), json(data), condition);
+    }
+
+    public List<YearMonth> budgetMonths(String owner) {
+        return store.listFiles(budgetMonthsFolder(owner)).stream()
+                .filter(name -> name.endsWith(JSON))
+                .map(name -> yearMonth(name.substring(0, name.length() - JSON.length())))
+                .filter(Objects::nonNull)
+                .sorted()
+                .toList();
+    }
+
     // Read-modify-write with optimistic locking: on conflict, read again and retry so concurrent writers keep each other's entries
     private <V> void update(String key, TypeReference<TreeMap<String, V>> type, Consumer<TreeMap<String, V>> change) {
         for (int attempt = 1; ; attempt++) {
@@ -100,6 +140,30 @@ public class UserDataRepository {
 
     private static String pricesKey(String owner) {
         return folder(owner) + "/precos.json";
+    }
+
+    private static String budgetSettingsKey(String owner) {
+        return folder(owner) + "/budget/settings.json";
+    }
+
+    private static String budgetRulesKey(String owner) {
+        return folder(owner) + "/budget/rules.json";
+    }
+
+    private static String budgetMonthsFolder(String owner) {
+        return folder(owner) + "/budget/months";
+    }
+
+    private static String budgetMonthKey(String owner, YearMonth month) {
+        return budgetMonthsFolder(owner) + "/" + month + JSON;
+    }
+
+    private static YearMonth yearMonth(String text) {
+        try {
+            return YearMonth.parse(text);
+        } catch (DateTimeParseException e) {
+            return null;
+        }
     }
 
     private static String folder(String owner) {

@@ -23,5 +23,6 @@ public record Backup(
         @JsonProperty("bens") @Size(max = 50) List<@Valid Vehicle> vehicles,
         @JsonProperty("historico") Map<@Pattern(regexp = Formats.ISO_DATE) String, @Valid Snapshot> history,
         @JsonProperty("listaPainel") String watchlist,
-        @JsonProperty("preferencias") Map<String, Object> preferences) {
+        @JsonProperty("preferencias") Map<String, Object> preferences,
+        @Valid BudgetBackup budget) {
 }

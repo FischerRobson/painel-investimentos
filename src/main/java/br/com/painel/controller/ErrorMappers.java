@@ -15,6 +15,12 @@ public class ErrorMappers {
     }
 
     @ServerExceptionMapper
+    public Response preconditionRequired(PreconditionRequiredException e) {
+        return Response.status(428)
+                .entity(new ErrorResponse("envie If-Match com o ETag da última leitura (ou If-None-Match: * para criar)")).build();
+    }
+
+    @ServerExceptionMapper
     public Response invalid(InvalidDataException e) {
         return Response.status(Response.Status.BAD_REQUEST).entity(new ErrorResponse(e.getMessage())).build();
     }

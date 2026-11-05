@@ -81,6 +81,20 @@ public class FileDocumentStore implements DocumentStore {
         }
     }
 
+    @Override
+    public List<String> listFiles(String prefix) {
+        Path dir = resolve(prefix);
+        if (!Files.isDirectory(dir)) {
+            return List.of();
+        }
+        try (Stream<Path> children = Files.list(dir)) {
+            return children.filter(Files::isRegularFile).map(p -> p.getFileName().toString())
+                    .filter(name -> !name.startsWith(".")).sorted().toList();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
     // Keeps keys inside the root folder (e.g. "../../etc/passwd")
     private Path resolve(String key) {
         Path file = root.resolve(key).normalize();

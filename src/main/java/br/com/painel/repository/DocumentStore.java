@@ -29,4 +29,6 @@ public interface DocumentStore {
     String write(String key, byte[] body, Condition condition);
 
     List<String> listFolders(String prefix);
+
+    List<String> listFiles(String prefix);
 }

@@ -53,4 +53,14 @@ class FileDocumentStoreTest {
         assertEquals(java.util.List.of("a", "b"), store.listFolders("users"));
         assertEquals(java.util.List.of(), store.listFolders("nothing"));
     }
+
+    @Test
+    void listsFilesWithoutFolders() {
+        FileDocumentStore store = new FileDocumentStore(dir);
+        store.write("users/a/months/2026-11.json", b("{}"), Condition.any());
+        store.write("users/a/months/2026-10.json", b("{}"), Condition.any());
+        store.write("users/a/months/old/2025-01.json", b("{}"), Condition.any());
+        assertEquals(java.util.List.of("2026-10.json", "2026-11.json"), store.listFiles("users/a/months"));
+        assertEquals(java.util.List.of(), store.listFiles("nothing"));
+    }
 }
