@@ -253,6 +253,41 @@ body.busy #topbar { opacity: 1; }
 #topbar::before { content: ""; position: absolute; top: 0; bottom: 0; width: 35%; background: var(--accent); border-radius: 2px; animation: topbar 1.1s ease-in-out infinite; }
 @keyframes topbar { from { left: -35%; } to { left: 100%; } }
 @media (prefers-reduced-motion: reduce) { .sk, #topbar::before { animation: none; } #topbar::before { left: 0; width: 100%; opacity: .6; } }
+.b-month { display: flex; align-items: center; gap: 6px; }
+.b-month strong { min-width: 150px; text-align: center; font-size: 15px; }
+.b-month button { padding: 6px 12px; }
+.b-areas { display: flex; flex-direction: column; gap: 16px; margin-top: 12px; }
+.b-area-head, .b-area-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 12px; }
+.b-area-head { margin-bottom: 6px; }
+.b-area-name { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; }
+.b-area-name i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.b-area-val { font-weight: 600; }
+.b-area-foot { margin-top: 5px; font-size: 12px; color: var(--text-3); }
+.uso-bar > span.over { background: var(--bad); }
+.b-table th.b-left, .b-table td.b-left { text-align: left; }
+.b-table td.b-desc { white-space: normal; min-width: 160px; }
+.b-table td select { padding: 5px 8px; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; }
+.b-form { margin-top: 14px; }
+.b-targets-foot { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+.b-method { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .03em; padding: 1px 6px; border-radius: 4px; border: 1px solid currentColor; white-space: nowrap; vertical-align: 1px; margin-left: 4px; }
+.b-method.creditCard { color: var(--s7); } .b-method.creditPix { color: var(--s5); } .b-method.pix { color: var(--s3); }
+.b-method.debitCard { color: var(--s1); } .b-method.transfer, .b-method.bill, .b-method.other { color: var(--text-3); }
+.b-sub { display: block; font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.b-sub.warn { color: var(--s4); }
+.b-import-pick { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.b-import-pick input[type=file] { max-width: 100%; font: inherit; color: var(--text-2); }
+.b-import-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin: 10px 0 4px; font-size: 13px; color: var(--text-2); }
+.b-import-bar .pair { display: flex; gap: 6px; }
+.b-import-table td.b-check { width: 28px; padding-right: 0; text-align: left; }
+.b-import-table tr.off td:not(.b-check) { opacity: .45; }
+.b-import-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; }
+.b-import-foot label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); }
+.b-import-foot .pair { display: flex; gap: 6px; }
+.b-rules-table td.b-left, .b-rules-table th.b-left { text-align: left; }
+.b-rule-form { margin-top: 12px; }
+.b-rule-form .b-rule-foot { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+.b-rule-form .b-rule-foot label { flex-direction: row; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); }
+.b-rule-form .b-rule-foot label input { width: auto; }
 /* ---------- Glossário ---------- */
 .g-busca { display: block; width: 100%; margin: 10px 0 12px; padding: 10px 12px; font: inherit; font-size: 16px; color: var(--text);
   background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
@@ -274,7 +309,7 @@ body.busy #topbar { opacity: 1; }
 .g-rel { margin-top: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); }
 .g-rel a { padding: 2px 9px; border: 1px solid var(--border); border-radius: 999px; text-decoration: none; }
 .g-rel a:hover { border-color: var(--accent); }
-@media (max-width: 400px) { .nav a { letter-spacing: -.02em; } } /* 7 itens no menu de baixo */
+@media (max-width: 440px) { .nav a { font-size: 9.5px; letter-spacing: -.02em; } }
 </style>
 </head>
 <body>
@@ -300,6 +335,7 @@ body.busy #topbar { opacity: 1; }
   </div>
   <nav class="nav" aria-label="Páginas">
     <a href="/carteira" data-page="carteira"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2z"/><circle cx="16" cy="14.5" r="1.3"/></svg>Carteira</a>
+    <a href="/orcamento" data-page="budget"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>Orçamento</a>
     <a href="/projecao" data-page="projecao"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20h18"/><path d="M5 16l5-5 4 3 6-7"/><path d="M15 7h5v5"/></svg>Projeção</a>
     <a href="/ativos" data-page="ativos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Ativos</a>
     <a href="/moedas" data-page="moedas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="9" r="6"/><path d="M15.5 9.5a6 6 0 1 1-6 6"/></svg>Moedas</a>
@@ -318,6 +354,7 @@ body.busy #topbar { opacity: 1; }
   </div>
 
   <div id="wallet"></div>
+  <div id="budget"></div>
   <div id="projection"></div>
   <div id="moedas"></div>
   <div id="bens"></div>
@@ -376,10 +413,10 @@ function periodReturn(it) {
 
 // ---------- Carregamento ----------
 // ---------- Páginas ----------
-const PAGE = { "/projecao": "projecao", "/ativos": "ativos", "/moedas": "moedas", "/bens": "bens", "/custos": "custos", "/glossario": "glossario" }[location.pathname.replace(/\/$/, "")] || "carteira";
-const renderPage = () => ({ carteira: renderWallet, projecao: renderProjection, ativos: render, moedas: renderMoedas, bens: renderBens, custos: renderCustos, glossario: renderGlossario })[PAGE]();
+const PAGE = { "/orcamento": "budget", "/projecao": "projecao", "/ativos": "ativos", "/moedas": "moedas", "/bens": "bens", "/custos": "custos", "/glossario": "glossario" }[location.pathname.replace(/\/$/, "")] || "carteira";
+const renderPage = () => ({ carteira: renderWallet, budget: renderBudget, projecao: renderProjection, ativos: render, moedas: renderMoedas, bens: renderBens, custos: renderCustos, glossario: renderGlossario })[PAGE]();
 // id do elemento principal de cada página
-const MAIN_ID = { carteira: "wallet", projecao: "projection", ativos: "app", moedas: "moedas", bens: "bens", custos: "custos", glossario: "glossario" };
+const MAIN_ID = { carteira: "wallet", budget: "budget", projecao: "projection", ativos: "app", moedas: "moedas", bens: "bens", custos: "custos", glossario: "glossario" };
 
 // O consumo da brapi fica na página Custos (os headers das cotações só trazem o limite por minuto).
 function setStatus() {
@@ -409,6 +446,7 @@ function skeletonHtml(page) {
       + panel(`${L("100px", "sk-title")}${rows(Math.min(8, nCards))}`) + `<div class="grid">${Array.from({ length: nCards }, card).join("")}</div>`,
     moedas: panel(`${L("120px", "sk-title")}${L("50%")}${tiles(1)}`) + `<div class="grid">${Array.from({ length: 5 }, card).join("")}</div>`,
     bens: panel(`${L("200px", "sk-title")}${L("40%")}${formRow(4)}`) + panel(`${L("140px", "sk-title")}${L("60%")}${tiles(1)}`),
+    budget: panel(`${L("140px", "sk-title")}${L("50%")}${tiles(3)}`) + panel(`${L("160px", "sk-title")}${rows(5)}`) + panel(`${L("100px", "sk-title")}${rows(3)}`),
     custos: panel(`${L("160px", "sk-title")}${L("60%")}${tiles(3)}`) + panel(`${L("140px", "sk-title")}<div class="proj-box"><span class="sk sk-block"></span></div>`),
     glossario: panel(`${L("110px", "sk-title")}${L("55%")}<span class="sk sk-input"></span>`)
       + `<div class="g-grid">${Array.from({ length: 6 }, () => `<div class="g-termo">${L("40%", "sk-title")}${L("100%")}${L("90%")}${L("65%")}</div>`).join("")}</div>`,
@@ -444,6 +482,10 @@ async function load() {
       const needFx = moedasW.length || Object.values(byTicker).some(it => it.currency && it.currency !== "BRL");
       await Promise.all([loadExtras(), needFx ? loadFx(30) : null, bensW.length ? loadBensPrices() : null]);
       renderWallet();
+      setStatus();
+    } else if (PAGE === "budget") {
+      await loadBudget();
+      renderBudget();
       setStatus();
     } else if (PAGE === "moedas") {
       await loadFx(fxDays);
@@ -1301,6 +1343,599 @@ function renderCustos() {
   if (cd) custosCharts.push(barChart(cd, custos.diario.map(d => d.dia.slice(8, 10)), custos.diario.map(d => d.valor), usd));
 }
 const horaCustos = ms => new Date(ms).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+
+const BUDGET_AREAS = [
+  { id: "fixedCosts", name: "Custos fixos", color: "--s1" },
+  { id: "comfort", name: "Conforto", color: "--s3" },
+  { id: "pleasures", name: "Prazeres", color: "--s5" },
+  { id: "education", name: "Educação", color: "--s4" },
+  { id: "financialFreedom", name: "Liberdade financeira", color: "--s7", automatic: true },
+];
+const BUDGET_MANUAL_AREAS = BUDGET_AREAS.filter(a => !a.automatic);
+const MONTH_KEY = /^\d{4}-(0[1-9]|1[0-2])$/;
+const monthKeyOf = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+const shiftMonthKey = (key, n) => { const [y, m] = key.split("-").map(Number); return monthKeyOf(new Date(y, m - 1 + n, 1)); };
+const monthDate = key => { const [y, m] = key.split("-").map(Number); return new Date(y, m - 1, 15); };
+const monthTitle = key => { const s = monthDate(key).toLocaleDateString("pt-BR", { month: "long", year: "numeric" }); return s[0].toUpperCase() + s.slice(1); };
+const monthShort = key => { const d = monthDate(key); return d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "") + "/" + String(d.getFullYear()).slice(2); };
+const todayIso = () => { const d = new Date(); return `${monthKeyOf(d)}-${String(d.getDate()).padStart(2, "0")}`; };
+const newEntryId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const PAYMENT_METHODS = { creditCard: "Cartão", creditPix: "Pix no crédito", pix: "Pix", debitCard: "Débito", transfer: "Transferência", bill: "Boleto/conta", other: "Outro" };
+const methodBadge = m => PAYMENT_METHODS[m] ? `<span class="b-method ${m}">${PAYMENT_METHODS[m]}</span>` : "";
+const IMPORT_MAX_BYTES = 5 * 1024 * 1024;
+
+let budgetMonth = PAGE === "budget" && MONTH_KEY.test(location.hash.slice(1)) ? location.hash.slice(1) : monthKeyOf(new Date());
+let budgetSettings = null, budgetSettingsEtag = null, budgetTargetsDraft = null, budgetTargetsOpen = false;
+let budgetData = { incomes: [], expenses: [] }, budgetEtags = {}, budgetSummaryList = [], budgetErr = null;
+let budgetEditing = null, budgetLastExpense = null, budgetChart = null;
+let budgetTimer = null, budgetChain = Promise.resolve(), budgetPendingMonth = null;
+let budgetImport = null, budgetImportDone = null;
+let budgetRules = null, budgetRulesEtag = null, budgetRulesOpen = false, budgetRuleDraft = null, budgetRulesErr = null;
+const normText = t => String(t ?? "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+function ruleFor(description, rules = budgetRules?.rules || []) {
+  const text = normText(description);
+  return [...rules].sort((a, b) => normText(b.match).length - normText(a.match).length).find(r => normText(r.match) && text.includes(normText(r.match))) || null;
+}
+
+async function loadBudget() {
+  budgetErr = null;
+  const month = budgetMonth;
+  try {
+    const [settings, data, summary, rules] = await Promise.all([
+      budgetSettings ? null : fetch("/api/budget/settings"),
+      fetch(`/api/budget/months/${month}`),
+      fetch(`/api/budget/summary?to=${month}&months=12`),
+      budgetRules ? null : fetch("/api/budget/rules"),
+    ]);
+    if (rules?.ok) {
+      budgetRules = await rules.json();
+      budgetRulesEtag = etagOf(rules);
+    }
+    if (settings) {
+      if (!settings.ok) throw new Error(await errorText(settings));
+      budgetSettings = await settings.json();
+      budgetSettingsEtag = etagOf(settings);
+    }
+    if (!data.ok) throw new Error(await errorText(data));
+    if (month !== budgetMonth) return;
+    budgetData = await data.json();
+    budgetEtags[month] = etagOf(data);
+    budgetSummaryList = summary.ok ? await summary.json() : [];
+  } catch (e) { budgetErr = e.message; }
+}
+
+function persistBudget() {
+  clearTimeout(budgetTimer);
+  setSaveState("pendente");
+  budgetPendingMonth = budgetMonth;
+  budgetTimer = setTimeout(flushBudget, 400);
+}
+function flushBudget() {
+  clearTimeout(budgetTimer);
+  if (!budgetPendingMonth) return budgetChain;
+  const month = budgetPendingMonth, body = JSON.stringify(budgetData);
+  budgetPendingMonth = null;
+  budgetChain = budgetChain.then(() => saveBudgetMonth(month, body));
+  return budgetChain;
+}
+async function saveBudgetMonth(month, body) {
+  const headers = { "Content-Type": "application/json" };
+  if (budgetEtags[month]) headers["If-Match"] = `"${budgetEtags[month]}"`; else headers["If-None-Match"] = "*";
+  try {
+    const r = await fetch(`/api/budget/months/${month}`, { method: "PUT", headers, body });
+    if (r.status === 412) {
+      setSaveState("erro", "conflito");
+      alert("Este mês foi alterado em outro dispositivo. A página vai recarregar com a versão mais recente.");
+      return location.reload();
+    }
+    if (!r.ok) throw new Error(await errorText(r));
+    budgetEtags[month] = etagOf(r);
+    setSaveState("ok");
+  } catch (e) { setSaveState("erro", e.message); }
+}
+async function saveBudgetTargets(targets) {
+  const headers = { "Content-Type": "application/json" };
+  if (budgetSettingsEtag) headers["If-Match"] = `"${budgetSettingsEtag}"`; else headers["If-None-Match"] = "*";
+  setSaveState("pendente");
+  try {
+    const r = await fetch("/api/budget/settings", { method: "PUT", headers, body: JSON.stringify({ ...budgetSettings, targets }) });
+    if (r.status === 412) {
+      setSaveState("erro", "conflito");
+      alert("As metas foram alteradas em outro dispositivo. A página vai recarregar com a versão mais recente.");
+      return location.reload();
+    }
+    if (!r.ok) throw new Error(await errorText(r));
+    budgetSettingsEtag = etagOf(r);
+    budgetSettings = { ...budgetSettings, targets };
+    budgetTargetsDraft = null;
+    setSaveState("ok");
+  } catch (e) { setSaveState("erro", e.message); }
+  renderBudget();
+}
+async function goToBudgetMonth(key) {
+  await flushBudget();
+  budgetMonth = key;
+  budgetEditing = null;
+  history.replaceState(null, "", "#" + key);
+  load();
+}
+
+function budgetTotals(d) {
+  const areas = Object.fromEntries(BUDGET_AREAS.map(a => [a.id, 0]));
+  d.expenses.forEach(e => { areas[e.area] = (areas[e.area] || 0) + e.amount; });
+  return {
+    income: d.incomes.reduce((s, i) => s + i.amount, 0),
+    expenses: d.expenses.reduce((s, e) => s + e.amount, 0),
+    areas,
+  };
+}
+const byDate = list => [...list].sort((a, b) => a.date.localeCompare(b.date) || a.description.localeCompare(b.description, "pt-BR"));
+const targetsSum = targets => BUDGET_AREAS.reduce((s, a) => s + (Number(targets[a.id]) || 0), 0);
+
+function budgetAreaHtml(area, totals) {
+  const target = budgetSettings.targets[area.id] || 0, goal = totals.income * target / 100;
+  const head = `<span class="b-area-name"><i style="background:var(${area.color})"></i>${area.name}</span>`;
+  if (area.automatic) {
+    return `<div class="b-area">
+      <div class="b-area-head">${head}<span class="b-area-val muted">${totals.income ? `meta de ${money(goal)}` : ""}</span></div>
+      <div class="uso-bar"><span style="width:0"></span></div>
+      <div class="b-area-foot"><span>Meta: ${brl(target, 0)}% da renda</span><span>Vem dos aportes da Carteira (próxima versão)</span></div>
+    </div>`;
+  }
+  const spent = totals.areas[area.id] || 0, over = spent > goal;
+  const fill = goal > 0 ? Math.min(100, spent / goal * 100) : spent > 0 ? 100 : 0;
+  const share = totals.income ? `${brl(spent / totals.income * 100, 1)}% da renda` : "sem entradas no mês";
+  const status = !totals.income ? "" : over
+    ? `<span class="down">${money(spent - goal)} acima da meta</span>`
+    : `<span class="up">Sobram ${money(goal - spent)}</span>`;
+  return `<div class="b-area">
+    <div class="b-area-head">${head}<span class="b-area-val">${money(spent)}${totals.income ? ` <span class="muted">de ${money(goal)}</span>` : ""}</span></div>
+    <div class="uso-bar" role="meter" aria-label="${area.name}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(fill)}"><span class="${over ? "over" : ""}" style="width:${fill}%;${over ? "" : `background:var(${area.color})`}"></span></div>
+    <div class="b-area-foot"><span>${share} · meta ${brl(target, 0)}%</span>${status}</div>
+  </div>`;
+}
+
+function budgetEntryForm(kind) {
+  const isExpense = kind === "expense";
+  const editing = budgetEditing?.kind === kind ? (isExpense ? budgetData.expenses : budgetData.incomes).find(x => x.id === budgetEditing.id) : null;
+  const defaultDate = budgetMonth === monthKeyOf(new Date()) ? todayIso() : `${budgetMonth}-01`;
+  const date = editing?.date || (isExpense && budgetLastExpense?.date) || defaultDate;
+  const area = editing?.area || budgetLastExpense?.area || "fixedCosts";
+  return `<form class="w-add rf-form b-form" id="b-form-${kind}">
+    <label>Data${isExpense ? " da compra" : ""}<input name="date" type="date" required value="${esc(date)}"></label>
+    <label>Descrição<input name="description" maxlength="120" required placeholder="${isExpense ? "Ex.: Supermercado" : "Ex.: Salário"}" value="${esc(editing?.description || "")}"></label>
+    ${isExpense ? `<label>Área<select name="area">${BUDGET_MANUAL_AREAS.map(a => `<option value="${a.id}" ${a.id === area ? "selected" : ""}>${a.name}</option>`).join("")}</select></label>` : ""}
+    <label>Meio<select name="method"><option value="">—</option>${Object.entries(PAYMENT_METHODS).map(([id, name]) => `<option value="${id}" ${id === editing?.method ? "selected" : ""}>${name}</option>`).join("")}</select></label>
+    <label>Valor (R$)<input name="amount" type="number" step="0.01" min="0.01" required value="${editing ? editing.amount : ""}"></label>
+    <div class="pair">${editing
+      ? `<button class="primary" type="submit">Salvar alteração</button><button type="button" data-b-cancel>Cancelar</button>`
+      : `<button class="primary" type="submit">Adicionar</button>`}</div>
+  </form>`;
+}
+
+function budgetTableHtml(kind) {
+  const isExpense = kind === "expense";
+  const list = byDate(isExpense ? budgetData.expenses : budgetData.incomes);
+  if (!list.length) return `<div class="hint" style="margin-top:8px">${isExpense ? "Nenhuma saída neste mês." : "Nenhuma entrada neste mês."}</div>`;
+  const areaSelect = e => `<select data-b-area="${esc(e.id)}" aria-label="Área">${BUDGET_MANUAL_AREAS.map(a => `<option value="${a.id}" ${a.id === e.area ? "selected" : ""}>${a.name}</option>`).join("")}</select>`;
+  return `<div class="table-wrap"><table class="w-table b-table">
+    <thead><tr><th>Data</th><th>Descrição</th>${isExpense ? `<th class="b-left">Área</th>` : ""}<th>Valor</th><th></th></tr></thead>
+    <tbody>${list.map(x => `<tr class="${budgetEditing?.kind === kind && budgetEditing.id === x.id ? "editing" : ""}">
+      <td>${isoBR(x.date)}</td>
+      <td class="b-desc">${esc(x.description)}${x.installment ? ` <span class="muted">${esc(x.installment)}</span>` : ""}${methodBadge(x.method)}</td>
+      ${isExpense ? `<td class="b-left">${areaSelect(x)}</td>` : ""}
+      <td>${money(x.amount)}</td>
+      <td style="white-space:nowrap"><button class="x" title="Criar regra para esta descrição" data-b-rule="${kind}:${esc(x.id)}">⇄</button><button class="x" title="Editar" data-b-edit="${kind}:${esc(x.id)}">✎</button><button class="x" title="Remover" data-b-remove="${kind}:${esc(x.id)}">×</button></td>
+    </tr>`).join("")}</tbody>
+  </table></div>`;
+}
+
+function budgetTargetsHtml() {
+  const draft = budgetTargetsDraft || budgetSettings.targets;
+  return `<div class="panel"><details class="acc" id="b-targets-acc" ${budgetTargetsOpen ? "open" : ""}>
+    <summary><span class="acc-t">Metas por área</span><span class="acc-s">${BUDGET_AREAS.map(a => `${brl(budgetSettings.targets[a.id] || 0, 0)}%`).join(" · ")}</span></summary>
+    <div class="hint">Quanto da renda líquida (tudo que entrou no mês) vai para cada área. A soma precisa dar 100%.</div>
+    <form class="w-add rf-form" id="b-targets">
+      ${BUDGET_AREAS.map(a => `<label>${a.name} (%)<input name="${a.id}" type="number" min="0" max="100" step="0.5" required value="${draft[a.id] ?? 0}"></label>`).join("")}
+      <div class="b-targets-foot"><span id="b-targets-sum"></span><button class="primary" type="submit" id="b-targets-save">Salvar metas</button></div>
+    </form>
+  </details></div>`;
+}
+
+function renderBudget() {
+  const el = $("#budget");
+  if (budgetChart) { budgetChart.destroy(); budgetChart = null; }
+  if (budgetErr) { el.innerHTML = `<div class="panel err">${esc(budgetErr)}</div>`; return; }
+  if (!budgetSettings) return;
+  const totals = budgetTotals(budgetData), balance = totals.income - totals.expenses;
+  const isCurrent = budgetMonth === monthKeyOf(new Date());
+  const count = n => `${n} ${n === 1 ? "lançamento" : "lançamentos"}`;
+  const series = budgetSummaryList.map(s => s.month === budgetMonth ? { ...s, income: totals.income, expenses: totals.expenses } : s);
+  const hasHistory = series.some(s => s.income || s.expenses);
+
+  el.innerHTML = `<div class="panel">
+    <div class="w-head">
+      <div><h2>Orçamento</h2><div class="hint" style="margin:0">Entradas e saídas do mês. Gastos do cartão entram no mês da fatura; a data mostrada é a da compra.</div></div>
+      <div class="b-month">
+        <button type="button" id="b-prev" aria-label="Mês anterior">‹</button>
+        <strong>${monthTitle(budgetMonth)}</strong>
+        <button type="button" id="b-next" aria-label="Próximo mês">›</button>
+        ${isCurrent ? "" : `<button type="button" id="b-today">Mês atual</button>`}
+      </div>
+    </div>
+    <div class="tiles">
+      <div class="tile"><div class="k">Entradas</div><div class="v">${money(totals.income)}</div><div class="s">${count(budgetData.incomes.length)}</div></div>
+      <div class="tile"><div class="k">Saídas</div><div class="v">${money(totals.expenses)}</div><div class="s">${totals.income ? `${brl(totals.expenses / totals.income * 100, 1)}% da renda` : count(budgetData.expenses.length)}</div></div>
+      <div class="tile"><div class="k">Saldo</div><div class="v ${signCls(balance)}">${money(balance)}</div><div class="s">${balance >= 0 ? "sobrou no mês" : "faltou no mês"}</div></div>
+    </div>
+  </div>
+  ${budgetImportHtml()}
+  <div class="panel">
+    <h2>Meta × realizado</h2>
+    <div class="hint">${totals.income ? "Cada barra enche até a meta da área, calculada sobre as entradas do mês." : "Lance as entradas do mês para ver as metas em reais."}</div>
+    <div class="b-areas">${BUDGET_AREAS.map(a => budgetAreaHtml(a, totals)).join("")}</div>
+  </div>
+  <div class="panel">
+    <h2>Entradas</h2>
+    <div class="hint">Salário, freelas e outras receitas líquidas que caíram na conta.</div>
+    ${budgetTableHtml("income")}
+    ${budgetEntryForm("income")}
+  </div>
+  <div class="panel">
+    <h2>Saídas</h2>
+    <div class="hint">Pix, boletos, débito e cartão. Troque a área direto na tabela.</div>
+    ${budgetTableHtml("expense")}
+    ${budgetEntryForm("expense")}
+  </div>
+  ${hasHistory ? `<div class="panel">
+    <h2>Últimos 12 meses</h2>
+    <div class="legend"><span><i style="background:var(--s3)"></i>Entradas</span><span><i style="background:var(--s2)"></i>Saídas</span></div>
+    <div class="proj-box"><canvas id="b-history"></canvas></div>
+  </div>` : ""}
+  ${budgetTargetsHtml()}
+  ${budgetRulesHtml()}`;
+
+  $("#b-prev").onclick = () => goToBudgetMonth(shiftMonthKey(budgetMonth, -1));
+  $("#b-next").onclick = () => goToBudgetMonth(shiftMonthKey(budgetMonth, 1));
+  const today = $("#b-today");
+  if (today) today.onclick = () => goToBudgetMonth(monthKeyOf(new Date()));
+  bindBudgetForm("income");
+  bindBudgetForm("expense");
+  el.querySelectorAll("[data-b-area]").forEach(sel => sel.onchange = () => {
+    const e = budgetData.expenses.find(x => x.id === sel.dataset.bArea);
+    if (!e) return;
+    e.area = sel.value;
+    persistBudget();
+    renderBudget();
+  });
+  el.querySelectorAll("[data-b-edit]").forEach(btn => btn.onclick = () => {
+    const [kind, id] = btn.dataset.bEdit.split(":");
+    budgetEditing = { kind, id };
+    renderBudget();
+    $(`#b-form-${kind}`).scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+  el.querySelectorAll("[data-b-remove]").forEach(btn => btn.onclick = () => {
+    const [kind, id] = btn.dataset.bRemove.split(":");
+    const key = kind === "expense" ? "expenses" : "incomes";
+    const entry = budgetData[key].find(x => x.id === id);
+    if (entry && !confirm(`Remover "${entry.description}" (${money(entry.amount)})?`)) return;
+    budgetData = { ...budgetData, [key]: budgetData[key].filter(x => x.id !== id) };
+    if (budgetEditing?.id === id) budgetEditing = null;
+    persistBudget();
+    renderBudget();
+  });
+  bindBudgetTargets();
+  bindBudgetImport();
+  bindBudgetRules();
+  el.querySelectorAll("[data-b-rule]").forEach(btn => btn.onclick = () => {
+    const [kind, id] = btn.dataset.bRule.split(":");
+    const x = budgetData[kind === "expense" ? "expenses" : "incomes"].find(e => e.id === id);
+    if (x) openRuleDraft({ match: x.description, description: "", area: kind === "expense" ? x.area : "" });
+  });
+  const canvas = $("#b-history");
+  if (canvas) budgetChart = budgetHistoryChart(canvas, series);
+}
+
+function bindBudgetForm(kind) {
+  const form = $(`#b-form-${kind}`);
+  const key = kind === "expense" ? "expenses" : "incomes";
+  const cancel = form.querySelector("[data-b-cancel]");
+  if (cancel) cancel.onclick = () => { budgetEditing = null; renderBudget(); };
+  form.onsubmit = e => {
+    e.preventDefault();
+    const f = form.elements;
+    const entry = { date: f.date.value, description: f.description.value.trim(), amount: Math.round(Number(f.amount.value) * 100) / 100, method: f.method.value || undefined };
+    if (kind === "expense") {
+      entry.area = f.area.value;
+      budgetLastExpense = { date: entry.date, area: entry.area };
+    }
+    if (!entry.description || !(entry.amount > 0)) return;
+    const existing = budgetEditing?.kind === kind && budgetData[key].find(x => x.id === budgetEditing.id);
+    budgetData = { ...budgetData, [key]: existing
+      ? budgetData[key].map(x => x.id === existing.id ? { ...x, ...entry } : x)
+      : [...budgetData[key], { id: newEntryId(), ...entry }] };
+    budgetEditing = null;
+    persistBudget();
+    renderBudget();
+    $(`#b-form-${kind}`).elements.description.focus();
+  };
+}
+
+function bindBudgetTargets() {
+  const acc = $("#b-targets-acc"), form = $("#b-targets");
+  acc.ontoggle = () => { budgetTargetsOpen = acc.open; };
+  const read = () => Object.fromEntries(BUDGET_AREAS.map(a => [a.id, Number(form.elements[a.id].value) || 0]));
+  const refresh = () => {
+    const sum = targetsSum(read()), ok = Math.abs(sum - 100) < 0.01;
+    const label = $("#b-targets-sum");
+    label.textContent = ok ? "Soma: 100%" : `Soma: ${brl(sum, 1)}% (precisa dar 100%)`;
+    label.className = ok ? "muted" : "err";
+    $("#b-targets-save").disabled = !ok;
+  };
+  form.oninput = () => { budgetTargetsDraft = read(); refresh(); };
+  form.onsubmit = e => { e.preventDefault(); saveBudgetTargets(read()); };
+  refresh();
+}
+
+function openRuleDraft(draft) {
+  if (!budgetRules) return;
+  budgetRuleDraft = { id: null, apply: true, ...draft };
+  budgetRulesOpen = true;
+  budgetRulesErr = null;
+  renderBudget();
+  const f = $("#b-rule-form");
+  f.scrollIntoView({ behavior: "smooth", block: "center" });
+  f.elements.description.focus();
+}
+
+function budgetRulesHtml() {
+  if (!budgetRules) return "";
+  const list = [...budgetRules.rules].sort((a, b) => a.description.localeCompare(b.description, "pt-BR") || a.match.localeCompare(b.match, "pt-BR"));
+  const d = budgetRuleDraft || { id: null, match: "", description: "", area: "", apply: true };
+  const areaName = id => BUDGET_AREAS.find(a => a.id === id)?.name;
+  return `<div class="panel"><details class="acc" id="b-rules-acc" ${budgetRulesOpen ? "open" : ""}>
+    <summary><span class="acc-t">Regras de descrição</span><span class="acc-s">${list.length ? `${list.length} ${list.length === 1 ? "regra" : "regras"}` : "de → para"}</span></summary>
+    <div class="hint">Quando a descrição contém o trecho (sem diferenciar maiúsculas e acentos), ela é trocada pelo novo nome e, se você escolher, vai para uma área fixa. Vale para as importações e, ao salvar, para os lançamentos do mês aberto. Use ⇄ em qualquer lançamento para criar uma regra.</div>
+    ${list.length ? `<div class="table-wrap"><table class="w-table b-table b-rules-table">
+      <thead><tr><th class="b-left">Quando contém</th><th class="b-left">Vira</th><th class="b-left">Área</th><th></th></tr></thead>
+      <tbody>${list.map(r => `<tr class="${budgetRuleDraft?.id === r.id ? "editing" : ""}">
+        <td class="b-left b-desc">${esc(r.match)}</td><td class="b-left b-desc">${esc(r.description)}</td>
+        <td class="b-left">${r.area ? areaName(r.area) : `<span class="muted">sugerida</span>`}</td>
+        <td style="white-space:nowrap"><button class="x" title="Editar" data-r-edit="${esc(r.id)}">✎</button><button class="x" title="Remover" data-r-remove="${esc(r.id)}">×</button></td>
+      </tr>`).join("")}</tbody></table></div>` : ""}
+    <form class="w-add rf-form b-rule-form" id="b-rule-form">
+      <label>Quando a descrição contém<input name="match" maxlength="80" required minlength="3" placeholder="Ex.: Auto Posto Major" value="${esc(d.match)}"></label>
+      <label>Trocar por<input name="description" maxlength="120" required placeholder="Ex.: Combustível" value="${esc(d.description)}"></label>
+      <label>Área<select name="area"><option value="">Manter a sugerida</option>${BUDGET_MANUAL_AREAS.map(a => `<option value="${a.id}" ${a.id === d.area ? "selected" : ""}>${a.name}</option>`).join("")}</select></label>
+      <div class="b-rule-foot">
+        <label><input type="checkbox" name="apply" ${d.apply ? "checked" : ""}>Aplicar também aos lançamentos já salvos de ${monthTitle(budgetMonth)}</label>
+        <span class="pair">${budgetRuleDraft?.id || budgetRuleDraft?.match ? `<button type="button" id="b-rule-cancel">Cancelar</button>` : ""}<button class="primary" type="submit">${budgetRuleDraft?.id ? "Salvar regra" : "Criar regra"}</button></span>
+      </div>
+    </form>
+    ${budgetRulesErr ? `<div class="err" style="margin-top:8px">${esc(budgetRulesErr)}</div>` : ""}
+  </details></div>`;
+}
+
+function bindBudgetRules() {
+  const acc = $("#b-rules-acc");
+  if (!acc) return;
+  acc.ontoggle = () => { budgetRulesOpen = acc.open; };
+  const form = $("#b-rule-form");
+  const read = () => ({ match: form.elements.match.value.trim(), description: form.elements.description.value.trim(), area: form.elements.area.value, apply: form.elements.apply.checked });
+  form.oninput = () => { budgetRuleDraft = { id: budgetRuleDraft?.id || null, ...read() }; };
+  const cancel = $("#b-rule-cancel");
+  if (cancel) cancel.onclick = () => { budgetRuleDraft = null; budgetRulesErr = null; renderBudget(); };
+  acc.querySelectorAll("[data-r-edit]").forEach(btn => btn.onclick = () => {
+    const r = budgetRules.rules.find(x => x.id === btn.dataset.rEdit);
+    if (r) openRuleDraft({ id: r.id, match: r.match, description: r.description, area: r.area || "" });
+  });
+  acc.querySelectorAll("[data-r-remove]").forEach(btn => btn.onclick = () => {
+    const r = budgetRules.rules.find(x => x.id === btn.dataset.rRemove);
+    if (!r || !confirm(`Remover a regra "${r.match}" → "${r.description}"? Os lançamentos já renomeados continuam como estão.`)) return;
+    saveBudgetRules(budgetRules.rules.filter(x => x.id !== r.id));
+  });
+  form.onsubmit = async e => {
+    e.preventDefault();
+    const v = read();
+    if (normText(v.match).length < 3 || !v.description) return;
+    const id = budgetRuleDraft?.id || newEntryId();
+    const rule = { id, match: v.match, description: v.description, ...(v.area ? { area: v.area } : {}) };
+    const rules = budgetRules.rules.some(r => r.id === id) ? budgetRules.rules.map(r => r.id === id ? rule : r) : [...budgetRules.rules, rule];
+    if (await saveBudgetRules(rules)) applyRule(rule, v.apply);
+  };
+}
+
+async function saveBudgetRules(rules) {
+  const headers = { "Content-Type": "application/json" };
+  if (budgetRulesEtag) headers["If-Match"] = `"${budgetRulesEtag}"`; else headers["If-None-Match"] = "*";
+  setSaveState("pendente");
+  budgetRulesErr = null;
+  try {
+    const r = await fetch("/api/budget/rules", { method: "PUT", headers, body: JSON.stringify({ rules }) });
+    if (r.status === 412) {
+      setSaveState("erro", "conflito");
+      alert("As regras foram alteradas em outro dispositivo. A página vai recarregar com a versão mais recente.");
+      location.reload();
+      return false;
+    }
+    if (!r.ok) throw new Error(await errorText(r));
+    budgetRulesEtag = etagOf(r);
+    budgetRules = { rules };
+    budgetRuleDraft = null;
+    setSaveState("ok");
+    renderBudget();
+    return true;
+  } catch (e) {
+    setSaveState("erro", e.message);
+    budgetRulesErr = e.message;
+    renderBudget();
+    return false;
+  }
+}
+
+function applyRule(rule, toSaved) {
+  const hits = text => ruleFor(text, [rule]) !== null;
+  if (budgetImport?.items) {
+    budgetImport.items.forEach(i => {
+      const original = i.originalDescription || i.description;
+      if (!hits(original)) return;
+      i.originalDescription = original;
+      i.description = rule.description;
+      if (rule.area && i.type === "expense") i.area = rule.area;
+    });
+  }
+  if (toSaved) {
+    let changed = 0;
+    const rename = (x, isExpense) => {
+      if (!hits(x.description) || x.description === rule.description && (!rule.area || !isExpense || x.area === rule.area)) return x;
+      changed++;
+      return { ...x, description: rule.description, ...(rule.area && isExpense ? { area: rule.area } : {}) };
+    };
+    budgetData = { ...budgetData, incomes: budgetData.incomes.map(x => rename(x, false)), expenses: budgetData.expenses.map(x => rename(x, true)) };
+    if (changed) persistBudget();
+  }
+  renderBudget();
+}
+
+function budgetImportHtml() {
+  const imp = budgetImport;
+  if (!imp?.preview) {
+    return `<div class="panel">
+      <h2>Importar extrato ou fatura</h2>
+      <div class="hint">BTG Pactual: extrato da conta corrente (XLSX, XLS ou PDF) ou fatura do cartão (PDF). A planilha XLSX é a leitura mais confiável. Nada é salvo antes de você revisar.</div>
+      <div class="b-import-pick">
+        <input type="file" id="b-import-file" accept=".pdf,.xls,.xlsx,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ${imp?.busy ? "disabled" : ""}>
+        ${imp?.busy ? `<span class="muted">Lendo ${esc(imp.fileName)}…</span>` : ""}
+      </div>
+      ${imp?.err ? `<div class="err" style="margin-top:8px">${esc(imp.err)}</div>` : ""}
+      ${budgetImportDone ? `<div class="up" style="margin-top:8px">${esc(budgetImportDone)}</div>` : ""}
+    </div>`;
+  }
+  const { preview, items } = imp;
+  const chosen = items.filter(i => i.selected);
+  const out = chosen.filter(i => i.type === "expense").reduce((t, i) => t + i.amount, 0);
+  const inc = chosen.filter(i => i.type === "income").reduce((t, i) => t + i.amount, 0);
+  const future = chosen.filter(i => i.type === "expense").reduce((t, i) => t + i.future.filter(f => !f.duplicate).length, 0);
+  const areaSelect = (i, idx) => `<select data-bi-area="${idx}" aria-label="Área">${BUDGET_MANUAL_AREAS.map(a => `<option value="${a.id}" ${a.id === i.area ? "selected" : ""}>${a.name}</option>`).join("")}</select>`;
+  const sub = i => [
+    i.category && esc(i.category),
+    i.installment && `parcela ${esc(i.installment)}`,
+    i.month !== i.date.slice(0, 7) && `entra em ${monthShort(i.month)}`,
+    i.originalDescription && `era: ${esc(i.originalDescription)}`,
+  ].filter(Boolean).join(" · ");
+  const rows = byDate(items.map((i, idx) => ({ ...i, idx }))).map(i => `<tr class="${i.selected ? "" : "off"}">
+      <td class="b-check"><input type="checkbox" data-bi-pick="${i.idx}" ${i.selected ? "checked" : ""} aria-label="Importar ${esc(i.description)}"></td>
+      <td>${isoBR(i.date)}</td>
+      <td class="b-desc">${esc(i.description)}${methodBadge(i.method)}${sub(i) ? `<span class="b-sub">${sub(i)}</span>` : ""}${i.note ? `<span class="b-sub warn">${esc(i.note)}</span>` : ""}</td>
+      <td class="b-left">${i.type === "expense" ? areaSelect(i, i.idx) : `<span class="muted">Entrada</span>`}</td>
+      <td class="${i.type === "income" ? "up" : ""}">${i.type === "income" ? "+" : ""}${money(i.amount)}</td>
+      <td><button class="x" title="Criar regra para esta descrição" data-bi-rule="${i.idx}">⇄</button></td>
+    </tr>`).join("");
+  return `<div class="panel">
+    <div class="w-head">
+      <div><h2>Revisar importação</h2><div class="hint" style="margin:0">${esc(preview.source)} · ${esc(imp.fileName)}${preview.billingMonth ? ` · gastos entram em ${monthTitle(preview.billingMonth)}` : ""}</div></div>
+    </div>
+    <div class="b-import-bar">
+      <span>${chosen.length} de ${items.length} selecionados · saídas ${money(out)}${inc ? ` · entradas ${money(inc)}` : ""}</span>
+      <span class="pair"><button type="button" data-bi-all="1">Marcar todos</button><button type="button" data-bi-all="0">Desmarcar todos</button></span>
+    </div>
+    <div class="hint">Itens desmarcados não entram. Os já importados e os que costumam duplicar (pagamento da fatura, transferências entre suas contas) vêm desmarcados.</div>
+    <div class="table-wrap"><table class="w-table b-table b-import-table">
+      <thead><tr><th></th><th>Data</th><th>Descrição</th><th class="b-left">Área</th><th>Valor</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <div class="b-import-foot">
+      ${future ? `<label><input type="checkbox" id="b-import-future" ${imp.includeFuture ? "checked" : ""}>Lançar também as ${future} parcelas futuras nos meses seguintes</label>` : "<span></span>"}
+      <span class="pair">
+        <button type="button" id="b-import-cancel" ${imp.busy ? "disabled" : ""}>Cancelar</button>
+        <button type="button" class="primary" id="b-import-save" ${imp.busy || !chosen.length ? "disabled" : ""}>${imp.busy ? "Importando…" : `Importar ${chosen.length} ${chosen.length === 1 ? "lançamento" : "lançamentos"}`}</button>
+      </span>
+    </div>
+    ${imp.err ? `<div class="err" style="margin-top:8px">${esc(imp.err)}</div>` : ""}
+  </div>`;
+}
+
+function bindBudgetImport() {
+  const file = $("#b-import-file");
+  if (file) file.onchange = () => { if (file.files[0]) previewBudgetImport(file.files[0]); };
+  if (!budgetImport?.preview) return;
+  const items = budgetImport.items;
+  const el = $("#budget");
+  el.querySelectorAll("[data-bi-pick]").forEach(cb => cb.onchange = () => { items[+cb.dataset.biPick].selected = cb.checked; renderBudget(); });
+  el.querySelectorAll("[data-bi-area]").forEach(sel => sel.onchange = () => { items[+sel.dataset.biArea].area = sel.value; });
+  el.querySelectorAll("[data-bi-rule]").forEach(btn => btn.onclick = () => {
+    const i = items[+btn.dataset.biRule];
+    openRuleDraft({ match: i.originalDescription || i.description, description: "", area: i.type === "expense" ? i.area : "" });
+  });
+  el.querySelectorAll("[data-bi-all]").forEach(btn => btn.onclick = () => { items.forEach(i => { i.selected = btn.dataset.biAll === "1"; }); renderBudget(); });
+  const future = $("#b-import-future");
+  if (future) future.onchange = () => { budgetImport.includeFuture = future.checked; };
+  $("#b-import-cancel").onclick = () => { budgetImport = null; renderBudget(); };
+  $("#b-import-save").onclick = commitBudgetImport;
+}
+
+async function previewBudgetImport(file) {
+  budgetImportDone = null;
+  if (file.size > IMPORT_MAX_BYTES) {
+    budgetImport = { fileName: file.name, err: "O arquivo passa de 5 MB." };
+    return renderBudget();
+  }
+  budgetImport = { fileName: file.name, busy: true };
+  renderBudget();
+  try {
+    const r = await fetch(`/api/budget/import/preview?name=${encodeURIComponent(file.name)}`, {
+      method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: file,
+    });
+    if (!r.ok) throw new Error(await errorText(r));
+    const preview = await r.json();
+    budgetImport = { fileName: file.name, preview, items: preview.items, includeFuture: true };
+  } catch (e) { budgetImport = { fileName: file.name, err: e.message }; }
+  renderBudget();
+}
+
+async function commitBudgetImport() {
+  const imp = budgetImport;
+  const items = imp.items.filter(i => i.selected);
+  if (!items.length) return;
+  imp.busy = true; imp.err = null;
+  renderBudget();
+  try {
+    await flushBudget();
+    const r = await fetch("/api/budget/import/commit", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items, includeFutureInstallments: imp.includeFuture }),
+    });
+    if (!r.ok) throw new Error(await errorText(r));
+    const res = await r.json();
+    budgetImport = null;
+    budgetImportDone = `${res.imported} ${res.imported === 1 ? "lançamento importado" : "lançamentos importados"}`
+      + (res.months.length ? ` em ${res.months.map(monthShort).join(", ")}` : "")
+      + (res.skipped ? ` (${res.skipped} já existiam)` : "") + ".";
+    const target = res.months.includes(budgetMonth) || !res.months.length ? budgetMonth : res.months[0];
+    if (target !== budgetMonth) return goToBudgetMonth(target);
+    await loadBudget();
+  } catch (e) { imp.busy = false; imp.err = e.message; }
+  renderBudget();
+}
+
+function budgetHistoryChart(canvas, series) {
+  const bar = (label, values, color) => ({ label, data: values, backgroundColor: css(color), borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: "bottom", maxBarThickness: 18 });
+  return new Chart(canvas, {
+    type: "bar",
+    data: {
+      labels: series.map(s => monthShort(s.month)),
+      datasets: [bar("Entradas", series.map(s => s.income), "--s3"), bar("Saídas", series.map(s => s.expenses), "--s2")],
+    },
+    options: {
+      maintainAspectRatio: false, animation: false,
+      plugins: { legend: { display: false }, tooltip: { ...tooltipOpts(), callbacks: { label: i => `${i.dataset.label}: ${money(i.parsed.y)}` } } },
+      scales: {
+        x: { grid: { display: false }, border: { color: css("--border") }, ticks: { ...tickOpts(), maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
+        y: { grid: gridOpts(), border: { display: false }, beginAtZero: true, ticks: { ...tickOpts(), maxTicksLimit: 4, callback: v => "R$ " + big(v) } },
+      },
+    },
+  });
+}
 
 // ---------- Gráficos da carteira ----------
 let walletCats = [], walletTotal = 0;
@@ -2222,8 +2857,8 @@ setAuto();
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderPage);
 // mostra só o que é da página atual
 document.querySelectorAll(".nav a").forEach(a => a.classList.toggle("on", a.dataset.page === PAGE));
-document.title = { carteira: "Carteira", projecao: "Projeção", ativos: "Ativos", moedas: "Moedas", bens: "Bens", custos: "Custos", glossario: "Glossário" }[PAGE] + " · Meus Investimentos";
-const pageEls = { carteira: ["#wallet"], projecao: ["#projection"], ativos: ["#ativos-controls", "#app"], moedas: ["#moedas"], bens: ["#bens"], custos: ["#custos"], glossario: ["#glossario"] };
+document.title = { carteira: "Carteira", budget: "Orçamento", projecao: "Projeção", ativos: "Ativos", moedas: "Moedas", bens: "Bens", custos: "Custos", glossario: "Glossário" }[PAGE] + " · Meus Investimentos";
+const pageEls = { carteira: ["#wallet"], budget: ["#budget"], projecao: ["#projection"], ativos: ["#ativos-controls", "#app"], moedas: ["#moedas"], bens: ["#bens"], custos: ["#custos"], glossario: ["#glossario"] };
 for (const [pg, sels] of Object.entries(pageEls)) sels.forEach(sel => $(sel).hidden = pg !== PAGE);
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 $("#demo-bar").hidden = !DEMO;

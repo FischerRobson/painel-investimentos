@@ -61,6 +61,16 @@ public class S3DocumentStore implements DocumentStore {
                 .toList();
     }
 
+    @Override
+    public List<String> listFiles(String prefix) {
+        String p = prefix.endsWith("/") ? prefix : prefix + "/";
+        return s3.listObjectsV2Paginator(b -> b.bucket(bucket).prefix(p).delimiter("/")).contents().stream()
+                .map(o -> o.key().substring(p.length()))
+                .filter(name -> !name.isEmpty())
+                .sorted()
+                .toList();
+    }
+
     private static String unquote(String etag) {
         return etag == null ? null : etag.replace("\"", "");
     }

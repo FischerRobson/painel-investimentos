@@ -21,10 +21,12 @@ public class WalletService {
 
     private final UserDataRepository repository;
     private final CurrentUser user;
+    private final BudgetService budget;
 
-    public WalletService(UserDataRepository repository, CurrentUser user) {
+    public WalletService(UserDataRepository repository, CurrentUser user, BudgetService budget) {
         this.repository = repository;
         this.user = user;
+        this.budget = budget;
     }
 
     public Optional<Versioned<Wallet>> wallet() {
@@ -44,7 +46,8 @@ public class WalletService {
         Wallet w = wallet().map(Versioned::value).orElse(Wallet.EMPTY);
         Object watchlist = w.preferences().get(WATCHLIST);
         return new Backup("painel-acoes", 2, Instant.now().toString(), w.stocks(), w.crypto(), w.fixedIncome(),
-                w.currencies(), w.vehicles(), history(), watchlist instanceof String s ? s : null, w.preferences());
+                w.currencies(), w.vehicles(), history(), watchlist instanceof String s ? s : null, w.preferences(),
+                budget.exportBackup());
     }
 
     public void importBackup(Backup b) {
@@ -55,6 +58,7 @@ public class WalletService {
         Wallet wallet = new Wallet(b.stocks(), b.crypto(), b.fixedIncome(), b.currencies(), b.vehicles(), prefs);
         validate(wallet);
         String owner = user.id();
+        budget.importBackup(b.budget());
         repository.saveWallet(owner, wallet, Condition.any());
         repository.replaceHistory(owner, b.history() == null ? Map.of() : b.history());
     }
