@@ -290,6 +290,10 @@ body.busy #topbar { opacity: 1; }
 .uso-bar > span.none { background: var(--text-3); opacity: .5; }
 .b-ref { margin: 8px 0 4px; padding: 8px 12px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); font-size: 12px; color: var(--text-2); }
 .b-ref strong { color: var(--text); }
+.b-ref button.link { border: 0; background: none; color: var(--accent); padding: 0; font-size: inherit; text-decoration: underline; }
+.b-ref-form { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; font-size: 13px; }
+.b-ref-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.b-ref-row input { flex: 0 1 200px; min-width: 0; padding: 8px 10px; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
 .b-meta { display: grid; grid-template-columns: minmax(300px, 440px) 1fr; gap: 12px 28px; align-items: start; }
 .b-meta .b-areas { margin-top: 4px; }
 .b-radar { position: relative; height: 360px; }
@@ -1404,7 +1408,7 @@ const methodBadge = m => PAYMENT_METHODS[m] ? `<span class="b-method ${m}">${PAY
 const IMPORT_MAX_BYTES = 5 * 1024 * 1024;
 
 let budgetMonth = PAGE === "budget" && MONTH_KEY.test(location.hash.slice(1)) ? location.hash.slice(1) : monthKeyOf(new Date());
-let budgetSettings = null, budgetSettingsEtag = null, budgetTargetsDraft = null, budgetTargetsOpen = false;
+let budgetSettings = null, budgetSettingsEtag = null, budgetTargetsDraft = null, budgetIncomeDraft = null, budgetTargetsOpen = false;
 let budgetData = { incomes: [], expenses: [] }, budgetEtags = {}, budgetSummaryList = [], budgetErr = null;
 let budgetEditing = null, budgetLastExpense = null, budgetChart = null;
 let budgetTimer = null, budgetChain = Promise.resolve(), budgetPendingMonth = null;
@@ -1475,12 +1479,13 @@ async function saveBudgetMonth(month, body) {
     setSaveState("ok");
   } catch (e) { setSaveState("erro", e.message); }
 }
-async function saveBudgetTargets(targets) {
+async function saveBudgetSettings(patch) {
   const headers = { "Content-Type": "application/json" };
   if (budgetSettingsEtag) headers["If-Match"] = `"${budgetSettingsEtag}"`; else headers["If-None-Match"] = "*";
+  const next = { ...budgetSettings, ...patch };
   setSaveState("pendente");
   try {
-    const r = await fetch("/api/budget/settings", { method: "PUT", headers, body: JSON.stringify({ ...budgetSettings, targets }) });
+    const r = await fetch("/api/budget/settings", { method: "PUT", headers, body: JSON.stringify(next) });
     if (r.status === 412) {
       setSaveState("erro", "conflito");
       alert("As metas foram alteradas em outro dispositivo. A página vai recarregar com a versão mais recente.");
@@ -1488,8 +1493,8 @@ async function saveBudgetTargets(targets) {
     }
     if (!r.ok) throw new Error(await errorText(r));
     budgetSettingsEtag = etagOf(r);
-    budgetSettings = { ...budgetSettings, targets };
-    budgetTargetsDraft = null;
+    budgetSettings = next;
+    if (patch.targets) budgetTargetsDraft = null;
     setSaveState("ok");
   } catch (e) { setSaveState("erro", e.message); }
   renderBudget();
@@ -1517,9 +1522,25 @@ const byDate = list => [...list].sort((a, b) => a.date.localeCompare(b.date) || 
 const targetsSum = targets => BUDGET_AREAS.reduce((s, a) => s + (Number(targets[a.id]) || 0), 0);
 
 function budgetReference(totals) {
-  if (totals.income > 0) return { income: totals.income, month: null };
+  if (totals.income > 0) return { income: totals.income, source: "month" };
+  if (budgetSettings.referenceIncome > 0) return { income: budgetSettings.referenceIncome, source: "setting" };
   const prev = budgetSummaryList.filter(s => s.month < budgetMonth && s.income > 0).sort((a, b) => b.month.localeCompare(a.month))[0];
-  return prev ? { income: prev.income, month: prev.month } : { income: 0, month: null };
+  return prev ? { income: prev.income, source: "history", month: prev.month } : { income: 0, source: null };
+}
+
+function budgetReferenceHtml(ref) {
+  const month = `<strong>${monthTitle(budgetMonth)}</strong>`;
+  if (ref.source === "setting") {
+    return `<div class="b-ref">Nenhuma entrada em ${month}. As metas usam a sua renda de referência de <strong>${money(ref.income)}</strong>. <button type="button" class="link" data-b-ref-edit>Alterar</button></div>`;
+  }
+  if (ref.source === "history") {
+    return `<div class="b-ref">Nenhuma entrada em ${month}. As metas usam a renda de <strong>${monthTitle(ref.month)}</strong> (${money(ref.income)}). <button type="button" class="link" data-b-ref-edit>Definir uma renda fixa de referência</button></div>`;
+  }
+  if (ref.source) return "";
+  return `<form class="b-ref b-ref-form" id="b-ref-form">
+    <div><strong>Qual é a sua renda mensal líquida?</strong> Ela vira a base das metas em reais nos meses sem entradas lançadas, e fica salva. Você pode mudar depois em Metas por área.</div>
+    <div class="b-ref-row"><input name="income" type="number" min="1" step="0.01" required placeholder="Ex.: 8500" aria-label="Renda mensal líquida (R$)"><button class="primary" type="submit">Usar como referência</button></div>
+  </form>`;
 }
 
 function budgetAreaValues(totals, ref) {
@@ -1536,7 +1557,7 @@ function budgetAreaHtml({ area, target, goal, spent }, ref) {
     return `<div class="b-area">
       <div class="b-area-head">${head}<span class="b-area-val">${area.automatic ? "" : money(spent)}</span></div>
       <div class="uso-bar"><span class="none" style="width:0"></span></div>
-      <div class="b-area-foot"><span>Meta ${brl(target, 0)}% da renda</span><span>aguardando entradas</span></div>
+      <div class="b-area-foot"><span>Meta ${brl(target, 0)}% da renda</span><span>informe a renda acima</span></div>
     </div>`;
   }
   const fill = goal > 0 ? Math.min(100, spent / goal * 100) : 0;
@@ -1701,10 +1722,11 @@ function bindBudgetRows(root) {
 function budgetTargetsHtml() {
   const draft = budgetTargetsDraft || budgetSettings.targets;
   return `<div class="panel"><details class="acc" id="b-targets-acc" ${budgetTargetsOpen ? "open" : ""}>
-    <summary><span class="acc-t">Metas por área</span><span class="acc-s">${BUDGET_AREAS.map(a => `${brl(budgetSettings.targets[a.id] || 0, 0)}%`).join(" · ")}</span></summary>
-    <div class="hint">Quanto da renda líquida (tudo que entrou no mês) vai para cada área. A soma precisa dar 100%.</div>
+    <summary><span class="acc-t">Metas por área</span><span class="acc-s">${BUDGET_AREAS.map(a => `${brl(budgetSettings.targets[a.id] || 0, 0)}%`).join(" · ")}${budgetSettings.referenceIncome ? ` · renda ${money(budgetSettings.referenceIncome)}` : ""}</span></summary>
+    <div class="hint">Quanto da renda líquida (tudo que entrou no mês) vai para cada área. A soma precisa dar 100%. A renda de referência vale nos meses sem entradas lançadas; deixe em branco para usar a do último mês com entradas.</div>
     <form class="w-add rf-form" id="b-targets">
       ${BUDGET_AREAS.map(a => `<label>${a.name} (%)<input name="${a.id}" type="number" min="0" max="100" step="0.5" required value="${draft[a.id] ?? 0}"></label>`).join("")}
+      <label>Renda de referência (R$)<input name="referenceIncome" type="number" min="1" step="0.01" placeholder="Opcional" value="${budgetIncomeDraft ?? budgetSettings.referenceIncome ?? ""}"></label>
       <div class="b-targets-foot"><span id="b-targets-sum"></span><button class="primary" type="submit" id="b-targets-save">Salvar metas</button></div>
     </form>
   </details></div>`;
@@ -1718,7 +1740,7 @@ function renderBudget() {
   if (!budgetSettings) return;
   const totals = budgetTotals(budgetData), balance = totals.income - totals.expenses;
   const ref = budgetReference(totals), areaValues = budgetAreaValues(totals, ref);
-  const refNote = ref.month ? ` de ${monthShort(ref.month)}` : "";
+  const refNote = ref.source === "history" ? ` de ${monthShort(ref.month)}` : ref.source === "setting" ? " de referência" : "";
   const isCurrent = budgetMonth === monthKeyOf(new Date());
   const count = n => `${n} ${n === 1 ? "lançamento" : "lançamentos"}`;
   const series = budgetSummaryList.map(s => s.month === budgetMonth ? { ...s, income: totals.income, expenses: totals.expenses } : s);
@@ -1742,8 +1764,8 @@ function renderBudget() {
   </div>
   <div class="panel">
     <h2>Meta × realizado</h2>
-    <div class="hint">${ref.income ? "Cada ponta da estrela é uma área. A linha tracejada é a meta (100%); a área azul é o realizado. Pontas vermelhas passaram da meta." : "Lance as entradas do mês para ver as metas em reais."}</div>
-    ${ref.month ? `<div class="b-ref">Nenhuma entrada em <strong>${monthTitle(budgetMonth)}</strong>. As metas usam a renda de <strong>${monthTitle(ref.month)}</strong> (${money(ref.income)}) como referência até você lançar as entradas deste mês.</div>` : ""}
+    <div class="hint">${ref.income ? "Cada ponta da estrela é uma área. A linha tracejada é a meta (100%); a área azul é o realizado. Pontas vermelhas passaram da meta." : "As metas são uma porcentagem da renda. Informe a sua renda para ver os valores em reais e o gráfico."}</div>
+    ${budgetReferenceHtml(ref)}
     <div class="b-meta ${ref.income ? "" : "solo"}">
       ${ref.income ? `<div>
         <div class="legend"><span><i class="dash"></i>Meta</span><span><i style="background:var(--s1)"></i>Realizado</span></div>
@@ -1789,6 +1811,7 @@ function renderBudget() {
   bindBudgetFilters();
   renderBudgetEntries();
   bindBudgetTargets();
+  bindBudgetReference();
   bindBudgetImport();
   bindBudgetRules();
   const canvas = $("#b-history");
@@ -1833,9 +1856,26 @@ function bindBudgetTargets() {
     label.className = ok ? "muted" : "err";
     $("#b-targets-save").disabled = !ok;
   };
-  form.oninput = () => { budgetTargetsDraft = read(); refresh(); };
-  form.onsubmit = e => { e.preventDefault(); saveBudgetTargets(read()); };
+  const income = () => { const v = Math.round(Number(form.elements.referenceIncome.value) * 100) / 100; return v > 0 ? v : undefined; };
+  form.oninput = () => { budgetTargetsDraft = read(); budgetIncomeDraft = form.elements.referenceIncome.value; refresh(); };
+  form.onsubmit = e => { e.preventDefault(); budgetIncomeDraft = null; saveBudgetSettings({ targets: read(), referenceIncome: income() }); };
   refresh();
+}
+
+function bindBudgetReference() {
+  const form = $("#b-ref-form");
+  if (form) form.onsubmit = e => {
+    e.preventDefault();
+    const v = Math.round(Number(form.elements.income.value) * 100) / 100;
+    if (v > 0) saveBudgetSettings({ referenceIncome: v });
+  };
+  document.querySelectorAll("[data-b-ref-edit]").forEach(btn => btn.onclick = () => {
+    budgetTargetsOpen = true;
+    renderBudget();
+    const field = $("#b-targets [name=referenceIncome]");
+    field.scrollIntoView({ behavior: "smooth", block: "center" });
+    field.focus();
+  });
 }
 
 function openRuleDraft(draft) {

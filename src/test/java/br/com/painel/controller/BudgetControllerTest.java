@@ -15,6 +15,7 @@ import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasKey;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 
@@ -63,6 +64,22 @@ class BudgetControllerTest {
         given().when().get("/api/budget/settings").then().statusCode(200)
                 .header("ETag", equalTo("\"" + etag + "\""))
                 .body("targets.comfort", equalTo(15.0f));
+    }
+
+    @Test
+    void settingsKeepAnOptionalReferenceIncome() {
+        String withIncome = SETTINGS.replace("}}", "},\"referenceIncome\":8500.5}");
+        given().contentType(ContentType.JSON).header("If-None-Match", "*")
+                .body(SETTINGS.replace("}}", "},\"referenceIncome\":-1}"))
+                .when().put("/api/budget/settings").then().statusCode(400);
+
+        String etag = given().contentType(ContentType.JSON).header("If-None-Match", "*").body(withIncome)
+                .when().put("/api/budget/settings").then().statusCode(200).extract().path("etag");
+        given().when().get("/api/budget/settings").then().statusCode(200).body("referenceIncome", equalTo(8500.5f));
+
+        given().contentType(ContentType.JSON).header("If-Match", "\"" + etag + "\"").body(SETTINGS)
+                .when().put("/api/budget/settings").then().statusCode(200);
+        given().when().get("/api/budget/settings").then().statusCode(200).body("$", not(hasKey("referenceIncome")));
     }
 
     @Test
