@@ -278,7 +278,11 @@ body.busy #topbar { opacity: 1; }
 .b-import-pick input[type=file] { max-width: 100%; font: inherit; color: var(--text-2); }
 .b-import-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin: 10px 0 4px; font-size: 13px; color: var(--text-2); }
 .b-import-bar .pair { display: flex; gap: 6px; }
+.b-import-btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; }
+.b-import-btn svg { width: 16px; height: 16px; flex: none; }
+.b-import-btn:disabled { opacity: .55; cursor: default; }
 .b-import-table td.b-check { width: 28px; padding-right: 0; text-align: left; }
+.b-import-table td.b-desc, .b-import-table th:nth-child(3) { text-align: left; }
 .b-import-table tr.off td:not(.b-check) { opacity: .45; }
 .b-import-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; }
 .b-import-foot label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); }
@@ -754,11 +758,17 @@ function renderProjection() {
 }
 
 // ---------- Backup ----------
-function exportBackup() {
+async function exportBackup() {
+  let budget;
+  try {
+    const r = await fetch("/api/backup");
+    if (!r.ok) throw new Error(await errorText(r));
+    budget = (await r.json()).budget;
+  } catch (e) { return alert("Não foi possível incluir o orçamento no backup: " + e.message); }
   const payload = {
     app: "painel-acoes", versao: 1, exportadoEm: new Date().toISOString(),
     acoesFiis: wallet, cripto: cryptoW, rendaFixa: rfW, moedas: moedasW, bens: bensW, historico: histW, listaPainel,
-    preferencias: { projecao: projCfg, simulador: simCfg, listaPainel },
+    preferencias: { projecao: projCfg, simulador: simCfg, listaPainel }, budget,
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
@@ -1730,7 +1740,6 @@ function renderBudget() {
       <div class="tile"><div class="k">Saldo</div><div class="v ${signCls(balance)}">${money(balance)}</div><div class="s">${balance >= 0 ? "sobrou no mês" : "faltou no mês"}</div></div>
     </div>
   </div>
-  ${budgetImportHtml()}
   <div class="panel">
     <h2>Meta × realizado</h2>
     <div class="hint">${ref.income ? "Cada ponta da estrela é uma área. A linha tracejada é a meta (100%); a área azul é o realizado. Pontas vermelhas passaram da meta." : "Lance as entradas do mês para ver as metas em reais."}</div>
@@ -1743,9 +1752,13 @@ function renderBudget() {
       <div class="b-areas">${areaValues.map(v => budgetAreaHtml(v, ref)).join("")}</div>
     </div>
   </div>
+  ${budgetImportHtml()}
   <div class="panel">
-    <h2>Lançamentos</h2>
-    <div class="hint">Entradas e saídas do mês. Troque a área direto na tabela; clique em Data ou Valor para ordenar.</div>
+    <div class="w-head">
+      <div><h2>Lançamentos</h2><div class="hint" style="margin:0">Entradas e saídas do mês. Troque a área direto na tabela; clique em Data ou Valor para ordenar.</div></div>
+      ${budgetImportButtonHtml()}
+    </div>
+    ${budgetImportStatusHtml()}
     ${budgetFiltersHtml()}
     <div id="b-entries"></div>
     <div class="b-new">
@@ -1947,18 +1960,7 @@ function applyRule(rule, toSaved) {
 
 function budgetImportHtml() {
   const imp = budgetImport;
-  if (!imp?.preview) {
-    return `<div class="panel">
-      <h2>Importar extrato ou fatura</h2>
-      <div class="hint">BTG Pactual: extrato da conta corrente (XLSX, XLS ou PDF) ou fatura do cartão (PDF). A planilha XLSX é a leitura mais confiável. Nada é salvo antes de você revisar.</div>
-      <div class="b-import-pick">
-        <input type="file" id="b-import-file" accept=".pdf,.xls,.xlsx,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ${imp?.busy ? "disabled" : ""}>
-        ${imp?.busy ? `<span class="muted">Lendo ${esc(imp.fileName)}…</span>` : ""}
-      </div>
-      ${imp?.err ? `<div class="err" style="margin-top:8px">${esc(imp.err)}</div>` : ""}
-      ${budgetImportDone ? `<div class="up" style="margin-top:8px">${esc(budgetImportDone)}</div>` : ""}
-    </div>`;
-  }
+  if (!imp?.preview) return "";
   const { preview, items } = imp;
   const chosen = items.filter(i => i.selected);
   const out = chosen.filter(i => i.type === "expense").reduce((t, i) => t + i.amount, 0);
@@ -1979,7 +1981,7 @@ function budgetImportHtml() {
       <td class="${i.type === "income" ? "up" : ""}">${i.type === "income" ? "+" : ""}${money(i.amount)}</td>
       <td><button class="x" title="Criar regra para esta descrição" data-bi-rule="${i.idx}">⇄</button></td>
     </tr>`).join("");
-  return `<div class="panel">
+  return `<div class="panel" id="b-import-review">
     <div class="w-head">
       <div><h2>Revisar importação</h2><div class="hint" style="margin:0">${esc(preview.source)} · ${esc(imp.fileName)}${preview.billingMonth ? ` · gastos entram em ${monthTitle(preview.billingMonth)}` : ""}</div></div>
     </div>
@@ -2003,8 +2005,22 @@ function budgetImportHtml() {
   </div>`;
 }
 
+function budgetImportButtonHtml() {
+  const imp = budgetImport, busy = imp?.busy && !imp.preview;
+  return `<div class="b-import-pick">
+    <button type="button" class="primary b-import-btn" id="b-import-btn" ${busy || imp?.preview ? "disabled" : ""} title="Extrato do BTG (XLSX, XLS ou PDF) ou fatura do cartão BTG ou Nubank (PDF). Nada é salvo antes de você revisar."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4M7 9l5-5 5 5"/><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg>${busy ? `Lendo ${esc(imp.fileName)}…` : "Importar extrato ou fatura"}</button>
+    <input type="file" id="b-import-file" hidden accept=".pdf,.xls,.xlsx,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+  </div>`;
+}
+function budgetImportStatusHtml() {
+  const err = !budgetImport?.preview && budgetImport?.err;
+  if (err) return `<div class="err" style="margin-top:8px">Não deu para ler ${esc(budgetImport.fileName)}: ${esc(err)}</div>`;
+  return budgetImportDone ? `<div class="up" style="margin-top:8px">${esc(budgetImportDone)}</div>` : "";
+}
+
 function bindBudgetImport() {
-  const file = $("#b-import-file");
+  const file = $("#b-import-file"), btn = $("#b-import-btn");
+  if (btn && file) btn.onclick = () => file.click();
   if (file) file.onchange = () => { if (file.files[0]) previewBudgetImport(file.files[0]); };
   if (!budgetImport?.preview) return;
   const items = budgetImport.items;
@@ -2039,6 +2055,7 @@ async function previewBudgetImport(file) {
     budgetImport = { fileName: file.name, preview, items: preview.items, includeFuture: true };
   } catch (e) { budgetImport = { fileName: file.name, err: e.message }; }
   renderBudget();
+  $("#b-import-review")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 async function commitBudgetImport() {
