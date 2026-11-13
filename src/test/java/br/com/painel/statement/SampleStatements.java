@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public final class SampleStatements {
 
@@ -136,6 +137,34 @@ public final class SampleStatements {
         page1.add(new Text(30, y + 25, "26 Set Pix no cartão de crédito R$ 51,69"));
         page1.add(new Text(30, y + 40, "BTG Pactual S.A"));
         List<Text> page2 = List.of(new Text(30, 30, "Taxas e encargos"), new Text(30, 45, "01 Out Juros R$ 9,99"));
+        return pdf(List.of(page1, page2));
+    }
+
+    public static byte[] nubankCardPdf() {
+        List<Text> page1 = List.of(
+                new Text(60, 120, "Olá, Maria."),
+                new Text(60, 150, "Esta é a sua fatura de"),
+                new Text(60, 180, "novembro, no valor de"),
+                new Text(60, 210, "R$ 898,18"),
+                new Text(60, 260, "Data de vencimento: 18 NOV 2026"),
+                new Text(60, 280, "Período vigente: 11 OUT a 11 NOV"));
+        List<Text> page2 = List.of(
+                new Text(400, 30, HOLDER.toUpperCase(Locale.ROOT)),
+                new Text(400, 42, "FATURA 18 NOV 2026 EMISSÃO E ENVIO 11 NOV 2026"),
+                new Text(60, 70, "TRANSAÇÕES DE 11 OUT A 11 NOV"),
+                new Text(140, 100, "Maria T Silva R$ 297,05"),
+                new Text(140, 115, "11 OUT •••• 3159 Mp *Escola - Parcela 7/12 R$ 199,75"),
+                new Text(140, 130, "20 OUT Estorno de \"Loja\" -R$ 182,58"),
+                new Text(160, 142, "Estorno referente a compra em Loja, de valor R$ 547,74, parcelada em 3"),
+                new Text(160, 152, "vezes de R$ 182,58, realizada em 19 de Outubro de 2026"),
+                new Text(140, 167, "20 OUT •••• 6945 Loja - Parcela 1/3 R$ 182,58"),
+                new Text(140, 182, "28 OUT •••• 4338 Streaming R$ 22,45"),
+                new Text(140, 210, "Pagamentos e Financiamentos R$ 121,50"),
+                new Text(140, 225, "15 OUT Pagamento em 15 OUT -R$ 479,63"),
+                new Text(140, 240, "18 OUT Fulano De Tal R$ 52,76"),
+                new Text(160, 252, "Total a pagar: R$ 52,75 (valor da transação de R$ 50,00 + R$ 0,34 de IOF +"),
+                new Text(160, 262, "R$ 2,42 de juros)."),
+                new Text(60, 740, "Nu Pagamentos S.A."));
         return pdf(List.of(page1, page2));
     }
 

@@ -7,6 +7,7 @@ import br.com.painel.statement.document.StatementFile;
 import br.com.painel.statement.parser.BtgAccountPdfParser;
 import br.com.painel.statement.parser.BtgAccountSheetParser;
 import br.com.painel.statement.parser.BtgCardStatementParser;
+import br.com.painel.statement.parser.NubankCardStatementParser;
 import br.com.painel.statement.parser.StatementParsers;
 import org.junit.jupiter.api.Test;
 
@@ -24,7 +25,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class StatementParsersTest {
 
     private final StatementParsers parsers = new StatementParsers(
-            List.of(new BtgAccountSheetParser(), new BtgAccountPdfParser(), new BtgCardStatementParser()));
+            List.of(new BtgAccountSheetParser(), new BtgAccountPdfParser(), new BtgCardStatementParser(),
+                    new NubankCardStatementParser()));
 
     @Test
     void readsXlsxAndXlsTheSameWay() {
@@ -112,6 +114,42 @@ class StatementParsersTest {
 
         assertEquals(LocalDate.of(2025, 12, 20), st.entries().get(0).date());
         assertEquals(LocalDate.of(2026, 1, 2), st.entries().get(1).date());
+    }
+
+    @Test
+    void readsNubankCardStatement() {
+        ParsedStatement st = parsers.parse(new StatementFile("Nubank_2026-11-18.pdf", SampleStatements.nubankCardPdf()));
+
+        assertEquals(StatementKind.CREDIT_CARD, st.kind());
+        assertEquals("Fatura do cartão Nubank", st.source());
+        assertEquals("MARIA TESTE SILVA", st.holder());
+        assertEquals(YearMonth.of(2026, 11), st.billingMonth());
+        assertEquals(5, st.entries().size());
+
+        StatementEntry school = st.entries().getFirst();
+        assertEquals(LocalDate.of(2026, 10, 11), school.date());
+        assertEquals("Mp *Escola", school.description());
+        assertEquals("7/12", school.installment().toString());
+        assertEquals(-199.75, school.amount());
+        assertEquals(PaymentMethod.CREDIT_CARD, school.method());
+
+        StatementEntry refund = st.entries().get(1);
+        assertEquals("Estorno de \"Loja\"", refund.description());
+        assertEquals(182.58, refund.amount());
+
+        StatementEntry purchase = st.entries().get(2);
+        assertEquals("Loja", purchase.description());
+        assertEquals("1/3", purchase.installment().toString());
+        assertEquals(-182.58, purchase.amount());
+
+        assertEquals("Streaming", st.entries().get(3).description());
+
+        StatementEntry pix = st.entries().get(4);
+        assertEquals(LocalDate.of(2026, 10, 18), pix.date());
+        assertEquals("Fulano De Tal", pix.description());
+        assertEquals(-52.76, pix.amount());
+        assertEquals(PaymentMethod.CREDIT_PIX, pix.method());
+        assertTrue(st.entries().stream().noneMatch(e -> e.description().startsWith("Pagamento em")));
     }
 
     @Test
