@@ -283,6 +283,35 @@ body.busy #topbar { opacity: 1; }
 .b-import-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; }
 .b-import-foot label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); }
 .b-import-foot .pair { display: flex; gap: 6px; }
+.uso-bar > span.none { background: var(--text-3); opacity: .5; }
+.b-ref { margin: 8px 0 4px; padding: 8px 12px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); font-size: 12px; color: var(--text-2); }
+.b-ref strong { color: var(--text); }
+.b-meta { display: grid; grid-template-columns: minmax(300px, 440px) 1fr; gap: 12px 28px; align-items: start; }
+.b-meta .b-areas { margin-top: 4px; }
+.b-radar { position: relative; height: 360px; }
+.b-meta .legend { justify-content: center; margin: 0 0 2px; }
+.b-meta .legend span { cursor: default; }
+.b-meta .legend i.dash { background: none; border-top: 2px dashed var(--s4); height: 0; }
+.b-meta.solo { grid-template-columns: 1fr; }
+@media (max-width: 820px) { .b-meta { grid-template-columns: 1fr; } .b-radar { height: 300px; } }
+.b-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin: 10px 0 6px; }
+.b-filters label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--text-3); }
+.b-filters input, .b-filters select { padding: 7px 9px; font: inherit; font-size: 13px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; min-width: 0; }
+.b-filters .b-q { flex: 1 1 180px; } .b-filters .b-q input { width: 100%; }
+.b-filters input[type=date] { width: 140px; }
+.b-filters .seg button { padding: 7px 11px; font-size: 13px; }
+.b-filters button.link { border: 0; background: none; color: var(--accent); padding: 7px 4px; font-size: 13px; }
+.b-list-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: 12px; color: var(--text-3); margin: 4px 0 2px; }
+.b-list-bar strong { color: var(--text-2); }
+.b-table th button.sort { border: 0; background: none; padding: 0; font: inherit; color: inherit; font-weight: inherit; text-transform: inherit; letter-spacing: inherit; }
+.b-table th button.sort.on { color: var(--text); }
+.b-kind { font-size: 12px; color: var(--good); font-weight: 600; }
+.b-table td.b-in { color: var(--good); }
+.b-more { display: block; margin: 10px auto 0; }
+.b-new { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.b-new h3 { font-size: 13px; margin: 0; }
+.b-new + .b-form { margin-top: 10px; }
+@media (max-width: 600px) { .b-filters > label, .b-filters .seg { flex: 1 1 calc(50% - 8px); } .b-filters input[type=date] { width: 100%; } .b-filters .seg { display: flex; flex-basis: 100%; } .b-filters .seg button { flex: 1; } }
 .b-rules-table td.b-left, .b-rules-table th.b-left { text-align: left; }
 .b-rule-form { margin-top: 12px; }
 .b-rule-form .b-rule-foot { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
@@ -1371,6 +1400,9 @@ let budgetEditing = null, budgetLastExpense = null, budgetChart = null;
 let budgetTimer = null, budgetChain = Promise.resolve(), budgetPendingMonth = null;
 let budgetImport = null, budgetImportDone = null;
 let budgetRules = null, budgetRulesEtag = null, budgetRulesOpen = false, budgetRuleDraft = null, budgetRulesErr = null;
+const BUDGET_FILTER_DEFAULT = { kind: "all", area: "", method: "", q: "", from: "", to: "", sort: "date-desc" };
+const BUDGET_PAGE_SIZE = 25;
+let budgetFilter = { ...BUDGET_FILTER_DEFAULT }, budgetShowAll = false, budgetFormKind = "expense", budgetRadar = null;
 const normText = t => String(t ?? "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 function ruleFor(description, rules = budgetRules?.rules || []) {
   const text = normText(description);
@@ -1456,6 +1488,8 @@ async function goToBudgetMonth(key) {
   await flushBudget();
   budgetMonth = key;
   budgetEditing = null;
+  budgetFilter = { ...budgetFilter, from: "", to: "" };
+  budgetShowAll = false;
   history.replaceState(null, "", "#" + key);
   load();
 }
@@ -1472,26 +1506,42 @@ function budgetTotals(d) {
 const byDate = list => [...list].sort((a, b) => a.date.localeCompare(b.date) || a.description.localeCompare(b.description, "pt-BR"));
 const targetsSum = targets => BUDGET_AREAS.reduce((s, a) => s + (Number(targets[a.id]) || 0), 0);
 
-function budgetAreaHtml(area, totals) {
-  const target = budgetSettings.targets[area.id] || 0, goal = totals.income * target / 100;
+function budgetReference(totals) {
+  if (totals.income > 0) return { income: totals.income, month: null };
+  const prev = budgetSummaryList.filter(s => s.month < budgetMonth && s.income > 0).sort((a, b) => b.month.localeCompare(a.month))[0];
+  return prev ? { income: prev.income, month: prev.month } : { income: 0, month: null };
+}
+
+function budgetAreaValues(totals, ref) {
+  return BUDGET_AREAS.map(area => {
+    const target = budgetSettings.targets[area.id] || 0;
+    const spent = area.automatic ? Math.max(0, ref.income - totals.expenses) : totals.areas[area.id] || 0;
+    return { area, target, goal: ref.income * target / 100, spent };
+  });
+}
+
+function budgetAreaHtml({ area, target, goal, spent }, ref) {
   const head = `<span class="b-area-name"><i style="background:var(${area.color})"></i>${area.name}</span>`;
-  if (area.automatic) {
+  if (!ref.income) {
     return `<div class="b-area">
-      <div class="b-area-head">${head}<span class="b-area-val muted">${totals.income ? `meta de ${money(goal)}` : ""}</span></div>
-      <div class="uso-bar"><span style="width:0"></span></div>
-      <div class="b-area-foot"><span>Meta: ${brl(target, 0)}% da renda</span><span>Vem dos aportes da Carteira (próxima versão)</span></div>
+      <div class="b-area-head">${head}<span class="b-area-val">${area.automatic ? "" : money(spent)}</span></div>
+      <div class="uso-bar"><span class="none" style="width:0"></span></div>
+      <div class="b-area-foot"><span>Meta ${brl(target, 0)}% da renda</span><span>aguardando entradas</span></div>
     </div>`;
   }
-  const spent = totals.areas[area.id] || 0, over = spent > goal;
-  const fill = goal > 0 ? Math.min(100, spent / goal * 100) : spent > 0 ? 100 : 0;
-  const share = totals.income ? `${brl(spent / totals.income * 100, 1)}% da renda` : "sem entradas no mês";
-  const status = !totals.income ? "" : over
-    ? `<span class="down">${money(spent - goal)} acima da meta</span>`
-    : `<span class="up">Sobram ${money(goal - spent)}</span>`;
+  const fill = goal > 0 ? Math.min(100, spent / goal * 100) : 0;
+  const share = `${brl(spent / ref.income * 100, 1)}% da renda`;
+  let status, over = false;
+  if (area.automatic) {
+    status = spent >= goal ? `<span class="up">Meta atingida</span>` : `<span>Faltam ${money(goal - spent)}</span>`;
+  } else {
+    over = spent > goal;
+    status = over ? `<span class="down">${money(spent - goal)} acima da meta</span>` : `<span class="up">Sobram ${money(goal - spent)}</span>`;
+  }
   return `<div class="b-area">
-    <div class="b-area-head">${head}<span class="b-area-val">${money(spent)}${totals.income ? ` <span class="muted">de ${money(goal)}</span>` : ""}</span></div>
+    <div class="b-area-head">${head}<span class="b-area-val">${money(spent)} <span class="muted">de ${money(goal)}</span></span></div>
     <div class="uso-bar" role="meter" aria-label="${area.name}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(fill)}"><span class="${over ? "over" : ""}" style="width:${fill}%;${over ? "" : `background:var(${area.color})`}"></span></div>
-    <div class="b-area-foot"><span>${share} · meta ${brl(target, 0)}%</span>${status}</div>
+    <div class="b-area-foot"><span>${area.automatic ? "Sobra do mês (entradas − saídas)" : share} · meta ${brl(target, 0)}%</span>${status}</div>
   </div>`;
 }
 
@@ -1513,21 +1563,129 @@ function budgetEntryForm(kind) {
   </form>`;
 }
 
-function budgetTableHtml(kind) {
-  const isExpense = kind === "expense";
-  const list = byDate(isExpense ? budgetData.expenses : budgetData.incomes);
-  if (!list.length) return `<div class="hint" style="margin-top:8px">${isExpense ? "Nenhuma saída neste mês." : "Nenhuma entrada neste mês."}</div>`;
+const BUDGET_KINDS = [["all", "Todos"], ["income", "Entradas"], ["expense", "Saídas"]];
+const BUDGET_SORTS = [["date-desc", "Data: mais recente"], ["date-asc", "Data: mais antiga"], ["amount-desc", "Maior valor"], ["amount-asc", "Menor valor"]];
+const budgetFilterActive = () => Object.keys(BUDGET_FILTER_DEFAULT).some(k => k !== "sort" && budgetFilter[k] !== BUDGET_FILTER_DEFAULT[k]);
+
+function budgetFilteredEntries() {
+  const f = budgetFilter, q = normText(f.q);
+  const list = [
+    ...(f.kind !== "expense" && !f.area ? budgetData.incomes.map(x => ({ ...x, kind: "income" })) : []),
+    ...(f.kind !== "income" ? budgetData.expenses.map(x => ({ ...x, kind: "expense" })) : []),
+  ].filter(x => (!f.area || x.area === f.area) && (!f.method || x.method === f.method)
+    && (!f.from || x.date >= f.from) && (!f.to || x.date <= f.to) && (!q || normText(x.description).includes(q)));
+  const [key, dir] = f.sort.split("-"), sign = dir === "asc" ? 1 : -1;
+  const byText = (a, b) => a.description.localeCompare(b.description, "pt-BR");
+  return list.sort(key === "amount"
+    ? (a, b) => sign * (a.amount - b.amount) || byText(a, b)
+    : (a, b) => sign * a.date.localeCompare(b.date) || byText(a, b));
+}
+
+function budgetFiltersHtml() {
+  const f = budgetFilter, opt = (v, label, cur) => `<option value="${v}" ${v === cur ? "selected" : ""}>${label}</option>`;
+  return `<div class="b-filters" id="b-filters">
+    <div class="seg" role="group" aria-label="Tipo de lançamento">${BUDGET_KINDS.map(([k, label]) => `<button type="button" data-b-kind="${k}" class="${f.kind === k ? "on" : ""}" aria-pressed="${f.kind === k}">${label}</button>`).join("")}</div>
+    <label>Área<select name="area" ${f.kind === "income" ? "disabled" : ""}>${opt("", "Todas", f.area)}${BUDGET_MANUAL_AREAS.map(a => opt(a.id, a.name, f.area)).join("")}</select></label>
+    <label>Meio<select name="method">${opt("", "Todos", f.method)}${Object.entries(PAYMENT_METHODS).map(([id, name]) => opt(id, name, f.method)).join("")}</select></label>
+    <label>De<input type="date" name="from" value="${esc(f.from)}"></label>
+    <label>Até<input type="date" name="to" value="${esc(f.to)}"></label>
+    <label class="b-q">Buscar<input type="search" name="q" placeholder="Descrição" value="${esc(f.q)}"></label>
+    <label>Ordenar<select name="sort">${BUDGET_SORTS.map(([v, label]) => opt(v, label, f.sort)).join("")}</select></label>
+    <button type="button" class="link" id="b-clear" ${budgetFilterActive() ? "" : "hidden"}>Limpar filtros</button>
+  </div>`;
+}
+
+function budgetEntriesHtml() {
+  const all = budgetData.incomes.length + budgetData.expenses.length;
+  if (!all) return `<div class="hint" style="margin-top:8px">Nenhum lançamento neste mês.</div>`;
+  const list = budgetFilteredEntries();
+  if (!list.length) return `<div class="hint" style="margin-top:8px">Nenhum lançamento com esses filtros.</div>`;
+  const shown = budgetShowAll ? list : list.slice(0, BUDGET_PAGE_SIZE);
+  const sum = kind => list.filter(x => x.kind === kind).reduce((s, x) => s + x.amount, 0);
+  const [sortKey, sortDir] = budgetFilter.sort.split("-"), arrow = sortDir === "asc" ? " ↑" : " ↓";
+  const sortBtn = (key, label) => `<button type="button" class="sort ${sortKey === key ? "on" : ""}" data-b-sort="${key}">${label}${sortKey === key ? arrow : ""}</button>`;
   const areaSelect = e => `<select data-b-area="${esc(e.id)}" aria-label="Área">${BUDGET_MANUAL_AREAS.map(a => `<option value="${a.id}" ${a.id === e.area ? "selected" : ""}>${a.name}</option>`).join("")}</select>`;
-  return `<div class="table-wrap"><table class="w-table b-table">
-    <thead><tr><th>Data</th><th>Descrição</th>${isExpense ? `<th class="b-left">Área</th>` : ""}<th>Valor</th><th></th></tr></thead>
-    <tbody>${list.map(x => `<tr class="${budgetEditing?.kind === kind && budgetEditing.id === x.id ? "editing" : ""}">
+  const totals = [list.some(x => x.kind === "income") && `Entradas <strong>${money(sum("income"))}</strong>`,
+    list.some(x => x.kind === "expense") && `Saídas <strong>${money(sum("expense"))}</strong>`].filter(Boolean).join(" · ");
+  return `<div class="b-list-bar"><span>${list.length === all ? `${all} ${all === 1 ? "lançamento" : "lançamentos"}` : `${list.length} de ${all} lançamentos`}</span><span>${totals}</span></div>
+  <div class="table-wrap"><table class="w-table b-table">
+    <thead><tr><th>${sortBtn("date", "Data")}</th><th>Descrição</th><th class="b-left">Área</th><th>${sortBtn("amount", "Valor")}</th><th></th></tr></thead>
+    <tbody>${shown.map(x => `<tr class="${budgetEditing?.kind === x.kind && budgetEditing.id === x.id ? "editing" : ""}">
       <td>${isoBR(x.date)}</td>
       <td class="b-desc">${esc(x.description)}${x.installment ? ` <span class="muted">${esc(x.installment)}</span>` : ""}${methodBadge(x.method)}</td>
-      ${isExpense ? `<td class="b-left">${areaSelect(x)}</td>` : ""}
-      <td>${money(x.amount)}</td>
-      <td style="white-space:nowrap"><button class="x" title="Criar regra para esta descrição" data-b-rule="${kind}:${esc(x.id)}">⇄</button><button class="x" title="Editar" data-b-edit="${kind}:${esc(x.id)}">✎</button><button class="x" title="Remover" data-b-remove="${kind}:${esc(x.id)}">×</button></td>
+      <td class="b-left">${x.kind === "expense" ? areaSelect(x) : `<span class="b-kind">Entrada</span>`}</td>
+      <td class="${x.kind === "income" ? "b-in" : ""}">${x.kind === "income" ? "+ " : ""}${money(x.amount)}</td>
+      <td style="white-space:nowrap"><button class="x" title="Criar regra para esta descrição" data-b-rule="${x.kind}:${esc(x.id)}">⇄</button><button class="x" title="Editar" data-b-edit="${x.kind}:${esc(x.id)}">✎</button><button class="x" title="Remover" data-b-remove="${x.kind}:${esc(x.id)}">×</button></td>
     </tr>`).join("")}</tbody>
-  </table></div>`;
+  </table></div>
+  ${list.length > shown.length ? `<button type="button" class="b-more" id="b-more">Mostrar todos (${list.length})</button>` : ""}`;
+}
+
+function renderBudgetEntries() {
+  const box = $("#b-entries");
+  if (!box) return;
+  box.innerHTML = budgetEntriesHtml();
+  const clear = $("#b-clear");
+  if (clear) clear.hidden = !budgetFilterActive();
+  bindBudgetRows(box);
+}
+
+function bindBudgetFilters() {
+  const bar = $("#b-filters");
+  if (!bar) return;
+  const changed = () => { budgetShowAll = false; renderBudgetEntries(); };
+  bar.querySelectorAll("[data-b-kind]").forEach(btn => btn.onclick = () => {
+    budgetFilter.kind = btn.dataset.bKind;
+    if (budgetFilter.kind === "income") budgetFilter.area = "";
+    bar.querySelectorAll("[data-b-kind]").forEach(b => { const on = b === btn; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); });
+    const area = bar.querySelector("[name=area]");
+    area.disabled = budgetFilter.kind === "income";
+    area.value = budgetFilter.area;
+    changed();
+  });
+  bar.querySelectorAll("input, select").forEach(input => input.oninput = () => { budgetFilter[input.name] = input.value; changed(); });
+  $("#b-clear").onclick = () => { budgetFilter = { ...BUDGET_FILTER_DEFAULT, sort: budgetFilter.sort }; budgetShowAll = false; renderBudget(); };
+}
+
+function bindBudgetRows(root) {
+  root.querySelectorAll("[data-b-sort]").forEach(btn => btn.onclick = () => {
+    const [key, dir] = budgetFilter.sort.split("-");
+    budgetFilter.sort = key === btn.dataset.bSort ? `${key}-${dir === "asc" ? "desc" : "asc"}` : `${btn.dataset.bSort}-desc`;
+    const sel = $("#b-filters [name=sort]");
+    if (sel) sel.value = budgetFilter.sort;
+    renderBudgetEntries();
+  });
+  const more = root.querySelector("#b-more");
+  if (more) more.onclick = () => { budgetShowAll = true; renderBudgetEntries(); };
+  root.querySelectorAll("[data-b-area]").forEach(sel => sel.onchange = () => {
+    const e = budgetData.expenses.find(x => x.id === sel.dataset.bArea);
+    if (!e) return;
+    e.area = sel.value;
+    persistBudget();
+    renderBudget();
+  });
+  root.querySelectorAll("[data-b-edit]").forEach(btn => btn.onclick = () => {
+    const [kind, id] = btn.dataset.bEdit.split(":");
+    budgetEditing = { kind, id };
+    budgetFormKind = kind;
+    renderBudget();
+    $(`#b-form-${kind}`).scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+  root.querySelectorAll("[data-b-remove]").forEach(btn => btn.onclick = () => {
+    const [kind, id] = btn.dataset.bRemove.split(":");
+    const key = kind === "expense" ? "expenses" : "incomes";
+    const entry = budgetData[key].find(x => x.id === id);
+    if (entry && !confirm(`Remover "${entry.description}" (${money(entry.amount)})?`)) return;
+    budgetData = { ...budgetData, [key]: budgetData[key].filter(x => x.id !== id) };
+    if (budgetEditing?.id === id) budgetEditing = null;
+    persistBudget();
+    renderBudget();
+  });
+  root.querySelectorAll("[data-b-rule]").forEach(btn => btn.onclick = () => {
+    const [kind, id] = btn.dataset.bRule.split(":");
+    const x = budgetData[kind === "expense" ? "expenses" : "incomes"].find(e => e.id === id);
+    if (x) openRuleDraft({ match: x.description, description: "", area: kind === "expense" ? x.area : "" });
+  });
 }
 
 function budgetTargetsHtml() {
@@ -1545,9 +1703,12 @@ function budgetTargetsHtml() {
 function renderBudget() {
   const el = $("#budget");
   if (budgetChart) { budgetChart.destroy(); budgetChart = null; }
+  if (budgetRadar) { budgetRadar.destroy(); budgetRadar = null; }
   if (budgetErr) { el.innerHTML = `<div class="panel err">${esc(budgetErr)}</div>`; return; }
   if (!budgetSettings) return;
   const totals = budgetTotals(budgetData), balance = totals.income - totals.expenses;
+  const ref = budgetReference(totals), areaValues = budgetAreaValues(totals, ref);
+  const refNote = ref.month ? ` de ${monthShort(ref.month)}` : "";
   const isCurrent = budgetMonth === monthKeyOf(new Date());
   const count = n => `${n} ${n === 1 ? "lançamento" : "lançamentos"}`;
   const series = budgetSummaryList.map(s => s.month === budgetMonth ? { ...s, income: totals.income, expenses: totals.expenses } : s);
@@ -1565,27 +1726,33 @@ function renderBudget() {
     </div>
     <div class="tiles">
       <div class="tile"><div class="k">Entradas</div><div class="v">${money(totals.income)}</div><div class="s">${count(budgetData.incomes.length)}</div></div>
-      <div class="tile"><div class="k">Saídas</div><div class="v">${money(totals.expenses)}</div><div class="s">${totals.income ? `${brl(totals.expenses / totals.income * 100, 1)}% da renda` : count(budgetData.expenses.length)}</div></div>
+      <div class="tile"><div class="k">Saídas</div><div class="v">${money(totals.expenses)}</div><div class="s">${count(budgetData.expenses.length)}${ref.income ? ` · ${brl(totals.expenses / ref.income * 100, 1)}% da renda${refNote}` : ""}</div></div>
       <div class="tile"><div class="k">Saldo</div><div class="v ${signCls(balance)}">${money(balance)}</div><div class="s">${balance >= 0 ? "sobrou no mês" : "faltou no mês"}</div></div>
     </div>
   </div>
   ${budgetImportHtml()}
   <div class="panel">
     <h2>Meta × realizado</h2>
-    <div class="hint">${totals.income ? "Cada barra enche até a meta da área, calculada sobre as entradas do mês." : "Lance as entradas do mês para ver as metas em reais."}</div>
-    <div class="b-areas">${BUDGET_AREAS.map(a => budgetAreaHtml(a, totals)).join("")}</div>
+    <div class="hint">${ref.income ? "Cada ponta da estrela é uma área. A linha tracejada é a meta (100%); a área azul é o realizado. Pontas vermelhas passaram da meta." : "Lance as entradas do mês para ver as metas em reais."}</div>
+    ${ref.month ? `<div class="b-ref">Nenhuma entrada em <strong>${monthTitle(budgetMonth)}</strong>. As metas usam a renda de <strong>${monthTitle(ref.month)}</strong> (${money(ref.income)}) como referência até você lançar as entradas deste mês.</div>` : ""}
+    <div class="b-meta ${ref.income ? "" : "solo"}">
+      ${ref.income ? `<div>
+        <div class="legend"><span><i class="dash"></i>Meta</span><span><i style="background:var(--s1)"></i>Realizado</span></div>
+        <div class="b-radar"><canvas id="b-radar" role="img" aria-label="Meta e realizado por área: ${esc(areaValues.map(v => `${v.area.name} ${money(v.spent)} de ${money(v.goal)}`).join("; "))}"></canvas></div>
+      </div>` : ""}
+      <div class="b-areas">${areaValues.map(v => budgetAreaHtml(v, ref)).join("")}</div>
+    </div>
   </div>
   <div class="panel">
-    <h2>Entradas</h2>
-    <div class="hint">Salário, freelas e outras receitas líquidas que caíram na conta.</div>
-    ${budgetTableHtml("income")}
-    ${budgetEntryForm("income")}
-  </div>
-  <div class="panel">
-    <h2>Saídas</h2>
-    <div class="hint">Pix, boletos, débito e cartão. Troque a área direto na tabela.</div>
-    ${budgetTableHtml("expense")}
-    ${budgetEntryForm("expense")}
+    <h2>Lançamentos</h2>
+    <div class="hint">Entradas e saídas do mês. Troque a área direto na tabela; clique em Data ou Valor para ordenar.</div>
+    ${budgetFiltersHtml()}
+    <div id="b-entries"></div>
+    <div class="b-new">
+      <h3>${budgetEditing ? "Editar lançamento" : "Novo lançamento"}</h3>
+      <div class="seg" role="group" aria-label="Tipo do novo lançamento">${[["income", "Entrada"], ["expense", "Saída"]].map(([k, label]) => `<button type="button" data-b-new="${k}" class="${budgetFormKind === k ? "on" : ""}" aria-pressed="${budgetFormKind === k}">${label}</button>`).join("")}</div>
+    </div>
+    ${budgetEntryForm(budgetFormKind)}
   </div>
   ${hasHistory ? `<div class="panel">
     <h2>Últimos 12 meses</h2>
@@ -1599,41 +1766,22 @@ function renderBudget() {
   $("#b-next").onclick = () => goToBudgetMonth(shiftMonthKey(budgetMonth, 1));
   const today = $("#b-today");
   if (today) today.onclick = () => goToBudgetMonth(monthKeyOf(new Date()));
-  bindBudgetForm("income");
-  bindBudgetForm("expense");
-  el.querySelectorAll("[data-b-area]").forEach(sel => sel.onchange = () => {
-    const e = budgetData.expenses.find(x => x.id === sel.dataset.bArea);
-    if (!e) return;
-    e.area = sel.value;
-    persistBudget();
+  bindBudgetForm(budgetFormKind);
+  el.querySelectorAll("[data-b-new]").forEach(btn => btn.onclick = () => {
+    if (budgetFormKind === btn.dataset.bNew) return;
+    budgetFormKind = btn.dataset.bNew;
+    budgetEditing = null;
     renderBudget();
   });
-  el.querySelectorAll("[data-b-edit]").forEach(btn => btn.onclick = () => {
-    const [kind, id] = btn.dataset.bEdit.split(":");
-    budgetEditing = { kind, id };
-    renderBudget();
-    $(`#b-form-${kind}`).scrollIntoView({ behavior: "smooth", block: "center" });
-  });
-  el.querySelectorAll("[data-b-remove]").forEach(btn => btn.onclick = () => {
-    const [kind, id] = btn.dataset.bRemove.split(":");
-    const key = kind === "expense" ? "expenses" : "incomes";
-    const entry = budgetData[key].find(x => x.id === id);
-    if (entry && !confirm(`Remover "${entry.description}" (${money(entry.amount)})?`)) return;
-    budgetData = { ...budgetData, [key]: budgetData[key].filter(x => x.id !== id) };
-    if (budgetEditing?.id === id) budgetEditing = null;
-    persistBudget();
-    renderBudget();
-  });
+  bindBudgetFilters();
+  renderBudgetEntries();
   bindBudgetTargets();
   bindBudgetImport();
   bindBudgetRules();
-  el.querySelectorAll("[data-b-rule]").forEach(btn => btn.onclick = () => {
-    const [kind, id] = btn.dataset.bRule.split(":");
-    const x = budgetData[kind === "expense" ? "expenses" : "incomes"].find(e => e.id === id);
-    if (x) openRuleDraft({ match: x.description, description: "", area: kind === "expense" ? x.area : "" });
-  });
   const canvas = $("#b-history");
   if (canvas) budgetChart = budgetHistoryChart(canvas, series);
+  const radar = $("#b-radar");
+  if (radar) budgetRadar = budgetRadarChart(radar, areaValues);
 }
 
 function bindBudgetForm(kind) {
@@ -1933,6 +2081,50 @@ function budgetHistoryChart(canvas, series) {
         x: { grid: { display: false }, border: { color: css("--border") }, ticks: { ...tickOpts(), maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
         y: { grid: gridOpts(), border: { display: false }, beginAtZero: true, ticks: { ...tickOpts(), maxTicksLimit: 4, callback: v => "R$ " + big(v) } },
       },
+    },
+  });
+}
+
+function budgetRadarChart(canvas, values) {
+  const CAP = 200;
+  const pctOf = v => v.goal > 0 ? v.spent / v.goal * 100 : 0;
+  const shown = values.map(v => Math.min(CAP, pctOf(v)));
+  const max = Math.min(CAP, Math.max(150, Math.ceil(Math.max(...shown) / 50) * 50));
+  const isOver = v => !v.area.automatic && v.spent > v.goal;
+  const real = css("--s1"), meta = css("--s4"), bad = css("--bad"), surface = css("--surface");
+  return new Chart(canvas, {
+    type: "radar",
+    data: {
+      labels: values.map(v => v.area.name),
+      datasets: [
+        { label: "Meta", data: values.map(() => 100), borderColor: meta, borderWidth: 2, borderDash: [6, 4], fill: false, pointRadius: 0, pointHitRadius: 0 },
+        { label: "Realizado", data: shown, borderColor: real, backgroundColor: real + "2e", borderWidth: 2, fill: true,
+          pointRadius: 5, pointHoverRadius: 7, pointHitRadius: 16, pointBorderColor: surface, pointBorderWidth: 2,
+          pointBackgroundColor: values.map(v => isOver(v) ? bad : real) },
+      ],
+    },
+    options: {
+      maintainAspectRatio: false, animation: false, layout: { padding: 4 },
+      plugins: {
+        legend: { display: false },
+        tooltip: { ...tooltipOpts(), filter: i => i.datasetIndex === 1, callbacks: {
+          title: items => values[items[0].dataIndex].area.name,
+          label: i => {
+            const v = values[i.dataIndex];
+            return [`Meta: ${money(v.goal)} (${brl(v.target, 0)}% da renda)`,
+              `${v.area.automatic ? "Sobra do mês" : "Realizado"}: ${money(v.spent)} (${brl(pctOf(v), 0)}% da meta)`];
+          },
+        } },
+      },
+      scales: { r: {
+        min: 0, max, beginAtZero: true,
+        ticks: { display: false, stepSize: 50 },
+        grid: { color: css("--grid") }, angleLines: { color: css("--grid") },
+        pointLabels: {
+          color: css("--text-2"), font: { size: 11 }, padding: 6,
+          callback: (label, i) => [label === "Liberdade financeira" ? "Liberdade fin." : label, `R$ ${big(values[i].spent)} / ${big(values[i].goal)}`],
+        },
+      } },
     },
   });
 }
