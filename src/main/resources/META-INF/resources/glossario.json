@@ -1,5 +1,5 @@
 {
-  "atualizadoEm": "2026-11-16",
+  "atualizadoEm": "2026-11-17",
   "aviso": "Conteúdo educativo, não é recomendação de investimento. Regras de imposto mudam: confira na Receita Federal antes de declarar.",
   "categorias": [
     {
@@ -642,9 +642,9 @@
         "inplit",
         "bonificação"
       ],
-      "resumo": "Desdobramento divide cada ação em várias, com preço proporcionalmente menor. Grupamento faz o contrário. O valor total que você tem não muda.",
-      "exemplo": "Desdobramento de 1 para 2: 100 ações a R$ 40 viram 200 ações a R$ 20.",
-      "importa": "Mudam a quantidade e o preço médio, que precisam ser ajustados no registro da carteira e no imposto de renda.",
+      "resumo": "Desdobramento (split) aumenta a quantidade de ações e reduz proporcionalmente o preço unitário. Grupamento (inplit ou reverse split) reduz a quantidade e eleva proporcionalmente o preço. Isoladamente, nenhum dos eventos cria valor econômico.",
+      "exemplo": "Em um split de 1 para 2, 100 ações a R$ 40 passam a ser 200 ações a aproximadamente R$ 20. Em um grupamento de 10 para 1, 100 ações a R$ 2 passam a ser 10 ações a aproximadamente R$ 20.",
+      "importa": "Ajuste a quantidade e o preço médio nos seus registros. Frações podem receber tratamento específico definido no evento. Não interprete split ou grupamento, por si só, como prova de melhora ou piora dos fundamentos.",
       "relacionados": [
         "preco-medio",
         "acao"
@@ -658,9 +658,9 @@
         "DY",
         "rendimento de dividendos"
       ],
-      "resumo": "Proventos pagos nos últimos 12 meses divididos pelo preço atual do ativo.",
-      "exemplo": "Ação a R$ 40 que pagou R$ 2,80 em 12 meses tem DY de 7%.",
-      "importa": "Mostra o passado, não garante o futuro. DY muito alto pode vir de um preço que despencou ou de um provento extraordinário.",
+      "resumo": "Indicador que relaciona os proventos por ação ou cota distribuídos em determinado período — frequentemente os últimos 12 meses — com o preço atual. É uma medida histórica, não uma promessa de rendimento futuro.",
+      "exemplo": "Uma ação cotada a R$ 40 que distribuiu R$ 2,80 por ação nos últimos 12 meses apresenta DY histórico de 7%.",
+      "importa": "Um DY elevado pode refletir bons pagamentos, mas também uma queda acentuada do preço ou um provento extraordinário. Compare a recorrência dos pagamentos com a capacidade de geração de caixa.",
       "relacionados": [
         "dividendos",
         "proventos",
@@ -672,9 +672,9 @@
       "nome": "P/L",
       "sigla": "Preço / Lucro",
       "categoria": "indicadores",
-      "resumo": "Preço da ação dividido pelo lucro por ação dos últimos 12 meses. Diz em quantos anos o lucro atual “pagaria” o preço.",
-      "exemplo": "Ação a R$ 30 com lucro de R$ 3 por ação: P/L 10.",
-      "importa": "Útil para comparar empresas do mesmo setor. P/L baixo pode ser barganha ou sinal de lucro em queda; com prejuízo, o número perde sentido.",
+      "resumo": "Relação entre o preço de mercado da ação e o lucro por ação (LPA), normalmente calculado com o lucro dos últimos 12 meses. Indica quantas vezes o lucro anual está embutido no preço.",
+      "exemplo": "Uma ação a R$ 30 com LPA de R$ 3 tem P/L igual a 10.",
+      "importa": "Não é um prazo literal de retorno garantido. Lucros podem mudar, ser cíclicos ou extraordinários. Compare empresas do mesmo setor e observe crescimento, endividamento e qualidade do lucro.",
       "relacionados": [
         "pvp",
         "roe",
@@ -686,9 +686,9 @@
       "nome": "P/VP",
       "sigla": "Preço / Valor Patrimonial",
       "categoria": "indicadores",
-      "resumo": "Preço dividido pelo patrimônio líquido por ação (ou por cota, no caso de FIIs).",
-      "exemplo": "P/VP 0,9: o mercado paga R$ 0,90 por cada R$ 1,00 de patrimônio registrado.",
-      "importa": "Muito usado em FIIs e bancos. Abaixo de 1 pode indicar desconto ou desconfiança do mercado no valor dos ativos.",
+      "resumo": "Relação entre o preço de mercado e o valor patrimonial por ação ou por cota. Mostra quanto o mercado paga por cada R$ 1 de patrimônio contábil.",
+      "exemplo": "P/VP de 0,9 significa que o mercado negocia o ativo por R$ 0,90 para cada R$ 1,00 de valor patrimonial registrado.",
+      "importa": "Abaixo de 1 pode indicar desconto, mas também problemas nos ativos, rentabilidade baixa ou risco percebido. É especialmente observado em bancos e FIIs; sua utilidade varia conforme o setor.",
       "relacionados": [
         "pl",
         "roe",
@@ -1673,6 +1673,851 @@
         "fii",
         "liberdade-financeira",
         "rentabilidade"
+      ]
+    },
+    {
+      "id": "acionista",
+      "nome": "Acionista",
+      "categoria": "rv",
+      "outrosNomes": [
+        "sócio",
+        "investidor em ações"
+      ],
+      "resumo": "Pessoa ou entidade que possui ações de uma companhia e, portanto, uma participação no capital social da empresa.",
+      "exemplo": "Quem possui 100 ações de uma companhia é acionista, ainda que sua participação represente uma fração muito pequena do negócio.",
+      "importa": "O retorno pode vir da valorização das ações e dos proventos. O acionista também assume os riscos do negócio e possui direitos definidos pela legislação e pela classe de ação.",
+      "relacionados": [
+        "acao",
+        "acionista-minoritario",
+        "acionista-controlador",
+        "proventos"
+      ]
+    },
+    {
+      "id": "acionista-minoritario",
+      "nome": "Acionista minoritário",
+      "categoria": "rv",
+      "resumo": "Acionista que não detém o controle da companhia. Mesmo com participação pequena, possui direitos previstos em lei e no estatuto, como acesso a informações e participação em assembleias conforme a classe de ação.",
+      "exemplo": "Um investidor que possui 0,05% das ações de uma companhia normalmente é minoritário.",
+      "importa": "Direitos como tag along, voto e fiscalização ajudam a proteger o investidor que não controla a empresa.",
+      "relacionados": [
+        "acionista",
+        "acionista-controlador",
+        "tag-along",
+        "governanca-corporativa"
+      ]
+    },
+    {
+      "id": "acionista-controlador",
+      "nome": "Acionista controlador",
+      "categoria": "rv",
+      "resumo": "Pessoa, grupo ou entidade que exerce o poder de controle de uma companhia, influenciando suas decisões e a eleição de administradores, conforme a estrutura acionária e os acordos existentes.",
+      "exemplo": "Um grupo que detém ações com direito a voto suficientes para eleger a maioria do conselho pode exercer o controle da empresa.",
+      "importa": "A concentração do controle pode afetar decisões, governança e proteção dos minoritários.",
+      "relacionados": [
+        "acionista",
+        "acionista-minoritario",
+        "acao-ordinaria",
+        "governanca-corporativa"
+      ]
+    },
+    {
+      "id": "acao-ordinaria",
+      "nome": "Ação ordinária (ON)",
+      "categoria": "rv",
+      "outrosNomes": [
+        "ON"
+      ],
+      "resumo": "Classe de ação que, em regra, confere direito de voto nas assembleias da companhia. No Brasil, costuma ser identificada pelo final 3 no ticker.",
+      "exemplo": "PETR3 é um ticker de ação ordinária da Petrobras.",
+      "importa": "O direito de voto permite participar de decisões societárias, mas não significa que todo acionista consiga influenciar sozinho a gestão.",
+      "relacionados": [
+        "acao",
+        "acionista",
+        "acao-preferencial",
+        "governanca-corporativa"
+      ]
+    },
+    {
+      "id": "acao-preferencial",
+      "nome": "Ação preferencial (PN)",
+      "categoria": "rv",
+      "outrosNomes": [
+        "PN"
+      ],
+      "resumo": "Classe de ação que pode oferecer preferência econômica, como prioridade ou vantagem na distribuição de proventos ou no reembolso de capital. Os direitos exatos dependem do estatuto e da classe.",
+      "exemplo": "Uma companhia pode estabelecer condições de preferência para determinada classe PN em relação às ações ordinárias.",
+      "importa": "Não presuma que toda PN não tem voto ou oferece a mesma vantagem. Leia o estatuto e os direitos da classe específica.",
+      "relacionados": [
+        "acao",
+        "acao-ordinaria",
+        "proventos",
+        "tag-along"
+      ]
+    },
+    {
+      "id": "units",
+      "nome": "Units",
+      "categoria": "rv",
+      "outrosNomes": [
+        "certificados de depósito de ações"
+      ],
+      "resumo": "Certificados negociados em bolsa que representam um pacote de valores mobiliários, frequentemente composto por ações ordinárias e preferenciais da mesma empresa.",
+      "exemplo": "Uma unit pode representar uma ação ON e duas ações PN da companhia.",
+      "importa": "O ticker terminado em 11 pode identificar units, mas também outros ativos. Consulte a composição do certificado antes de investir.",
+      "relacionados": [
+        "acao-ordinaria",
+        "acao-preferencial",
+        "liquidez",
+        "ticker"
+      ]
+    },
+    {
+      "id": "tag-along",
+      "nome": "Tag along",
+      "categoria": "rv",
+      "outrosNomes": [
+        "direito de venda conjunta"
+      ],
+      "resumo": "Mecanismo de proteção ao acionista minoritário em caso de alienação do controle da companhia, que assegura condições de saída previstas na legislação e nas regras do segmento de listagem.",
+      "exemplo": "Se o controlador vende o controle, acionistas elegíveis podem ter o direito de vender suas ações por um percentual do preço pago ao controlador.",
+      "importa": "O percentual e a abrangência dependem da lei, do tipo de ação e das regras de governança assumidas pela companhia. Verifique o estatuto e o segmento de listagem.",
+      "relacionados": [
+        "acionista-minoritario",
+        "governanca-corporativa",
+        "acao-ordinaria"
+      ]
+    },
+    {
+      "id": "governanca-corporativa",
+      "nome": "Governança corporativa",
+      "categoria": "rv",
+      "outrosNomes": [
+        "governança"
+      ],
+      "resumo": "Conjunto de regras, estruturas e práticas que orientam como uma empresa é dirigida, monitorada e presta contas aos acionistas e demais partes interessadas.",
+      "exemplo": "Conselho de administração atuante, divulgação adequada de resultados e regras claras para transações com partes relacionadas são práticas de governança.",
+      "importa": "Boa governança pode reduzir conflitos de interesse e melhorar a transparência, mas não elimina riscos do negócio nem garante bons resultados.",
+      "relacionados": [
+        "tag-along",
+        "free-float",
+        "relacoes-com-investidores",
+        "acionista-minoritario"
+      ]
+    },
+    {
+      "id": "free-float",
+      "nome": "Free float",
+      "categoria": "mercado",
+      "outrosNomes": [
+        "ações em circulação"
+      ],
+      "resumo": "Parcela das ações de uma companhia que está efetivamente em circulação no mercado, excluídas, conforme a metodologia aplicável, participações de controladores e outros blocos não disponíveis para negociação.",
+      "exemplo": "Se uma empresa tem 1 bilhão de ações e 300 milhões estão em circulação, seu free float é de 30%.",
+      "importa": "Um free float maior pode favorecer a liquidez, mas não garante volume de negociação nem determina sozinho a qualidade da governança.",
+      "relacionados": [
+        "liquidez",
+        "governanca-corporativa",
+        "ipo",
+        "follow-on"
+      ]
+    },
+    {
+      "id": "ipo",
+      "nome": "IPO (oferta pública inicial)",
+      "categoria": "mercado",
+      "outrosNomes": [
+        "Initial Public Offering",
+        "abertura de capital"
+      ],
+      "resumo": "Primeira oferta pública de ações de uma empresa, processo associado à abertura de capital e à entrada de seus papéis no mercado organizado.",
+      "exemplo": "Uma empresa pode realizar um IPO para captar recursos destinados à expansão, investimentos ou reorganização financeira.",
+      "importa": "É importante distinguir oferta primária, em que recursos vão para a companhia, de oferta secundária, em que acionistas vendem ações já existentes.",
+      "relacionados": [
+        "follow-on",
+        "mercado-primario",
+        "mercado-secundario",
+        "relacoes-com-investidores"
+      ]
+    },
+    {
+      "id": "follow-on",
+      "nome": "Follow-on",
+      "categoria": "mercado",
+      "outrosNomes": [
+        "oferta subsequente de ações"
+      ],
+      "resumo": "Oferta pública de ações realizada por uma companhia que já tem capital aberto. Pode envolver emissão de novas ações ou venda de ações existentes por acionistas.",
+      "exemplo": "Uma empresa listada emite novas ações para financiar uma fábrica: é uma oferta primária subsequente.",
+      "importa": "Uma emissão de novas ações pode diluir a participação de quem não acompanha a oferta; uma venda secundária não aumenta o capital social da empresa.",
+      "relacionados": [
+        "ipo",
+        "subscricao",
+        "diluicao",
+        "mercado-primario"
+      ]
+    },
+    {
+      "id": "mercado-primario",
+      "nome": "Mercado primário",
+      "categoria": "mercado",
+      "resumo": "Ambiente em que valores mobiliários são emitidos e vendidos pela primeira vez, direcionando os recursos da oferta ao emissor, quando se trata de oferta primária.",
+      "exemplo": "Na emissão primária de ações, os investidores compram os novos papéis e o dinheiro captado vai para a companhia.",
+      "importa": "Ajuda a distinguir captação de recursos pela empresa da negociação posterior entre investidores.",
+      "relacionados": [
+        "mercado-secundario",
+        "ipo",
+        "follow-on"
+      ]
+    },
+    {
+      "id": "mercado-secundario",
+      "nome": "Mercado secundário",
+      "categoria": "mercado",
+      "resumo": "Ambiente em que investidores negociam entre si valores mobiliários já emitidos. Na negociação comum de ações na bolsa, o dinheiro da compra vai ao vendedor, não à companhia.",
+      "exemplo": "Comprar ações de uma empresa listada pelo home broker é uma operação no mercado secundário.",
+      "importa": "O mercado secundário oferece liquidez aos investidores e contribui para a formação de preços.",
+      "relacionados": [
+        "mercado-primario",
+        "liquidez"
+      ]
+    },
+    {
+      "id": "relacoes-com-investidores",
+      "nome": "Relações com Investidores (RI)",
+      "categoria": "mercado",
+      "outrosNomes": [
+        "Investor Relations"
+      ],
+      "resumo": "Área responsável pela comunicação da companhia com acionistas, analistas e mercado, incluindo divulgação de resultados, fatos relevantes, apresentações e informações societárias.",
+      "exemplo": "No site de RI, o investidor encontra demonstrações financeiras, comunicados, calendário de eventos e composição acionária.",
+      "importa": "É uma fonte primária para pesquisar a empresa. Compare as informações divulgadas com demonstrações financeiras e documentos regulatórios.",
+      "relacionados": [
+        "governanca-corporativa",
+        "ipo",
+        "follow-on"
+      ]
+    },
+    {
+      "id": "value-investing",
+      "nome": "Value investing",
+      "categoria": "rv",
+      "outrosNomes": [
+        "investimento em valor"
+      ],
+      "resumo": "Filosofia de investimento que busca comprar ativos por preço inferior a uma estimativa conservadora de seu valor intrínseco, considerando fundamentos e riscos.",
+      "exemplo": "Uma análise estima que uma empresa vale R$ 100 por ação; o investidor só considera comprá-la a R$ 75 para manter uma margem de segurança.",
+      "importa": "Uma ação aparentemente barata pode estar deteriorando seus resultados. A estimativa de valor depende de premissas e não é uma certeza.",
+      "relacionados": [
+        "valor-intrinseco",
+        "margem-de-seguranca",
+        "valuation",
+        "pl",
+        "pvp"
+      ]
+    },
+    {
+      "id": "valor-intrinseco",
+      "nome": "Valor intrínseco",
+      "categoria": "indicadores",
+      "resumo": "Estimativa do valor econômico de um negócio ou ativo com base em sua capacidade de gerar caixa, seus ativos, riscos e perspectivas futuras.",
+      "exemplo": "Um analista projeta os fluxos de caixa futuros de uma empresa e os traz a valor presente para estimar quanto o negócio vale hoje.",
+      "importa": "É uma estimativa sujeita a incerteza e sensível às premissas usadas; não deve ser confundida com a cotação de mercado.",
+      "relacionados": [
+        "valuation",
+        "value-investing",
+        "margem-de-seguranca"
+      ]
+    },
+    {
+      "id": "margem-de-seguranca",
+      "nome": "Margem de segurança",
+      "categoria": "indicadores",
+      "resumo": "Diferença entre o valor intrínseco estimado de um ativo e o preço pago por ele. Funciona como uma proteção contra erros de avaliação e imprevistos.",
+      "exemplo": "Se a estimativa conservadora de valor é R$ 100 e o investidor compra por R$ 70, a diferença de R$ 30 representa uma margem de segurança de 30% sobre o valor estimado.",
+      "importa": "Quanto maior a incerteza do negócio, maior tende a ser a margem exigida. Ela reduz, mas não elimina, o risco de perda.",
+      "relacionados": [
+        "value-investing",
+        "valor-intrinseco",
+        "valuation"
+      ]
+    },
+    {
+      "id": "valuation",
+      "nome": "Valuation",
+      "categoria": "indicadores",
+      "outrosNomes": [
+        "avaliação de empresas"
+      ],
+      "resumo": "Processo de estimar o valor econômico de uma empresa ou ativo, usando métodos como múltiplos de mercado e fluxo de caixa descontado.",
+      "exemplo": "Comparar P/L e EV/EBITDA de empresas semelhantes é uma abordagem por múltiplos; projetar fluxos de caixa futuros é outra abordagem.",
+      "importa": "Não existe um único valor exato. O resultado depende de premissas, riscos, setor, crescimento e qualidade dos resultados.",
+      "relacionados": [
+        "valor-intrinseco",
+        "pl",
+        "pvp",
+        "ev-ebitda"
+      ]
+    },
+    {
+      "id": "lpa",
+      "nome": "LPA (lucro por ação)",
+      "categoria": "indicadores",
+      "sigla": "Lucro por ação",
+      "resumo": "Parcela do lucro líquido atribuível a cada ação, calculada conforme as regras contábeis e a quantidade média ponderada de ações.",
+      "exemplo": "Se o lucro atribuível aos acionistas ordinários é R$ 1 bilhão e há 500 milhões de ações, o LPA simplificado é R$ 2.",
+      "importa": "É uma base para calcular o P/L. Emissões, recompra de ações e eventos não recorrentes podem alterar sua interpretação.",
+      "relacionados": [
+        "pl",
+        "acao",
+        "diluicao"
+      ]
+    },
+    {
+      "id": "vpa",
+      "nome": "VPA (valor patrimonial por ação)",
+      "categoria": "indicadores",
+      "sigla": "Valor patrimonial por ação",
+      "resumo": "Parcela do patrimônio líquido atribuível a cada ação, obtida dividindo o patrimônio líquido pelo número de ações correspondente.",
+      "exemplo": "Patrimônio líquido de R$ 5 bilhões dividido por 1 bilhão de ações resulta em VPA de R$ 5.",
+      "importa": "É a referência contábil usada no P/VP. O patrimônio registrado pode não refletir o valor econômico atual dos ativos intangíveis ou dos ativos que sofreram perdas.",
+      "relacionados": [
+        "pvp",
+        "pl"
+      ]
+    },
+    {
+      "id": "roic",
+      "nome": "ROIC (retorno sobre o capital investido)",
+      "categoria": "indicadores",
+      "outrosNomes": [
+        "Return on Invested Capital"
+      ],
+      "resumo": "Mede o retorno operacional gerado sobre o capital investido no negócio, considerando recursos próprios e de terceiros conforme a metodologia adotada.",
+      "exemplo": "Uma empresa gera R$ 150 milhões de resultado operacional após impostos sobre R$ 1 bilhão de capital investido: ROIC de 15%.",
+      "importa": "Ajuda a avaliar a eficiência na alocação de capital. Compare o ROIC com o custo de capital e observe sua consistência ao longo do tempo.",
+      "relacionados": [
+        "roe",
+        "roa"
+      ]
+    },
+    {
+      "id": "roa",
+      "nome": "ROA (retorno sobre ativos)",
+      "categoria": "indicadores",
+      "outrosNomes": [
+        "Return on Assets"
+      ],
+      "resumo": "Indicador que relaciona o lucro líquido aos ativos totais, avaliando quanto resultado a empresa gera com os recursos que controla.",
+      "exemplo": "Lucro líquido de R$ 50 milhões sobre ativos médios de R$ 1 bilhão representa ROA de 5%.",
+      "importa": "A interpretação depende do setor: bancos, indústrias e empresas de serviços possuem estruturas de ativos muito diferentes.",
+      "relacionados": [
+        "roe",
+        "roic",
+        "margem-liquida"
+      ]
+    },
+    {
+      "id": "payout",
+      "nome": "Payout",
+      "categoria": "indicadores",
+      "outrosNomes": [
+        "índice de distribuição de lucros"
+      ],
+      "resumo": "Percentual do lucro atribuível aos acionistas que é distribuído como proventos, conforme a base de cálculo utilizada.",
+      "exemplo": "Se a empresa registra lucro de R$ 100 milhões e distribui R$ 40 milhões, o payout é de 40%.",
+      "importa": "Payout muito alto pode limitar reinvestimentos; acima de 100% pode refletir distribuição de reservas ou resultados de períodos anteriores e merece investigação.",
+      "relacionados": [
+        "dividendos",
+        "proventos",
+        "dividend-yield"
+      ]
+    },
+    {
+      "id": "cagr",
+      "nome": "CAGR (taxa de crescimento anual composta)",
+      "categoria": "indicadores",
+      "outrosNomes": [
+        "Compound Annual Growth Rate",
+        "crescimento anual composto"
+      ],
+      "resumo": "Taxa constante hipotética que representaria o crescimento anual composto de uma métrica entre dois pontos no tempo.",
+      "exemplo": "Uma receita que passa de R$ 100 milhões para R$ 200 milhões em cinco anos teve CAGR aproximado de 14,9% ao ano.",
+      "importa": "Suaviza a trajetória entre início e fim e não mostra oscilações no caminho. Analise receita e lucro em conjunto e observe a base de comparação.",
+      "relacionados": [
+        "valuation"
+      ]
+    },
+    {
+      "id": "margem-bruta",
+      "nome": "Margem bruta",
+      "categoria": "indicadores",
+      "resumo": "Percentual da receita líquida que sobra após deduzir os custos diretamente associados aos produtos ou serviços vendidos.",
+      "exemplo": "Receita líquida de R$ 1 milhão e lucro bruto de R$ 400 mil resultam em margem bruta de 40%.",
+      "importa": "Ajuda a avaliar precificação e custos de produção. Margens típicas variam muito entre setores.",
+      "relacionados": [
+        "margem-ebit",
+        "margem-liquida"
+      ]
+    },
+    {
+      "id": "margem-ebit",
+      "nome": "Margem EBIT",
+      "categoria": "indicadores",
+      "outrosNomes": [
+        "margem operacional"
+      ],
+      "resumo": "Relação entre o resultado operacional antes de juros e impostos (EBIT) e a receita líquida. Indica quanto da receita vira resultado operacional.",
+      "exemplo": "EBIT de R$ 120 milhões sobre receita líquida de R$ 1 bilhão representa margem EBIT de 12%.",
+      "importa": "Ajuda a comparar eficiência operacional, mas deve ser interpretada conforme o modelo de negócio e as práticas contábeis do setor.",
+      "relacionados": [
+        "margem-bruta",
+        "margem-liquida",
+        "ev-ebitda"
+      ]
+    },
+    {
+      "id": "custo-aquisicao-cliente",
+      "nome": "Custo de aquisição de cliente (CAC)",
+      "categoria": "indicadores",
+      "outrosNomes": [
+        "CAC"
+      ],
+      "resumo": "Custo médio para conquistar um novo cliente, considerando os gastos de marketing e vendas incluídos na metodologia da empresa.",
+      "exemplo": "Se uma empresa gasta R$ 100 mil em aquisição e conquista 1.000 clientes no período, o CAC simplificado é R$ 100.",
+      "importa": "Em negócios digitais e de assinatura, compare CAC com o valor econômico esperado do cliente e o prazo de recuperação do custo.",
+      "relacionados": [
+        "churn",
+        "market-share"
+      ]
+    },
+    {
+      "id": "churn",
+      "nome": "Churn",
+      "categoria": "indicadores",
+      "outrosNomes": [
+        "taxa de cancelamento",
+        "taxa de evasão"
+      ],
+      "resumo": "Métrica que mede a proporção de clientes ou assinantes que deixam de usar ou pagar por um serviço em determinado período.",
+      "exemplo": "Uma plataforma começa o mês com 10.000 assinantes e perde 300: churn de clientes de 3% no período.",
+      "importa": "Churn elevado pode comprometer crescimento e receita recorrente. Definições variam: perda de clientes e perda de receita não são a mesma métrica.",
+      "relacionados": [
+        "custo-aquisicao-cliente",
+        "market-share"
+      ]
+    },
+    {
+      "id": "market-share",
+      "nome": "Market share",
+      "categoria": "indicadores",
+      "outrosNomes": [
+        "participação de mercado"
+      ],
+      "resumo": "Parcela das vendas, clientes ou volume de um mercado que pertence a uma empresa, em um período e recorte definidos.",
+      "exemplo": "Uma companhia vende R$ 2 bilhões em um mercado que movimenta R$ 20 bilhões: participação de 10% por receita.",
+      "importa": "Ajuda a entender posição competitiva, mas participação elevada não garante rentabilidade nem crescimento sustentável.",
+      "relacionados": [
+        "cagr",
+        "churn",
+        "custo-aquisicao-cliente"
+      ]
+    },
+    {
+      "id": "indice-de-mercado",
+      "nome": "Índice de mercado",
+      "categoria": "mercado",
+      "outrosNomes": [
+        "índice de referência"
+      ],
+      "resumo": "Indicador calculado a partir de uma carteira teórica de ativos, seguindo critérios e metodologia próprios, para representar o desempenho de um mercado ou segmento.",
+      "exemplo": "O Ibovespa é uma referência do desempenho de ações negociadas na B3; o IFIX acompanha uma carteira de fundos imobiliários.",
+      "importa": "Um índice serve como benchmark, mas não é necessariamente um ativo diretamente comprável. ETFs podem buscar replicá-lo.",
+      "relacionados": [
+        "ibovespa",
+        "ifix",
+        "etf",
+        "benchmark"
+      ]
+    },
+    {
+      "id": "gestao-passiva",
+      "nome": "Gestão passiva",
+      "categoria": "rv",
+      "resumo": "Estratégia que busca acompanhar um índice ou regra predefinida, em vez de selecionar ativos para superar continuamente o mercado.",
+      "exemplo": "Um ETF de gestão passiva pode manter uma carteira que replica a composição de um índice.",
+      "importa": "Costuma buscar custos menores e exposição ampla, mas continua sujeito às oscilações e à composição do índice seguido.",
+      "relacionados": [
+        "etf",
+        "indice-de-mercado",
+        "gestao-ativa",
+        "tracking-error"
+      ]
+    },
+    {
+      "id": "gestao-ativa",
+      "nome": "Gestão ativa",
+      "categoria": "rv",
+      "resumo": "Estratégia em que o gestor escolhe ativos e pesos com o objetivo de atingir uma meta específica, como superar um benchmark ou cumprir uma política de investimento.",
+      "exemplo": "Um gestor de FII pode reformar um imóvel, renegociar contratos e buscar novos inquilinos para melhorar a renda do fundo.",
+      "importa": "Pode gerar resultados diferentes do índice, positivos ou negativos, e costuma exigir avaliação da qualidade da gestão e dos custos.",
+      "relacionados": [
+        "gestao-passiva",
+        "benchmark",
+        "etf",
+        "fii"
+      ]
+    },
+    {
+      "id": "tracking-error",
+      "nome": "Tracking error",
+      "categoria": "indicadores",
+      "resumo": "Medida da variação da diferença entre o retorno de um fundo e o retorno de seu índice de referência ao longo do tempo.",
+      "exemplo": "Se um ETF deveria acompanhar um índice, mas seus retornos se afastam repetidamente do referencial, pode apresentar tracking error maior.",
+      "importa": "Ajuda a avaliar a qualidade da replicação de um ETF ou fundo indexado; não é a mesma coisa que a diferença acumulada de retorno.",
+      "relacionados": [
+        "etf",
+        "gestao-passiva",
+        "indice-de-mercado"
+      ]
+    },
+    {
+      "id": "fii-de-tijolo",
+      "nome": "FII de tijolo",
+      "categoria": "rv",
+      "outrosNomes": [
+        "fundo imobiliário de imóveis físicos"
+      ],
+      "resumo": "FII que investe diretamente em imóveis físicos, como galpões logísticos, lajes corporativas, shoppings, hospitais ou hotéis, buscando renda de locação e/ou valorização dos ativos.",
+      "exemplo": "Um fundo pode possuir vários galpões alugados a empresas de logística e distribuir parte dos resultados aos cotistas.",
+      "importa": "Observe localização, qualidade dos imóveis, concentração por ativo e inquilino, contratos, vacância, despesas e necessidade de reformas.",
+      "relacionados": [
+        "fii",
+        "vacancia",
+        "inquilino",
+        "cap-rate",
+        "ffo"
+      ]
+    },
+    {
+      "id": "fii-de-papel",
+      "nome": "FII de papel",
+      "categoria": "rv",
+      "outrosNomes": [
+        "fundo de recebíveis imobiliários"
+      ],
+      "resumo": "FII que investe principalmente em títulos de crédito ligados ao setor imobiliário, como CRIs, em vez de adquirir diretamente imóveis físicos.",
+      "exemplo": "Um fundo pode deter CRIs indexados ao IPCA mais uma taxa fixa, recebendo juros e amortizações dos devedores.",
+      "importa": "A análise deve considerar risco de crédito, garantias, concentração, indexadores, subordinação, inadimplência e qualidade da gestão.",
+      "relacionados": [
+        "fii",
+        "high-grade",
+        "high-yield",
+        "inadimplencia"
+      ]
+    },
+    {
+      "id": "fof",
+      "nome": "Fundo de fundos (FoF)",
+      "categoria": "rv",
+      "outrosNomes": [
+        "fund of funds"
+      ],
+      "resumo": "Fundo que investe principalmente em cotas de outros fundos, permitindo exposição indireta a diferentes carteiras.",
+      "exemplo": "Um FoF imobiliário pode comprar cotas de diversos FIIs de logística, shoppings e recebíveis.",
+      "importa": "Avalie diversificação, estratégia, preço pago pelos fundos investidos e possível sobreposição de taxas de administração.",
+      "relacionados": [
+        "fii",
+        "fii-hibrido",
+        "taxa-de-administracao",
+        "diversificacao"
+      ]
+    },
+    {
+      "id": "fii-hibrido",
+      "nome": "FII híbrido",
+      "categoria": "rv",
+      "outrosNomes": [
+        "fundo imobiliário misto"
+      ],
+      "resumo": "FII que combina diferentes estratégias ou classes de ativos imobiliários, como imóveis físicos e títulos de crédito.",
+      "exemplo": "Um fundo pode manter galpões alugados e também uma carteira de CRIs.",
+      "importa": "A composição pode mudar ao longo do tempo; leia a política de investimento e os relatórios gerenciais para entender de onde vêm os riscos e rendimentos.",
+      "relacionados": [
+        "fii",
+        "fii-de-tijolo",
+        "fii-de-papel",
+        "fof"
+      ]
+    },
+    {
+      "id": "inquilino",
+      "nome": "Inquilino",
+      "categoria": "rv",
+      "outrosNomes": [
+        "locatário"
+      ],
+      "resumo": "Pessoa ou empresa que ocupa um imóvel mediante contrato de locação e paga aluguel ao proprietário ou ao fundo imobiliário.",
+      "exemplo": "Um FII de logística pode ter uma empresa de e-commerce como inquilina de um galpão.",
+      "importa": "Concentração em um único inquilino aumenta o impacto de uma eventual saída ou inadimplência.",
+      "relacionados": [
+        "fii-de-tijolo",
+        "vacancia",
+        "risco-de-concentracao"
+      ]
+    },
+    {
+      "id": "ffo",
+      "nome": "FFO (funds from operations)",
+      "categoria": "indicadores",
+      "outrosNomes": [
+        "fundos provenientes das operações"
+      ],
+      "resumo": "Métrica usada para avaliar o resultado recorrente das operações de fundos imobiliários, com ajustes sobre o lucro contábil, conforme a metodologia adotada pelo fundo ou analista.",
+      "exemplo": "Se os rendimentos distribuídos superam de forma persistente o FFO gerado, pode haver distribuição de reservas ou de valores que não vieram da operação recorrente.",
+      "importa": "Compare FFO e distribuição, mas confira a definição utilizada: não há uma única apresentação universal e FFO não equivale automaticamente a caixa disponível.",
+      "relacionados": [
+        "fii",
+        "fii-de-tijolo",
+        "dividend-yield",
+        "vacancia"
+      ]
+    },
+    {
+      "id": "high-grade",
+      "nome": "High Grade",
+      "categoria": "rv",
+      "outrosNomes": [
+        "crédito de alta qualidade"
+      ],
+      "resumo": "Classificação informal para operações ou carteiras de crédito consideradas de melhor qualidade relativa, com emissores mais sólidos e estruturas de garantia mais robustas.",
+      "exemplo": "Um FII de papel concentrado em devedores com boa capacidade de pagamento e garantias consistentes pode ser descrito como High Grade.",
+      "importa": "O rótulo não elimina risco de crédito nem substitui a análise de devedores, garantias, concentração, covenants e estrutura da operação.",
+      "relacionados": [
+        "fii-de-papel",
+        "high-yield",
+        "inadimplencia"
+      ]
+    },
+    {
+      "id": "high-yield",
+      "nome": "High Yield",
+      "categoria": "rv",
+      "outrosNomes": [
+        "crédito de maior risco"
+      ],
+      "resumo": "Classificação informal para operações de crédito que oferecem taxas mais altas por envolverem risco de crédito, estrutura ou garantias mais frágeis.",
+      "exemplo": "Um CRI de devedor mais alavancado ou com garantias menos robustas pode pagar uma taxa maior para compensar o risco adicional.",
+      "importa": "Rendimento prometido maior costuma refletir maior risco de inadimplência e perda de capital. Avalie a capacidade de pagamento e não apenas o DY do fundo.",
+      "relacionados": [
+        "high-grade",
+        "fii-de-papel",
+        "inadimplencia",
+        "risco-de-credito"
+      ]
+    },
+    {
+      "id": "fiagro",
+      "nome": "Fiagro",
+      "categoria": "rv",
+      "outrosNomes": [
+        "Fundo de Investimento nas Cadeias Produtivas Agroindustriais"
+      ],
+      "resumo": "Fundo de investimento voltado a ativos e atividades das cadeias produtivas do agronegócio. Pode investir em imóveis rurais, participações ou direitos creditórios ligados ao setor.",
+      "exemplo": "Um Fiagro de crédito pode investir em CRAs emitidos para financiar produtores e empresas do agronegócio.",
+      "importa": "Não presuma que todo Fiagro possui fazendas. Verifique a carteira, os devedores, as garantias, a concentração e a exposição a ciclos agrícolas e de commodities.",
+      "relacionados": [
+        "fii-de-papel",
+        "risco-de-credito",
+        "high-yield"
+      ]
+    },
+    {
+      "id": "fi-infra",
+      "nome": "FI-Infra",
+      "categoria": "rv",
+      "outrosNomes": [
+        "fundo de infraestrutura"
+      ],
+      "resumo": "Fundo listado que investe em ativos ligados ao financiamento de infraestrutura, frequentemente debêntures de infraestrutura e outros instrumentos de crédito do setor.",
+      "exemplo": "Um FI-Infra pode manter debêntures de empresas de energia, saneamento, transporte ou logística.",
+      "importa": "Analise emissores, garantias, indexadores, duration, concentração, liquidez e regras tributárias vigentes. O benefício fiscal depende do enquadramento legal do fundo e do investidor.",
+      "relacionados": [
+        "debenture",
+        "risco-de-credito"
+      ]
+    },
+    {
+      "id": "monoativo",
+      "nome": "Fundo monoativo",
+      "categoria": "rv",
+      "resumo": "Fundo cuja carteira está concentrada em um único imóvel ou ativo relevante.",
+      "exemplo": "Um FII que possui apenas um shopping está exposto ao desempenho daquele empreendimento.",
+      "importa": "Um problema no único ativo pode afetar grande parte da renda e do patrimônio do fundo. Avalie concentração e capacidade de diversificação.",
+      "relacionados": [
+        "fii",
+        "risco-de-concentracao",
+        "vacancia",
+        "inquilino"
+      ]
+    },
+    {
+      "id": "monoinquilino",
+      "nome": "Fundo monoinquilino",
+      "categoria": "rv",
+      "resumo": "Fundo imobiliário cuja receita de locação depende de um único inquilino ou de um grupo muito concentrado de locatários.",
+      "exemplo": "Um galpão inteiro alugado a uma única empresa deixa o fundo dependente da capacidade de pagamento e permanência desse locatário.",
+      "importa": "A saída ou inadimplência do inquilino pode provocar queda brusca de receita e aumento da vacância.",
+      "relacionados": [
+        "fii",
+        "inquilino",
+        "vacancia",
+        "risco-de-concentracao"
+      ]
+    },
+    {
+      "id": "risco-de-concentracao",
+      "nome": "Risco de concentração",
+      "categoria": "carteira",
+      "resumo": "Risco de perdas ampliadas quando uma carteira depende excessivamente de poucos emissores, ativos, setores, regiões ou inquilinos.",
+      "exemplo": "Uma carteira de FIIs com quase todo o patrimônio em um único shopping fica muito exposta a eventos que afetem aquele empreendimento.",
+      "importa": "Diversificação reduz a dependência de um único fator, embora não elimine riscos sistêmicos nem garanta proteção contra perdas.",
+      "relacionados": [
+        "diversificacao",
+        "fii",
+        "monoativo",
+        "monoinquilino"
+      ]
+    },
+    {
+      "id": "inadimplencia",
+      "nome": "Inadimplência",
+      "categoria": "rv",
+      "resumo": "Descumprimento de uma obrigação financeira no prazo acordado, como deixar de pagar juros, principal ou aluguel.",
+      "exemplo": "Se um devedor deixa de pagar os juros de um CRI na data prevista, a operação entra em atraso e pode evoluir para inadimplência.",
+      "importa": "Pode reduzir o fluxo de caixa do fundo e exigir renegociação ou execução de garantias, que pode ser demorada e não recuperar todo o valor.",
+      "relacionados": [
+        "fii-de-papel",
+        "fiagro",
+        "risco-de-credito",
+        "high-yield"
+      ]
+    },
+    {
+      "id": "venda-a-descoberto",
+      "nome": "Venda a descoberto",
+      "categoria": "rv",
+      "outrosNomes": [
+        "short selling",
+        "posição vendida"
+      ],
+      "resumo": "Operação em que o investidor vende um ativo que tomou emprestado, esperando recomprá-lo mais barato e devolvê-lo ao doador.",
+      "exemplo": "O investidor aluga uma ação a R$ 30, vende no mercado e, se conseguir recomprá-la a R$ 25, obtém diferença positiva antes de custos e taxas.",
+      "importa": "Se o preço subir, a recompra fica mais cara e a perda pode ser muito elevada. Existem custos de aluguel, garantias e riscos de chamada de margem.",
+      "relacionados": [
+        "doador",
+        "tomador"
+      ]
+    },
+    {
+      "id": "doador",
+      "nome": "Doador (aluguel de ações)",
+      "categoria": "rv",
+      "resumo": "Investidor que disponibiliza seus ativos para empréstimo no mercado em troca de uma remuneração, conforme as condições do contrato.",
+      "exemplo": "Um investidor de longo prazo disponibiliza ações de sua carteira para aluguel e recebe parte da taxa paga pelo tomador.",
+      "importa": "Verifique remuneração líquida, prazo, condições de encerramento, tratamento de proventos e riscos operacionais da intermediação.",
+      "relacionados": [
+        "tomador",
+        "venda-a-descoberto"
+      ]
+    },
+    {
+      "id": "tomador",
+      "nome": "Tomador (aluguel de ações)",
+      "categoria": "rv",
+      "resumo": "Investidor ou operador que toma ações emprestadas, normalmente para viabilizar uma venda a descoberto ou cumprir obrigações de liquidação.",
+      "exemplo": "Um trader toma ações emprestadas, vende-as no mercado e espera recomprá-las por preço inferior para devolvê-las.",
+      "importa": "O tomador paga taxa de aluguel e precisa observar garantias, prazos e custos. Uma alta do ativo pode gerar perdas relevantes.",
+      "relacionados": [
+        "doador",
+        "venda-a-descoberto"
+      ]
+    },
+    {
+      "id": "data-ex",
+      "nome": "Data ex",
+      "categoria": "rv",
+      "outrosNomes": [
+        "ex-dividendos",
+        "ex-direitos"
+      ],
+      "resumo": "Primeiro dia em que o ativo é negociado sem direito ao provento ou evento societário anunciado. Quem compra a partir dessa data normalmente não recebe aquele pagamento.",
+      "exemplo": "Se a ação passa a negociar ex em 10 de junho, quem compra em 10 de junho não recebe o dividendo anunciado para os acionistas posicionados até a data com.",
+      "importa": "O preço tende a ser ajustado pelo valor do provento, tudo o mais constante. Comprar na véspera não cria ganho gratuito.",
+      "relacionados": [
+        "data-com",
+        "dividendos",
+        "proventos",
+        "data-de-pagamento"
+      ]
+    },
+    {
+      "id": "bonificacao-em-acoes",
+      "nome": "Bonificação em ações",
+      "categoria": "rv",
+      "resumo": "Distribuição de novas ações aos acionistas, geralmente por incorporação de reservas ao capital, de forma proporcional à participação existente.",
+      "exemplo": "Uma bonificação de 10% concede 10 novas ações para cada 100 ações detidas, conforme as condições do evento.",
+      "importa": "A quantidade de ações aumenta, mas isso não significa ganho econômico automático. Ajuste o custo médio e observe o tratamento tributário aplicável.",
+      "relacionados": [
+        "acao",
+        "desdobramento",
+        "preco-medio",
+        "proventos"
+      ]
+    },
+    {
+      "id": "subscricao",
+      "nome": "Direito de subscrição",
+      "categoria": "rv",
+      "outrosNomes": [
+        "direito de preferência"
+      ],
+      "resumo": "Direito concedido aos acionistas existentes para subscrever novas ações em uma emissão, normalmente de forma proporcional à participação, conforme as condições da oferta.",
+      "exemplo": "Quem possui 100 ações pode receber direito de subscrever 20 novas ações por preço definido na oferta.",
+      "importa": "O direito pode ter prazo e condições próprios e, quando negociável, pode ser vendido. Avalie preço de subscrição, cotação, finalidade da captação e possível diluição.",
+      "relacionados": [
+        "follow-on",
+        "diluicao",
+        "preco-medio",
+        "acao"
+      ]
+    },
+    {
+      "id": "diluicao",
+      "nome": "Diluição acionária",
+      "categoria": "rv",
+      "resumo": "Redução da participação percentual de um acionista quando a companhia emite novas ações e ele não acompanha a emissão na proporção necessária.",
+      "exemplo": "Um investidor possui 1% da empresa; após emissão de novas ações que ele não subscreve, sua participação pode cair para 0,8%.",
+      "importa": "A emissão pode financiar projetos que aumentem o valor futuro do negócio, mas também pode diluir participação e lucro por ação. Analise o uso dos recursos.",
+      "relacionados": [
+        "follow-on",
+        "subscricao",
+        "free-float",
+        "lpa"
+      ]
+    },
+    {
+      "id": "data-de-pagamento",
+      "nome": "Data de pagamento",
+      "categoria": "rv",
+      "resumo": "Data prevista para o crédito efetivo de um provento na conta do investidor elegível.",
+      "exemplo": "Uma empresa anuncia data ex em junho e pagamento em dezembro; o direito é definido pela posição na data com, não pela data em que o dinheiro cai.",
+      "importa": "Não confunda data de pagamento com data com ou data ex. Consulte os comunicados oficiais para confirmar prazos e eventuais alterações.",
+      "relacionados": [
+        "data-com",
+        "data-ex",
+        "dividendos",
+        "proventos"
       ]
     }
   ]
