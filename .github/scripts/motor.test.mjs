@@ -59,3 +59,25 @@ test("simulador de aportes: juros compostos mensais equivalentes à taxa anual",
   const real = Motor.simulate({ inicial: 1000, aporte: 0, taxa: 12, inflacao: 4, real: true, meta: 0, renda: 0 });
   perto(real.rows[12].saldo, 1000 * 1.12 / 1.04);
 });
+
+test("IPCA acumulado em 12 meses: 12 meses de 1% dão 12,68%", () => {
+  const mensal = Array.from({ length: 14 }, (_, i) => ({ date: `2025-${String(i + 1).padStart(2, "0")}-01`, value: 1 }));
+  const out = Motor.acumulado12(mensal);
+  assert.equal(out.length, 3);
+  perto(out[0].value, (1.01 ** 12 - 1) * 100, 1e-9);
+  assert.equal(out[0].date, "2025-12-01");
+});
+
+test("IPCA acumulado em 12 meses: série curta não gera pontos", () => {
+  assert.equal(Motor.acumulado12([{ date: "2025-01-01", value: 1 }]).length, 0);
+});
+
+test("CDI diário para anual em base 252", () => {
+  perto(Motor.cdiAnual(0.050788), ((1.00050788) ** 252 - 1) * 100, 1e-9);
+  perto(Motor.cdiAnual(0), 0);
+});
+
+test("juro real: Selic 15% com IPCA 5% dá 9,52% reais", () => {
+  perto(Motor.juroReal(15, 5), (1.15 / 1.05 - 1) * 100, 1e-9);
+  perto(Motor.juroReal(10, 10), 0, 1e-9);
+});

@@ -239,6 +239,13 @@ a.tool-card:hover, a.tool-card:focus-visible { border-color: var(--accent); tran
 .ip-slider b { font-size: 16px; color: var(--text); }
 #ip-out .tile .v { white-space: nowrap; }
 @media (max-width: 480px) { #ip-out .tile .v { font-size: 16px; } }
+.focus-box { border: 1px dashed var(--border); border-radius: 12px; padding: 14px 16px; margin: 16px 0 0; }
+.focus-box h3 { margin-top: 0; }
+.focus-box table { table-layout: fixed; width: 100%; }
+.focus-box td, .focus-box th { white-space: normal; overflow-wrap: anywhere; }
+.focus-box td:first-child { width: 22%; }
+.focus-tag { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 99px; border: 1px solid var(--border); color: var(--text-3); margin-left: 6px; vertical-align: middle; }
+.tm-chart h3 { margin: 16px 0 4px; font-size: 13px; color: var(--text-2); }
 tr.on-row td { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .w-actions button:disabled { opacity: .45; cursor: default; }
 tr.editing td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
@@ -729,7 +736,7 @@ const TOOLS = [
   { id: "renda-fixa", nome: "Projeção da renda fixa", desc: "Quanto os seus títulos de renda fixa vão valer numa data futura, já descontado o IR.", render: () => renderProjection() },
   { id: "aportes", nome: "Simulador de aportes", desc: "Quanto você terá aportando todo mês, e quando chega na meta de patrimônio ou de renda.", render: () => renderSimulator() },
   { id: "ipca-pre", nome: "IPCA+ × Prefixado", desc: "Qual inflação faz os dois títulos empatarem, e quem ganha com a inflação que você espera.", render: () => renderIpcaPre() },
-  { id: "termometro", nome: "Termômetro econômico", desc: "IPCA, Selic, CDI e juros reais, com histórico e expectativas do mercado.", soon: true },
+  { id: "termometro", nome: "Termômetro econômico", desc: "IPCA, Selic, CDI e juros reais, com histórico e expectativas do mercado.", render: () => renderTermometro() },
   { id: "comparador", nome: "Comparador de investimentos", desc: "CDB, LCI, LCA e Tesouro lado a lado, com IR, custos e cenários de juros.", soon: true },
   { id: "marcacao", nome: "Marcação a mercado", desc: "Quanto você recebe vendendo um título antes do vencimento, e se compensa.", soon: true },
 ];
@@ -858,6 +865,91 @@ function ipcaPreOut() {
     { label: "Valor investido", color: css("--text-3"), dash: [5, 4], data: pts(() => 1) },
   ], { fill: false, fmtY: v => "R$ " + big(v), fmtTip: v => money(v), height: 230 });
   if (ch) projCharts.push(ch);
+}
+
+// ---------- Ferramenta: termômetro econômico ----------
+// Dados realizados do BCB (IPCA, Selic meta, CDI) vêm de /api/termometro; as expectativas do Focus ficam numa seção à parte.
+let termo = null, termoErr = null, termoCarregando = false;
+async function loadTermometro() {
+  termoCarregando = true;
+  try {
+    const j = await fetch("/api/termometro").then(r => r.json());
+    if (j.error) termoErr = j.error; else { termo = j; termoErr = null; }
+  } catch { termoErr = "Não consegui os dados do Banco Central agora."; }
+  finally { termoCarregando = false; }
+}
+function renderTermometro() {
+  const el = $("#ferramentas");
+  if (!termo && !termoErr) {
+    el.innerHTML = toolBack + `<div class="panel"><h2>Termômetro econômico</h2><div class="hint">Carregando as taxas do Banco Central…</div></div>`;
+    if (!termoCarregando) loadTermometro().then(() => { if (location.hash === "#termometro") renderTermometro(); });
+    return;
+  }
+  if (!termo || !termo.ipca?.length) {
+    el.innerHTML = toolBack + `<div class="panel err">${esc(termoErr || "Sem dados de inflação no Banco Central agora.")}</div>`;
+    return;
+  }
+  const xy = pares => pares.map(([d, v]) => ({ x: new Date(d + "T12:00:00").getTime(), y: v }));
+  const mesAnoIso = d => new Date(d + "T12:00:00").toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
+  const ipca = termo.ipca, selic = termo.selic || [], cdi = termo.cdi || [];
+  const ipca12 = Motor.acumulado12(ipca.map(([date, value]) => ({ date, value })));
+  const ult = ipca[ipca.length - 1], ult12 = ipca12[ipca12.length - 1];
+  const selicUlt = selic[selic.length - 1], cdiUlt = cdi[cdi.length - 1];
+  let i = selic.length - 1;
+  while (i > 0 && selic[i - 1][1] === selicUlt[1]) i--;
+  const selicDesde = selic[i][0];
+  const cdiAnualUlt = Motor.cdiAnual(cdiUlt[1]);
+  const juroReal = Motor.juroReal(selicUlt[1], ult12.value);
+
+  // CDI anualizado, média por mês (são ~2.500 pontos diários)
+  const porMes = new Map();
+  for (const [d, v] of cdi) { const k = d.slice(0, 7); const a = porMes.get(k) || { s: 0, n: 0, d }; a.s += Motor.cdiAnual(v); a.n++; porMes.set(k, a); }
+  const cdiMensal = [...porMes.values()].map(a => [a.d, a.s / a.n]);
+
+  const focus = termo.focus || [];
+  const anos = [...new Set(focus.map(f => f.ano))].sort();
+  const achado = (ind, ano) => focus.find(f => f.indicador === ind && f.ano === ano);
+  const faixa = f => f ? `<b>${brl(f.mediana)}%</b><br><span class="muted" style="font-size:12px">faixa ${brl(f.minimo)} a ${brl(f.maximo)}</span>` : '<span class="muted">—</span>';
+
+  el.innerHTML = toolBack + `<div class="panel">
+    <h2>Termômetro econômico</h2>
+    <div class="hint">Números realizados do Banco Central: o que já aconteceu. A seção de expectativas, mais abaixo, é outra coisa.</div>
+    <div class="tiles">
+      <div class="tile"><div class="k">IPCA em 12 meses</div><div class="v">${brl(ult12.value)}%</div><div class="s">até ${mesAnoIso(ult12.date)} · mês: ${brl(ult[1])}%</div></div>
+      <div class="tile"><div class="k">Selic meta</div><div class="v">${brl(selicUlt[1])}% a.a.</div><div class="s">desde ${isoBR(selicDesde)}</div></div>
+      <div class="tile"><div class="k">CDI anualizado</div><div class="v">${brl(cdiAnualUlt)}% a.a.</div><div class="s">último dia útil: ${isoBR(cdiUlt[0])}</div></div>
+      <div class="tile"><div class="k">Juro real</div><div class="v">${brl(juroReal)}% a.a.</div><div class="s">Selic contra IPCA de 12 meses · estimativa de referência</div></div>
+    </div>
+    <div class="status">Dados realizados: IPCA até ${mesAnoIso(ult[0])}; Selic e CDI até ${isoBR(cdiUlt[0])}. Fonte: Banco Central (SGS 433, 432 e 12).</div>
+
+    <div class="tm-chart"><h3>IPCA mensal</h3>
+      <div class="proj-box" style="height:200px"><canvas id="tm-ipca" aria-label="IPCA mensal"></canvas></div></div>
+    <div class="tm-chart"><h3>IPCA em 12 meses</h3>
+      <div class="proj-box" style="height:200px"><canvas id="tm-ipca12" aria-label="IPCA acumulado em 12 meses"></canvas></div></div>
+    <div class="tm-chart"><h3>Juros: Selic meta e CDI anualizado</h3>
+      ${legendHtml([["Selic meta", css("--s1")], ["CDI anualizado (média mensal)", css("--s3")]])}
+      <div class="proj-box" style="height:200px"><canvas id="tm-juros" aria-label="Selic meta e CDI anualizado"></canvas></div></div>
+    <div class="tm-chart"><h3>Juros × inflação</h3>
+      ${legendHtml([["Selic meta", css("--s1")], ["IPCA em 12 meses", css("--s2")]])}
+      <div class="proj-box" style="height:200px"><canvas id="tm-real" aria-label="Selic meta contra IPCA em 12 meses"></canvas></div></div>
+
+    <div class="focus-box">
+      <h3>Expectativas do mercado <span class="focus-tag">projeção</span></h3>
+      <div class="hint" style="margin-bottom:8px">Boletim Focus${termo.focusData ? " de " + isoBR(termo.focusData) : ""}: o que analistas esperam para o fim de cada ano. Não é o que aconteceu. Mostra a mediana e a faixa de respostas (mínima a máxima).</div>
+      ${termo.focusErro ? `<div class="err">${esc(termo.focusErro)}</div>`
+        : !anos.length ? `<div class="muted">Nenhuma expectativa publicada agora.</div>`
+        : `<div class="table-wrap"><table class="w-table">
+            <thead><tr><th>Ano</th><th>IPCA</th><th>Selic (fim do ano)</th></tr></thead>
+            <tbody>${anos.map(a => `<tr><td><b>${a}</b></td><td>${faixa(achado("IPCA", a))}</td><td>${faixa(achado("Selic", a))}</td></tr>`).join("")}</tbody>
+          </table></div>`}
+    </div>
+  </div>`;
+
+  const grafico = (id, datasets) => { const c = lineChart($("#" + id), datasets, { fill: false, fmtY: v => brl(v, 1) + "%", fmtTip: v => brl(v, 2) + "%", height: 200 }); if (c) projCharts.push(c); };
+  grafico("tm-ipca", [{ label: "IPCA mensal", color: css("--s2"), data: xy(ipca) }]);
+  grafico("tm-ipca12", [{ label: "IPCA em 12 meses", color: css("--s2"), data: xy(ipca12.map(p => [p.date, p.value])) }]);
+  grafico("tm-juros", [{ label: "Selic meta", color: css("--s1"), data: xy(selic) }, { label: "CDI anualizado", color: css("--s3"), data: xy(cdiMensal) }]);
+  grafico("tm-real", [{ label: "Selic meta", color: css("--s1"), data: xy(selic) }, { label: "IPCA em 12 meses", color: css("--s2"), data: xy(ipca12.map(p => [p.date, p.value])) }]);
 }
 
 // ---------- Ferramenta: projeção da renda fixa ----------

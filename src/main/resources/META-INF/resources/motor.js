@@ -44,6 +44,21 @@ const Motor = (() => {
     return { pre: p, ipca: i, dif, vencedor: Math.abs(dif) < 0.005 ? "empate" : dif > 0 ? "ipca" : "pre", equilibrio: ipcaEquilibrio(pre, real) };
   }
 
-  return { aliqIR, simulate, ipcaEquilibrio, fatorPre, fatorIpca, ipcaVsPre };
+  // ---------- Termômetro econômico ----------
+  // IPCA acumulado em 12 meses a partir da série mensal ([{date, value}] com value em %). Começa no 12º mês.
+  function acumulado12(mensal) {
+    const out = [];
+    for (let i = 11; i < mensal.length; i++) {
+      const fator = mensal.slice(i - 11, i + 1).reduce((a, p) => a * (1 + p.value / 100), 1);
+      out.push({ date: mensal[i].date, value: (fator - 1) * 100 });
+    }
+    return out;
+  }
+  // CDI diário (% ao dia útil) para taxa anual equivalente em base 252 dias úteis (%).
+  const cdiAnual = diario => (Math.pow(1 + diario / 100, 252) - 1) * 100;
+  // Juro real ex-post: taxa nominal (Selic) descontada do IPCA acumulado em 12 meses (%).
+  const juroReal = (nominal, inflacao) => ((1 + nominal / 100) / (1 + inflacao / 100) - 1) * 100;
+
+  return { aliqIR, simulate, ipcaEquilibrio, fatorPre, fatorIpca, ipcaVsPre, acumulado12, cdiAnual, juroReal };
 })();
 if (typeof module !== "undefined") module.exports = Motor;
