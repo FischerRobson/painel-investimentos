@@ -27,6 +27,18 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Lista de e-mails
+        env:
+          ALLOWED_EMAILS: ${{ vars.ALLOWED_EMAILS }}
+        run: |
+          # Sem a lista, o gatilho do Cognito recusaria todo cadastro novo
+          n=$(tr ',' '\n' <<< "$ALLOWED_EMAILS" | grep -c '@' || true)
+          if [[ "$n" -eq 0 ]]; then
+            echo "::error::defina a variable ALLOWED_EMAILS no environment production (Settings → Environments → production), com os e-mails separados por vírgula"
+            exit 1
+          fi
+          echo "E-mails liberados: $n"
+
       - name: Versão
         id: versao
         run: |
@@ -68,7 +80,8 @@ jobs:
           CFN_EXEC_ROLE_ARN: ${{ vars.AWS_CFN_EXEC_ROLE_ARN }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          ALLOWED_EMAILS: ${{ secrets.ALLOWED_EMAILS }}
+          # Variable (não secret) do environment production: dá para ver e editar sem recriar (Settings → Environments)
+          ALLOWED_EMAILS: ${{ vars.ALLOWED_EMAILS }}
           BRAPI_TOKEN: ${{ secrets.BRAPI_TOKEN }}
 
       - name: Verificação pós-deploy
