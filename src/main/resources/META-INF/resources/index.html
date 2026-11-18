@@ -156,6 +156,12 @@ a { color: var(--accent); }
 .tile { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
 .tile .k { font-size: 11px; color: var(--text-3); }
 .tile .v { font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
+.ana-card { margin-top: 12px; }
+.ana-card > summary { cursor: pointer; display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-size: 14px; }
+.ana-card > summary .ana-nota { margin-left: auto; font-weight: 700; font-size: 18px; }
+.ana-bar { height: 6px; border-radius: 3px; background: var(--border); margin: 10px 0 4px; overflow: hidden; }
+.ana-bar > span { display: block; height: 100%; background: var(--s1); }
+.ana-alertas { margin: 8px 0; padding-left: 18px; color: var(--text-2); font-size: 13px; }
 .tile .s { font-size: 12px; color: var(--text-2); }
 .w-table th, .w-table td { padding: 8px 7px; }
 .w-table .alloc .track { width: 56px; }
@@ -733,6 +739,7 @@ const TOOL_ART = {
     <path d="M24 88 L60 84 L96 78 L132 80 L168 70 L204 72 L236 66" style="fill:none;stroke:var(--text-3);stroke-width:2.5;stroke-dasharray:5 4"/>`, "Linhas de inflação e juros"),
   comparador: ART([60, 120, 90, 160].map((w, i) => `<rect x="24" y="${18 + i * 22}" width="${w + 50}" height="14" rx="4" style="fill:var(--text-3);opacity:${0.35 + i * 0.12}"/>`).join(""), "Barras comparando investimentos"),
   marcacao: ART(`<path d="M30 20 Q90 86 236 92" style="fill:none;stroke:var(--text-3);stroke-width:2.5"/><circle cx="96" cy="66" r="6" style="fill:var(--text-3)"/>`, "Preço do título caindo quando a taxa sobe"),
+  analisador: ART([[24, 150, 0.8], [84, 110, 0.55], [144, 170, 0.35], [204, 90, 0.65]].map(([x, h, o]) => `<rect x="${x}" y="${100 - h / 2 - 8}" width="36" height="${h / 2}" rx="5" style="fill:var(--text-3);opacity:${o}"/>`).join(""), "Barras de pontuação de ativos"),
 };
 const TOOLS = [
   { id: "renda-fixa", nome: "Projeção da renda fixa", desc: "Quanto os seus títulos de renda fixa vão valer numa data futura, já descontado o IR.", render: () => renderProjection() },
@@ -741,6 +748,7 @@ const TOOLS = [
   { id: "termometro", nome: "Termômetro econômico", desc: "IPCA, Selic, CDI e juros reais, com histórico e expectativas do mercado.", render: () => renderTermometro() },
   { id: "comparador", nome: "Comparador de renda fixa", desc: "CDB, LCI, LCA e Tesouro lado a lado, com IR e cenários de juros e inflação do Focus.", render: () => renderComparador() },
   { id: "marcacao", nome: "Marcação a mercado", desc: "Quanto você recebe vendendo um Tesouro antes do vencimento, e se compensa mais que manter.", render: () => renderMarcacao() },
+  { id: "analisador", nome: "Analisador de ações e FIIs", desc: "Pontuação de 0 a 100 de ações e FIIs pelos fundamentos, com o peso de cada critério.", render: () => renderAnalisador() },
 ];
 const toolBack = `<a class="tool-back" href="#">← Ferramentas</a>`;
 let projCharts = [];
@@ -1577,6 +1585,84 @@ function bindSimulator(def) {
     saveSim(); renderTools();
   };
   $("#sim-reset").onclick = () => { simCfg.inicial = null; simCfg.taxa = null; simCfg.inflacao = null; saveSim(); renderTools(); };
+}
+
+// ---------- Ferramenta: Analisador de ações e FIIs ----------
+// Os números vêm de /api/data (Fundamentus); a pontuação, os pesos e as faixas ficam em motor.js.
+let anaCfg = (() => { try { return JSON.parse(store.get("analisador", "{}")) || {}; } catch { return {}; } })();
+let anaTickers = anaCfg.tickers || "PETR4, ITUB4, HGLG11, MXRF11";
+let anaRes = null, anaErr = null, anaCarregando = false;
+async function analisar(tickers) {
+  anaCarregando = true; anaErr = null; anaRes = null;
+  renderAnalisador();
+  try {
+    const r = await fetch(`/api/data?symbols=${encodeURIComponent(tickers)}&range=1mo`);
+    if (!r.ok) throw new Error("Não foi possível consultar os ativos agora.");
+    const data = await r.json();
+    anaRes = data.items.map(it => {
+      const f = it.fund;
+      const analise = f ? (f.kind === "fii" ? Motor.analisaFii(f) : Motor.analisaAcao(f)) : null;
+      return { ticker: it.ticker, nome: it.name, setor: it.sector, preco: it.price, erro: it.error || (f ? null : "sem indicadores no Fundamentus"), analise };
+    }).sort((a, b) => (b.analise?.nota ?? -1) - (a.analise?.nota ?? -1));
+  } catch (e) {
+    anaErr = e.message || "Falha ao consultar os ativos.";
+  } finally {
+    anaCarregando = false;
+  }
+  renderAnalisador();
+}
+const fmtCriterio = (v, f) => v == null ? "—" : f === "%" ? brl(v * 100, 1) + "%" : f === "R$" ? "R$ " + big(v) : brl(v, f === "n" ? 0 : 2);
+function renderAnalisador() {
+  const el = $("#ferramentas");
+  let resultado = "";
+  if (anaCarregando) resultado = `<div class="status">Consultando os indicadores…</div>`;
+  else if (anaErr) resultado = `<div class="panel err">${esc(anaErr)}</div>`;
+  else if (anaRes) {
+    const cor = n => n == null ? "" : n >= 70 ? "up" : n >= 50 ? "" : "down";
+    const linhas = anaRes.map(x => {
+      const a = x.analise;
+      return `<tr><td><b>${esc(x.ticker)}</b><div class="muted">${esc(x.nome || "")}</div></td>
+        <td>${a ? esc(a.tipo) + (a.segmento ? `<div class="muted">${esc(a.segmento)}</div>` : "") : "—"}</td>
+        <td><b class="${cor(a?.nota)}">${a?.nota ?? "—"}</b></td>
+        <td>${a ? a.faixa : esc(x.erro || "sem dados")}</td>
+        <td>${a ? Math.round(a.cobertura * 100) + "%" : "—"}</td></tr>`;
+    }).join("");
+    const cards = anaRes.map(x => {
+      const a = x.analise;
+      if (!a) return `<div class="panel"><b>${esc(x.ticker)}</b><div class="hint">${esc(x.erro || "Sem dados para pontuar.")}</div></div>`;
+      const alertas = a.alertas.length ? `<ul class="ana-alertas">${a.alertas.map(t => `<li>${esc(t)}</li>`).join("")}</ul>` : "";
+      return `<details class="panel ana-card" ${anaRes.length === 1 ? "open" : ""}>
+        <summary><b>${esc(x.ticker)}</b> · ${esc(x.nome || "")} <span class="muted">${x.preco != null ? "R$ " + brl(x.preco) : ""}</span>
+          <span class="ana-nota">${a.nota ?? "—"}</span></summary>
+        <div class="ana-bar"><span style="width:${a.nota ?? 0}%"></span></div>
+        <div class="hint">${esc(a.tipo)}${a.segmento ? " · " + esc(a.segmento) : ""} · cobertura ${Math.round(a.cobertura * 100)}%${a.cobertura < 0.6 ? " (poucos dados para uma nota firme)" : ""}</div>
+        ${alertas}
+        <div class="table-wrap"><table class="w-table">
+          <thead><tr><th>Critério</th><th>Valor</th><th>Nota</th><th>Peso</th></tr></thead>
+          <tbody>${a.criterios.map(c => `<tr><td>${esc(c.nome)}</td><td>${fmtCriterio(c.valor, c.fmt)}</td><td>${c.nota ?? "sem dado"}</td><td>${c.peso}</td></tr>`).join("")}</tbody>
+        </table></div></details>`;
+    }).join("");
+    resultado = `<div class="table-wrap"><table class="w-table">
+        <thead><tr><th>Ativo</th><th>Tipo</th><th>Nota</th><th>Faixa</th><th>Cobertura</th></tr></thead>
+        <tbody>${linhas}</tbody></table></div>${cards}`;
+  }
+  el.innerHTML = toolBack + `<div class="panel">
+    <h2>Analisador de ações e FIIs</h2>
+    <div class="hint">Pontuação de 0 a 100 pelos indicadores do Fundamentus, com pesos fixos por critério. Ações: P/L, P/VP, EV/EBITDA, ROE, ROIC, margem, dívida, crescimento e dividend yield. FIIs: DY, P/VP, FFO, liquidez e, nos de tijolo, vacância, cap rate e número de imóveis.
+      <b>É uma leitura dos números, não recomendação de compra ou venda.</b></div>
+    <form class="w-add proj-form" id="f-ana">
+      <label style="grid-column: 1 / -1">Tickers (separados por vírgula, até 30)<input type="text" name="tickers" value="${esc(anaTickers)}" placeholder="PETR4, ITUB4, HGLG11"></label>
+      <div class="quick"><button type="submit" ${anaCarregando ? "disabled" : ""}>Analisar</button></div>
+    </form>
+    <div class="status">Dados do Fundamentus: o site usa 0 quando não tem o número, então esse critério fica de fora da nota e a cobertura cai.</div>
+  </div>${resultado}`;
+  $("#f-ana").onsubmit = e => {
+    e.preventDefault();
+    const t = new FormData(e.target).get("tickers").trim();
+    if (!t) return;
+    anaTickers = t; anaCfg.tickers = t; store.set("analisador", JSON.stringify(anaCfg));
+    analisar(t);
+  };
 }
 
 // ---------- Carteira: evolução do patrimônio ----------

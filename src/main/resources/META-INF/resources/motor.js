@@ -157,7 +157,95 @@ const Motor = (() => {
     };
   }
 
+  // ---------- Analisador de ações e FIIs ----------
+  // Cada critério vira nota de 0 a 100 por interpolação linear entre `zero` (nota 0) e `cem` (nota 100).
+  // Vale para métrica em que subir é bom (zero < cem) e para a que é ruim (zero > cem, como dívida e P/L).
+  // Valor 0 ou ausente é "sem dado" (o Fundamentus usa 0 quando não tem o número): o critério sai da média e o peso se redistribui.
+  // Negativo em múltiplos de preço (P/L, P/VP, EV/EBITDA) não é "barato": nota 0.
+  const notaLinear = (v, zero, cem) => Math.max(0, Math.min(100, (v - zero) / (cem - zero) * 100));
+
+  const CRITERIOS_ACAO = [
+    { id: "pl", nome: "P/L", peso: 13, zero: 25, cem: 8, negativoZera: true, valor: f => f.pl, fmt: "x" },
+    { id: "pvp", nome: "P/VP", peso: 10, zero: 4, cem: 1, negativoZera: true, valor: f => f.pvp, fmt: "x" },
+    { id: "evEbitda", nome: "EV/EBITDA", peso: 9, zero: 15, cem: 5, negativoZera: true, valor: f => f.evEbitda, fmt: "x" },
+    { id: "roe", nome: "ROE", peso: 13, zero: 0, cem: 0.20, valor: f => f.roe, fmt: "%" },
+    { id: "roic", nome: "ROIC", peso: 10, zero: 0, cem: 0.15, valor: f => f.roic, fmt: "%" },
+    { id: "margem", nome: "Margem líquida", peso: 10, zero: 0, cem: 0.20, valor: f => f.margemLiq, fmt: "%" },
+    { id: "divida", nome: "Dívida líquida / patrimônio", peso: 10, zero: 3, cem: 0, valor: f => f.divLiqPatrim, fmt: "x" },
+    { id: "cresc", nome: "Crescimento da receita (5 anos)", peso: 10, zero: -0.10, cem: 0.15, valor: f => f.crescRec5a, fmt: "%" },
+    { id: "dy", nome: "Dividend yield", peso: 15, zero: 0, cem: 0.10, valor: f => f.dy, fmt: "%" },
+  ];
+
+  // FIIs de tijolo (imóveis físicos) são avaliados também por vacância, cap rate e diversificação.
+  // FIIs de papel, fundos de fundos e híbridos não têm imóvel próprio para medir isso.
+  const CRITERIOS_FII_PAPEL = [
+    { id: "dy", nome: "Dividend yield", peso: 30, zero: 0, cem: 0.12, valor: f => f.dy, fmt: "%" },
+    { id: "pvp", nome: "P/VP", peso: 25, zero: 1.3, cem: 0.9, negativoZera: true, valor: f => f.pvp, fmt: "x" },
+    { id: "ffo", nome: "FFO cobre o dividendo", peso: 25, zero: 0.6, cem: 1.0, valor: f => ratioFfo(f), fmt: "x" },
+    { id: "liq", nome: "Liquidez", peso: 20, zero: 100000, cem: 2000000, valor: f => f.liquidez, fmt: "R$" },
+  ];
+  const CRITERIOS_FII_TIJOLO = [
+    { id: "dy", nome: "Dividend yield", peso: 25, zero: 0, cem: 0.12, valor: f => f.dy, fmt: "%" },
+    { id: "pvp", nome: "P/VP", peso: 20, zero: 1.3, cem: 0.9, negativoZera: true, valor: f => f.pvp, fmt: "x" },
+    { id: "ffo", nome: "FFO cobre o dividendo", peso: 15, zero: 0.6, cem: 1.0, valor: f => ratioFfo(f), fmt: "x" },
+    { id: "liq", nome: "Liquidez", peso: 10, zero: 100000, cem: 2000000, valor: f => f.liquidez, fmt: "R$" },
+    { id: "vacancia", nome: "Vacância média", peso: 15, zero: 0.20, cem: 0, valor: f => f.vacancia, fmt: "%" },
+    { id: "capRate", nome: "Cap rate", peso: 10, zero: 0.05, cem: 0.10, valor: f => f.capRate, fmt: "%" },
+    { id: "imoveis", nome: "Número de imóveis", peso: 5, zero: 1, cem: 10, valor: f => f.imoveis, fmt: "n" },
+  ];
+
+  // FFO / dividendo: acima de 1 o fundo distribui menos do que gera de caixa recorrente
+  function ratioFfo(f) {
+    return f.ffoYield > 0 && f.dy > 0 ? f.ffoYield / f.dy : null;
+  }
+
+  // Segmento do Fundamentus -> tipo de critério. Papel, fundos de fundos e híbridos usam o conjunto de papel.
+  function tipoFii(segmento) {
+    const s = (segmento || "").toLowerCase();
+    if (/papel|cri\b|títulos|titulos|val\.? ?mob|fundo de fundos|fundos de fundos|fof|híbrido|hibrido/.test(s)) return "papel";
+    return "tijolo";
+  }
+
+  // Avalia um conjunto de critérios. Retorna nota ponderada (0–100), cobertura (fração do peso com dado) e as linhas.
+  function pontua(criterios, fund) {
+    const linhas = criterios.map(c => {
+      const v = c.valor(fund);
+      const ausente = v == null || !isFinite(v) || v === 0;
+      let nota = null;
+      if (!ausente) {
+        nota = c.negativoZera && v < 0 ? 0 : notaLinear(v, c.zero, c.cem);
+      }
+      return { id: c.id, nome: c.nome, peso: c.peso, valor: ausente ? null : v, fmt: c.fmt, nota: nota == null ? null : Math.round(nota) };
+    });
+    const usados = linhas.filter(l => l.nota != null);
+    const pesoTotal = criterios.reduce((a, c) => a + c.peso, 0);
+    const pesoUsado = usados.reduce((a, l) => a + l.peso, 0);
+    const nota = usados.length ? usados.reduce((a, l) => a + l.nota * l.peso, 0) / pesoUsado : null;
+    return { nota: nota == null ? null : Math.round(nota), cobertura: pesoUsado / pesoTotal, criterios: linhas };
+  }
+
+  // Faixas da nota: só descrevem a pontuação, não são recomendação de compra ou venda.
+  const faixaNota = n => n == null ? "sem dados" : n >= 70 ? "alta" : n >= 50 ? "média" : "baixa";
+
+  function analisaAcao(f) {
+    const r = pontua(CRITERIOS_ACAO, f);
+    const alertas = [];
+    if (f.pl != null && f.pl < 0) alertas.push("Prejuízo nos últimos 12 meses (P/L negativo).");
+    if (f.liquidez != null && f.liquidez > 0 && f.liquidez < 1000000) alertas.push("Liquidez baixa: negociação pequena, o preço pode se afastar do valor justo na venda.");
+    return { kind: "acao", tipo: "Ação", ...r, faixa: faixaNota(r.nota), alertas };
+  }
+
+  function analisaFii(f) {
+    const tipo = tipoFii(f.segmento);
+    const r = pontua(tipo === "papel" ? CRITERIOS_FII_PAPEL : CRITERIOS_FII_TIJOLO, f);
+    const alertas = [];
+    if (f.vacancia != null && f.vacancia >= 0.2 && tipo === "tijolo") alertas.push("Vacância alta: mais de 20% dos imóveis sem locatário.");
+    if (f.ffoYield > 0 && f.dy > 0 && f.ffoYield < f.dy) alertas.push("O dividendo passa do FFO: pode ser distribuição acima do que o fundo gera.");
+    if (f.liquidez != null && f.liquidez > 0 && f.liquidez < 1000000) alertas.push("Liquidez baixa para um FII.");
+    return { kind: "fii", tipo: tipo === "papel" ? "Papel / híbrido" : "Tijolo", segmento: f.segmento || null, ...r, faixa: faixaNota(r.nota), alertas };
+  }
+
   return { aliqIR, simulate, ipcaEquilibrio, fatorPre, fatorIpca, ipcaVsPre, acumulado12, cdiAnual, juroReal, comparaRF, cenarioFocus,
-    diasUteis, diasCorridos, fatorIpcaPeriodo, marcacao };
+    diasUteis, diasCorridos, fatorIpcaPeriodo, marcacao, notaLinear, tipoFii, analisaAcao, analisaFii };
 })();
 if (typeof module !== "undefined") module.exports = Motor;

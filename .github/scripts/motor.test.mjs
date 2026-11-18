@@ -201,3 +201,85 @@ test("fator de IPCA: meses realizados e projeção para os demais", () => {
   perto(f, 1.01 * 1.02 * 1.12 ** (1 / 12), 1e-9);
   perto(Motor.fatorIpcaPeriodo([], "2025-01-01", "2026-01-01", 10), 1.10, 1e-9);
 });
+
+// ---------- Analisador de ações e FIIs ----------
+const acao = o => ({ kind: "acao", ...o });
+const fii = o => ({ kind: "fii", ...o });
+
+test("nota linear: interpola entre zero e cem nos dois sentidos e limita entre 0 e 100", () => {
+  assert.equal(Motor.notaLinear(0.10, 0, 0.20), 50);
+  assert.equal(Motor.notaLinear(8, 25, 8), 100);      // P/L baixo é bom
+  assert.equal(Motor.notaLinear(25, 25, 8), 0);
+  assert.equal(Motor.notaLinear(99, 0, 0.2), 100);
+  assert.equal(Motor.notaLinear(-5, 0, 0.2), 0);
+});
+
+test("ação com dados completos: cobertura total e nota dentro de 0–100", () => {
+  // PETR4 como veio do Fundamentus
+  const r = Motor.analisaAcao(acao({ pl: 4.04, pvp: 1.12, dy: 0.0829, roe: 0.2782, roic: 0.2141, margemLiq: 0.2385, evEbitda: 2.47, divLiqPatrim: 0.59, crescRec5a: -0.0175, liquidez: 2664320000 }));
+  perto(r.cobertura, 1, 1e-9);
+  assert.ok(r.nota >= 0 && r.nota <= 100);
+  assert.equal(r.criterios.length, 9);
+});
+
+test("banco: zeros do Fundamentus (EV/EBITDA, ROIC, margem, dívida) saem da média e a cobertura cai", () => {
+  // ITUB4: sem dívida líquida, EV/EBITDA, ROIC e margem no formato do Fundamentus
+  const r = Motor.analisaAcao(acao({ pl: 9.64, pvp: 2.06, dy: 0.0762, roe: 0.2137, roic: 0, margemLiq: 0, evEbitda: 0, divLiqPatrim: 0, crescRec5a: 0.0359, liquidez: 1635970000 }));
+  const usados = r.criterios.filter(c => c.nota != null).map(c => c.id);
+  assert.deepEqual(usados, ["pl", "pvp", "roe", "cresc", "dy"]);
+  perto(r.cobertura, 0.61, 1e-9);
+});
+
+test("ação com prejuízo: P/L negativo vale nota 0 e gera alerta", () => {
+  const r = Motor.analisaAcao(acao({ pl: -3, pvp: 0.8, dy: 0.02, roe: -0.1, liquidez: 5000000 }));
+  assert.equal(r.criterios.find(c => c.id === "pl").nota, 0);
+  assert.ok(r.alertas.some(a => a.includes("Prejuízo")));
+});
+
+test("dívida líquida negativa (caixa líquido) é a melhor nota; P/VP negativo é a pior", () => {
+  const r = Motor.analisaAcao(acao({ divLiqPatrim: -1, pvp: -0.5 }));
+  assert.equal(r.criterios.find(c => c.id === "divida").nota, 100);
+  assert.equal(r.criterios.find(c => c.id === "pvp").nota, 0);
+});
+
+test("faixas da nota: tudo no melhor dá alta, tudo no pior dá baixa", () => {
+  const melhor = Motor.analisaAcao(acao({ pl: 5, pvp: 0.5, evEbitda: 4, roe: 0.3, roic: 0.2, margemLiq: 0.3, divLiqPatrim: -1, crescRec5a: 0.2, dy: 0.12 }));
+  assert.equal(melhor.nota, 100);
+  assert.equal(melhor.faixa, "alta");
+  const pior = Motor.analisaAcao(acao({ pl: 30, pvp: 5, evEbitda: 20, roe: -0.1, roic: -0.1, margemLiq: -0.1, divLiqPatrim: 5, crescRec5a: -0.2, dy: 0.001 }));
+  assert.equal(pior.nota, 0);
+  assert.equal(pior.faixa, "baixa");
+});
+
+test("tipo de FII pelo segmento: tijolo x papel, fundos de fundos e híbridos", () => {
+  assert.equal(Motor.tipoFii("Logística"), "tijolo");
+  assert.equal(Motor.tipoFii("Multicategoria"), "tijolo");
+  assert.equal(Motor.tipoFii("Papel"), "papel");
+  assert.equal(Motor.tipoFii("Títulos e Val. Mob."), "papel");
+  assert.equal(Motor.tipoFii("Fundo de Fundos"), "papel");
+  assert.equal(Motor.tipoFii("Híbrido"), "papel");
+  assert.equal(Motor.tipoFii(null), "tijolo");
+});
+
+test("FII de papel não é avaliado por vacância nem cap rate", () => {
+  const r = Motor.analisaFii(fii({ segmento: "Papel", dy: 0.12, pvp: 0.9, ffoYield: 0.12, liquidez: 3000000, vacancia: 0, capRate: 0 }));
+  assert.equal(r.tipo, "Papel / híbrido");
+  assert.deepEqual(r.criterios.map(c => c.id), ["dy", "pvp", "ffo", "liq"]);
+  perto(r.cobertura, 1, 1e-9);
+});
+
+test("FII de tijolo usa vacância e cap rate; vacância zero (sem dado) fica de fora", () => {
+  const r = Motor.analisaFii(fii({ segmento: "Logística", dy: 0.1361, pvp: 0.94, ffoYield: 0.1019, liquidez: 28518200, vacancia: 0, capRate: 0, imoveis: 18 }));
+  assert.equal(r.tipo, "Tijolo");
+  assert.equal(r.criterios.find(c => c.id === "vacancia").nota, null);   // listado como "sem dado", fora da média
+  assert.equal(r.criterios.find(c => c.id === "capRate").nota, null);
+  assert.notEqual(r.criterios.find(c => c.id === "imoveis").nota, null);
+  perto(r.cobertura, 0.75, 1e-9);   // sem vacância (15) e cap rate (10) de 100
+});
+
+test("FII com vacância alta e dividendo acima do FFO gera alertas", () => {
+  const r = Motor.analisaFii(fii({ segmento: "Lajes Corporativas", dy: 0.12, pvp: 0.8, ffoYield: 0.08, liquidez: 500000, vacancia: 0.3, capRate: 0.09, imoveis: 4 }));
+  assert.ok(r.alertas.some(a => a.includes("Vacância alta")));
+  assert.ok(r.alertas.some(a => a.includes("passa do FFO")));
+  assert.ok(r.alertas.some(a => a.includes("Liquidez baixa")));
+});
