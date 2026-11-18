@@ -59,6 +59,44 @@ const Motor = (() => {
   // Juro real ex-post: taxa nominal (Selic) descontada do IPCA acumulado em 12 meses (%).
   const juroReal = (nominal, inflacao) => ((1 + nominal / 100) / (1 + inflacao / 100) - 1) * 100;
 
-  return { aliqIR, simulate, ipcaEquilibrio, fatorPre, fatorIpca, ipcaVsPre, acumulado12, cdiAnual, juroReal };
+  // ---------- Comparador de renda fixa ----------
+  // Taxas do cenário em % a.a., médias do período. O CDI é tratado como a Selic meta (aproximação; o CDI real fica ~0,10 p.p. abaixo).
+  // Produto: { nome, tipo, idx: "cdi"|"pre"|"ipca", taxa, isento, anosVenc }.
+  // Estimativa: IR pela tabela regressiva com o prazo total da comparação; vencimento antes do prazo é reaplicado no CDI.
+  function comparaRF({ valor, anos, selic, ipca, produtos }) {
+    return produtos.map(p => {
+      const m = Math.min(p.anosVenc, anos);
+      const fator = p.idx === "cdi" ? Math.pow(1 + (selic / 100) * (p.taxa / 100), m)
+        : p.idx === "pre" ? fatorPre(p.taxa, m)
+        : fatorIpca(p.taxa, ipca, m);
+      let bruto = valor * fator;
+      if (p.anosVenc < anos) bruto *= Math.pow(1 + selic / 100, anos - p.anosVenc); // reaplica no CDI após o vencimento
+      const status = p.anosVenc > anos ? "depois" : p.anosVenc < anos ? "antes" : "ok";
+      if (status === "depois") return { ...p, status, bruto: null, ir: null, liquido: null, real: null };
+      const ir = p.isento ? 0 : Math.max(0, bruto - valor) * aliqIR(Math.round(anos * 365));
+      const liquido = bruto - ir;
+      return { ...p, status, bruto, ir, liquido, real: liquido / Math.pow(1 + ipca / 100, anos) };
+    });
+  }
+
+  // Taxas de um cenário a partir do Boletim Focus: média dos anos do prazo (o último ano vale para os seguintes).
+  // modo: "base" (medianas), "juros-caem" (Selic no mínimo), "juros-sobem" (Selic no máximo), "inflacao-sobe" (IPCA no máximo).
+  function cenarioFocus(focus, anoInicial, anos, modo) {
+    const at = (ind, ano, campo) => {
+      const linhas = focus.filter(f => f.indicador === ind);
+      const alvo = linhas.filter(f => Number(f.ano) <= ano).sort((a, b) => Number(b.ano) - Number(a.ano))[0] || linhas.sort((a, b) => Number(a.ano) - Number(b.ano))[0];
+      return alvo ? alvo[campo] : null;
+    };
+    const anosPrazo = Array.from({ length: Math.max(1, Math.ceil(anos)) }, (_, k) => anoInicial + k);
+    const media = (ind, campo) => {
+      const v = anosPrazo.map(a => at(ind, a, campo)).filter(x => x != null);
+      return v.length ? v.reduce((x, y) => x + y, 0) / v.length : null;
+    };
+    const selicCampo = modo === "juros-caem" ? "minimo" : modo === "juros-sobem" ? "maximo" : "mediana";
+    const ipcaCampo = modo === "inflacao-sobe" ? "maximo" : "mediana";
+    return { selic: media("Selic", selicCampo), ipca: media("IPCA", ipcaCampo) };
+  }
+
+  return { aliqIR, simulate, ipcaEquilibrio, fatorPre, fatorIpca, ipcaVsPre, acumulado12, cdiAnual, juroReal, comparaRF, cenarioFocus };
 })();
 if (typeof module !== "undefined") module.exports = Motor;

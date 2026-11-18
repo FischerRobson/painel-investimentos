@@ -246,6 +246,8 @@ a.tool-card:hover, a.tool-card:focus-visible { border-color: var(--accent); tran
 .focus-box td:first-child { width: 22%; }
 .focus-tag { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 99px; border: 1px solid var(--border); color: var(--text-3); margin-left: 6px; vertical-align: middle; }
 .tm-chart h3 { margin: 16px 0 4px; font-size: 13px; color: var(--text-2); }
+#cmp-prod input[type=text] { text-align: left; }
+#cmp-prod td { vertical-align: middle; }
 tr.on-row td { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .w-actions button:disabled { opacity: .45; cursor: default; }
 tr.editing td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
@@ -737,7 +739,7 @@ const TOOLS = [
   { id: "aportes", nome: "Simulador de aportes", desc: "Quanto você terá aportando todo mês, e quando chega na meta de patrimônio ou de renda.", render: () => renderSimulator() },
   { id: "ipca-pre", nome: "IPCA+ × Prefixado", desc: "Qual inflação faz os dois títulos empatarem, e quem ganha com a inflação que você espera.", render: () => renderIpcaPre() },
   { id: "termometro", nome: "Termômetro econômico", desc: "IPCA, Selic, CDI e juros reais, com histórico e expectativas do mercado.", render: () => renderTermometro() },
-  { id: "comparador", nome: "Comparador de investimentos", desc: "CDB, LCI, LCA e Tesouro lado a lado, com IR, custos e cenários de juros.", soon: true },
+  { id: "comparador", nome: "Comparador de renda fixa", desc: "CDB, LCI, LCA e Tesouro lado a lado, com IR e cenários de juros e inflação do Focus.", render: () => renderComparador() },
   { id: "marcacao", nome: "Marcação a mercado", desc: "Quanto você recebe vendendo um título antes do vencimento, e se compensa.", soon: true },
 ];
 const toolBack = `<a class="tool-back" href="#">← Ferramentas</a>`;
@@ -950,6 +952,129 @@ function renderTermometro() {
   grafico("tm-ipca12", [{ label: "IPCA em 12 meses", color: css("--s2"), data: xy(ipca12.map(p => [p.date, p.value])) }]);
   grafico("tm-juros", [{ label: "Selic meta", color: css("--s1"), data: xy(selic) }, { label: "CDI anualizado", color: css("--s3"), data: xy(cdiMensal) }]);
   grafico("tm-real", [{ label: "Selic meta", color: css("--s1"), data: xy(selic) }, { label: "IPCA em 12 meses", color: css("--s2"), data: xy(ipca12.map(p => [p.date, p.value])) }]);
+}
+
+// ---------- Ferramenta: comparador de renda fixa ----------
+// Tipos e a forma como cada um rende: cdi = % do CDI (CDI ≈ Selic meta), pre = % a.a., ipca = IPCA + % a.a.
+const TIPOS_RF = {
+  "CDB": { idx: "cdi", padrao: 110, isento: false },
+  "LCI": { idx: "cdi", padrao: 90, isento: true },
+  "LCA": { idx: "cdi", padrao: 90, isento: true },
+  "Tesouro Selic": { idx: "cdi", padrao: 100, isento: false },
+  "Tesouro Prefixado": { idx: "pre", padrao: 12, isento: false },
+  "Tesouro IPCA+": { idx: "ipca", padrao: 6, isento: false },
+  "Prefixado (outro)": { idx: "pre", padrao: 13, isento: false },
+  "IPCA+ (outro)": { idx: "ipca", padrao: 7, isento: false },
+};
+const CENARIOS_RF = {
+  base: "Focus: medianas",
+  "juros-caem": "Focus: juros caem (Selic no mínimo)",
+  "juros-sobem": "Focus: juros sobem (Selic no máximo)",
+  "inflacao-sobe": "Focus: inflação sobe (IPCA no máximo)",
+};
+const TAXA_TXT = p => p.idx === "cdi" ? `${brl(p.taxa)}% do CDI` : p.idx === "pre" ? `${brl(p.taxa)}% a.a.` : `IPCA + ${brl(p.taxa)}%`;
+let cmpCfg = (() => { try { return { valor: 10000, anos: 5, modo: "base", ordem: "liquido", produtos: [], ...JSON.parse(store.get("comparador", "{}")) }; } catch { return { valor: 10000, anos: 5, modo: "base", ordem: "liquido", produtos: [] }; } })();
+const saveCmp = () => store.set("comparador", JSON.stringify(cmpCfg));
+let cmpId = 1;
+
+function renderComparador() {
+  const el = $("#ferramentas");
+  if (!termo && !termoErr) {
+    el.innerHTML = toolBack + `<div class="panel"><h2>Comparador de renda fixa</h2><div class="hint">Carregando as expectativas do Banco Central…</div></div>`;
+    if (!termoCarregando) loadTermometro().then(() => { if (location.hash === "#comparador") renderComparador(); });
+    return;
+  }
+  // Cenário: Focus quando disponível; senão, o último dado realizado (com aviso)
+  const anoIni = new Date().getFullYear();
+  const cen = termo?.focus?.length
+    ? Motor.cenarioFocus(termo.focus, anoIni, cmpCfg.anos, cmpCfg.modo)
+    : { selic: termo?.selic?.at(-1)?.[1] ?? null, ipca: termo?.ipca ? Motor.acumulado12(termo.ipca.map(([date, value]) => ({ date, value }))).at(-1)?.value ?? null : null };
+  const semFocus = !termo?.focus?.length;
+
+  const produtos = cmpCfg.produtos.map(p => {
+    const t = TIPOS_RF[p.tipo] || TIPOS_RF["CDB"];
+    return { id: p.id, nome: p.nome || p.tipo, tipo: p.tipo, idx: t.idx, taxa: Number(p.taxa) || 0, isento: t.isento, anosVenc: Number(p.anosVenc) || 0 };
+  }).filter(p => p.anosVenc > 0 && p.taxa >= 0);
+  const valido = cmpCfg.valor > 0 && cmpCfg.anos > 0 && cen.selic != null && cen.ipca != null;
+  const res = valido && produtos.length ? Motor.comparaRF({ valor: cmpCfg.valor, anos: cmpCfg.anos, selic: cen.selic, ipca: cen.ipca, produtos }) : [];
+  const ok = res.filter(r => r.status !== "depois");
+  const ordenados = [...ok].sort((a, b) => cmpCfg.ordem === "real" ? b.real - a.real : b.liquido - a.liquido);
+  const depois = res.filter(r => r.status === "depois");
+  const melhor = ordenados[0];
+  const linha = r => `<tr>
+    <td><b>${esc(r.nome)}</b>${r.nome !== r.tipo ? ` <span class="muted">${esc(r.tipo)}</span>` : ""}</td>
+    <td>${TAXA_TXT(r)}</td><td>${r.anosVenc} ano${r.anosVenc > 1 ? "s" : ""}</td>
+    <td>${money(r.bruto)}</td><td>${r.isento ? '<span class="muted">isento</span>' : money(r.ir)}</td>
+    <td><b>${money(r.liquido)}</b></td><td>${money(r.real)}</td>
+    <td class="muted">${r.status === "antes" ? `vence antes: reaplicado no CDI até ${cmpCfg.anos} anos` : ""}</td></tr>`;
+  const linhaDepois = r => `<tr><td><b>${esc(r.nome)}</b> <span class="muted">${esc(r.tipo)}</span></td><td>${TAXA_TXT(r)}</td><td>${r.anosVenc} anos</td>
+    <td colspan="5" class="muted">vence depois do prazo: seria preciso vender antes do vencimento (marcação a mercado, ainda não disponível aqui)</td></tr>`;
+
+  el.innerHTML = toolBack + `<div class="panel">
+    <h2>Comparador de renda fixa</h2>
+    <div class="hint">Mesmo valor, mesmo prazo, produtos diferentes. Cada um rende de um jeito: % do CDI, prefixado ou IPCA+. Cadastre os produtos com a taxa da oferta que você tem em mãos.</div>
+    <form class="w-add proj-form" id="f-cmp">
+      <label>Valor investido (R$)<input type="number" name="valor" min="0" step="100" value="${cmpCfg.valor}"></label>
+      <label>Prazo (anos)<input type="number" name="anos" min="1" max="40" step="1" value="${cmpCfg.anos}"></label>
+      <label>Cenário de juros e inflação<select name="modo">${Object.entries(CENARIOS_RF).map(([k, v]) => `<option value="${k}" ${k === cmpCfg.modo ? "selected" : ""}>${v}</option>`).join("")}</select></label>
+      <label>Ordenar por<select name="ordem"><option value="liquido" ${cmpCfg.ordem !== "real" ? "selected" : ""}>Maior patrimônio líquido</option><option value="real" ${cmpCfg.ordem === "real" ? "selected" : ""}>Maior rentabilidade real</option></select></label>
+    </form>
+    <h3>Produtos</h3>
+    <div class="table-wrap"><table class="w-table" id="cmp-prod">
+      <thead><tr><th>Produto</th><th>Tipo</th><th>Taxa</th><th>Vencimento (anos)</th><th></th></tr></thead>
+      <tbody>${cmpCfg.produtos.map(p => {
+        const t = TIPOS_RF[p.tipo] || TIPOS_RF["CDB"];
+        return `<tr data-id="${p.id}">
+          <td><input type="text" data-k="nome" value="${esc(p.nome)}" placeholder="${esc(p.tipo)}" style="width:150px"></td>
+          <td><select data-k="tipo">${Object.keys(TIPOS_RF).map(k => `<option ${k === p.tipo ? "selected" : ""}>${k}</option>`).join("")}</select></td>
+          <td><input type="number" data-k="taxa" step="0.01" min="0" value="${p.taxa ?? t.padrao}" style="width:90px"> <span class="muted">${t.idx === "cdi" ? "% CDI" : t.idx === "pre" ? "% a.a." : "IPCA +"}</span></td>
+          <td><input type="number" data-k="anosVenc" step="0.5" min="0.5" max="40" value="${p.anosVenc ?? cmpCfg.anos}" style="width:80px"></td>
+          <td><button type="button" data-del="${p.id}">remover</button></td></tr>`;
+      }).join("")}</tbody></table></div>
+    <div class="quick" style="margin-top:8px"><button type="button" id="cmp-add">+ Adicionar produto</button>
+      <button type="button" id="cmp-ex">Carregar exemplo</button></div>
+
+    <div class="tiles" style="margin-top:14px">
+      <div class="tile"><div class="k">Cenário: CDI médio (Selic)</div><div class="v">${cen.selic != null ? brl(cen.selic) + "%" : "—"}</div><div class="s">IPCA médio ${cen.ipca != null ? brl(cen.ipca) + "%" : "—"} a.a.</div></div>
+      <div class="tile"><div class="k">Melhor no cenário</div><div class="v ${melhor ? "up" : ""}">${melhor ? esc(melhor.nome) : "—"}</div><div class="s">${melhor ? `líquido ${money(melhor.liquido)} · real ${money(melhor.real)}` : "adicione produtos com vencimento"}</div></div>
+      <div class="tile"><div class="k">Valor investido</div><div class="v">${money(cmpCfg.valor)}</div><div class="s">${cmpCfg.anos} ano${cmpCfg.anos > 1 ? "s" : ""} · ${CENARIOS_RF[cmpCfg.modo]}</div></div>
+    </div>
+    ${produtos.length && valido ? `<h3>Resultado no vencimento</h3>
+    <div class="table-wrap"><table class="w-table">
+      <thead><tr><th>Produto</th><th>Taxa</th><th>Vencimento</th><th>Bruto</th><th>IR</th><th>Líquido</th><th>Real</th><th>Observação</th></tr></thead>
+      <tbody>${[...ordenados.map(linha), ...depois.map(linhaDepois)].join("")}</tbody></table></div>` : `<div class="hint" style="margin-top:10px">${produtos.length ? "" : "Adicione produtos para comparar."}</div>`}
+    <div class="status">${semFocus ? "Sem as expectativas do Focus agora: usando o último dado realizado do Banco Central. " : ""}Estimativa: CDI tratado como Selic meta, taxas médias constantes no prazo, capitalização anual, IR pela tabela regressiva com o prazo total (inclusive para o que é reaplicado), sem custódia da B3 nem taxas de corretora. "Real" = líquido corrigido pelo IPCA do cenário. Liquidez e risco de crédito ainda não entram na ordenação.</div>
+  </div>`;
+
+  const f = $("#f-cmp");
+  f.onchange = e => {
+    const n = e.target.name;
+    if (n === "modo" || n === "ordem") cmpCfg[n] = e.target.value;
+    else cmpCfg[n] = e.target.value === "" ? null : Number(e.target.value);
+    saveCmp(); renderComparador();
+  };
+  $("#cmp-prod").onchange = e => {
+    const tr = e.target.closest("tr"); const p = cmpCfg.produtos.find(x => x.id === Number(tr.dataset.id)); if (!p) return;
+    const k = e.target.dataset.k;
+    if (k === "tipo") { p.tipo = e.target.value; p.taxa = TIPOS_RF[p.tipo].padrao; }
+    else if (k === "nome") p.nome = e.target.value;
+    else p[k] = e.target.value === "" ? null : Number(e.target.value);
+    saveCmp(); renderComparador();
+  };
+  $("#cmp-prod").onclick = e => {
+    const b = e.target.closest("[data-del]"); if (!b) return;
+    cmpCfg.produtos = cmpCfg.produtos.filter(x => x.id !== Number(b.dataset.del)); saveCmp(); renderComparador();
+  };
+  $("#cmp-add").onclick = () => { cmpCfg.produtos.push({ id: Date.now() + cmpId++, nome: "", tipo: "CDB", taxa: TIPOS_RF.CDB.padrao, anosVenc: cmpCfg.anos }); saveCmp(); renderComparador(); };
+  $("#cmp-ex").onclick = () => {
+    cmpCfg.produtos = [
+      { id: Date.now() + 1, nome: "", tipo: "Tesouro Prefixado", taxa: 12, anosVenc: 5 },
+      { id: Date.now() + 2, nome: "", tipo: "Tesouro IPCA+", taxa: 6, anosVenc: 5 },
+      { id: Date.now() + 3, nome: "", tipo: "CDB", taxa: 110, anosVenc: 5 },
+      { id: Date.now() + 4, nome: "", tipo: "Tesouro Selic", taxa: 100, anosVenc: 5 },
+    ];
+    saveCmp(); renderComparador();
+  };
 }
 
 // ---------- Ferramenta: projeção da renda fixa ----------

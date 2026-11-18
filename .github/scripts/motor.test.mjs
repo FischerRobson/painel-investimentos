@@ -81,3 +81,65 @@ test("juro real: Selic 15% com IPCA 5% dá 9,52% reais", () => {
   perto(Motor.juroReal(15, 5), (1.15 / 1.05 - 1) * 100, 1e-9);
   perto(Motor.juroReal(10, 10), 0, 1e-9);
 });
+
+const produtos = [
+  { nome: "Pre 12", tipo: "Tesouro Prefixado", idx: "pre", taxa: 12, isento: false, anosVenc: 5 },
+  { nome: "IPCA+ 6", tipo: "Tesouro IPCA+", idx: "ipca", taxa: 6, isento: false, anosVenc: 5 },
+  { nome: "CDB 110", tipo: "CDB", idx: "cdi", taxa: 110, isento: false, anosVenc: 5 },
+  { nome: "LCI 90", tipo: "LCI", idx: "cdi", taxa: 90, isento: true, anosVenc: 5 },
+];
+
+test("comparador: prefixado bate com a conta direta e IR de 15% em 5 anos", () => {
+  const [pre] = Motor.comparaRF({ valor: 10000, anos: 5, selic: 10, ipca: 4, produtos: [produtos[0]] });
+  perto(pre.bruto, 10000 * 1.12 ** 5, 0.01);
+  perto(pre.ir, (pre.bruto - 10000) * 0.15, 0.01);
+  perto(pre.liquido, pre.bruto - pre.ir, 0.01);
+  assert.equal(pre.status, "ok");
+});
+
+test("comparador: CDB a 110% do CDI usa a Selic como proxy", () => {
+  const [cdb] = Motor.comparaRF({ valor: 10000, anos: 5, selic: 10, ipca: 4, produtos: [produtos[2]] });
+  perto(cdb.bruto, 10000 * (1 + 0.10 * 1.10) ** 5, 0.01);
+});
+
+test("comparador: LCI é isenta de IR", () => {
+  const [lci] = Motor.comparaRF({ valor: 10000, anos: 5, selic: 10, ipca: 4, produtos: [produtos[3]] });
+  assert.equal(lci.ir, 0);
+  assert.equal(lci.liquido, lci.bruto);
+});
+
+test("comparador: IPCA+ depende da inflação do cenário, o prefixado não", () => {
+  const a = Motor.comparaRF({ valor: 10000, anos: 5, selic: 10, ipca: 3, produtos })[1];
+  const b = Motor.comparaRF({ valor: 10000, anos: 5, selic: 10, ipca: 8, produtos })[1];
+  assert.ok(b.bruto > a.bruto);
+  const pa = Motor.comparaRF({ valor: 10000, anos: 5, selic: 10, ipca: 3, produtos })[0];
+  const pb = Motor.comparaRF({ valor: 10000, anos: 5, selic: 10, ipca: 8, produtos })[0];
+  assert.equal(pa.bruto, pb.bruto);
+});
+
+test("comparador: vencimento depois do prazo não é comparável; antes reaplica no CDI", () => {
+  const longo = { ...produtos[0], anosVenc: 10 };
+  const curto = { ...produtos[0], anosVenc: 2 };
+  const [l, c] = Motor.comparaRF({ valor: 10000, anos: 5, selic: 10, ipca: 4, produtos: [longo, curto] });
+  assert.equal(l.status, "depois");
+  assert.equal(l.liquido, null);
+  assert.equal(c.status, "antes");
+  perto(c.bruto, 10000 * 1.12 ** 2 * 1.10 ** 3, 0.01);
+});
+
+test("cenário Focus: média do prazo e o último ano vale para os seguintes", () => {
+  const focus = [
+    { indicador: "Selic", ano: "2026", mediana: 14, minimo: 13, maximo: 15 },
+    { indicador: "Selic", ano: "2027", mediana: 12, minimo: 10, maximo: 14 },
+    { indicador: "IPCA", ano: "2026", mediana: 5, minimo: 4, maximo: 6 },
+    { indicador: "IPCA", ano: "2027", mediana: 4, minimo: 3, maximo: 7 },
+  ];
+  const base = Motor.cenarioFocus(focus, 2026, 2, "base");
+  perto(base.selic, 13, 1e-9);
+  perto(base.ipca, 4.5, 1e-9);
+  const longo = Motor.cenarioFocus(focus, 2026, 4, "base");
+  perto(longo.selic, (14 + 12 + 12 + 12) / 4, 1e-9);
+  assert.equal(Motor.cenarioFocus(focus, 2026, 2, "juros-caem").selic, 11.5);
+  assert.equal(Motor.cenarioFocus(focus, 2026, 2, "juros-sobem").selic, 14.5);
+  assert.equal(Motor.cenarioFocus(focus, 2026, 2, "inflacao-sobe").ipca, 6.5);
+});
