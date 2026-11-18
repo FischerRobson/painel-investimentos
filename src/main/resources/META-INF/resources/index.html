@@ -1108,7 +1108,7 @@ function renderComparador() {
     cmpCfg.produtos = cmpCfg.produtos.filter(x => !x.minha).concat(prod);
     cmpCfg.valor = Math.round(v.valor * 100) / 100;
     cmpCfg.anos = prod.anosVenc;
-    cmpMsg = `${item.nome}: valor de hoje estimado em ${money(cmpCfg.valor)} (aplicado ${money(item.aplicado)} em ${isoBR(item.data)}). O prazo passou a ser os ${brl(prod.anosVenc, 2)} anos que faltam.` +
+    cmpMsg = `${item.nome}: valor bruto de hoje estimado em ${money(cmpCfg.valor)} (aplicado ${money(item.aplicado)} em ${isoBR(item.data)}). O prazo passou a ser os ${brl(prod.anosVenc, 2)} anos que faltam.` +
       (v.cobertura ? "" : " A série do CDI começa depois da aplicação: o valor de hoje pode estar subestimado.") +
       " Escolher outro título substitui este na comparação.";
     saveCmp(); renderComparador();
@@ -1127,6 +1127,7 @@ function renderComparador() {
 // ---------- Ferramenta: marcação a mercado (Tesouro Prefixado e IPCA+) ----------
 let mkCfg = (() => { try { return { tipo: "Tesouro IPCA+", qtd: 1, pu: 1000, taxa: 6, dataCompra: "2024-01-02", dataVenc: "2035-05-15", dataAnal: null, taxaMerc: null, reinv: 100, modo: "base", ...JSON.parse(store.get("marcacao", "{}")) }; } catch { return { tipo: "Tesouro IPCA+", qtd: 1, pu: 1000, taxa: 6, dataCompra: "2024-01-02", dataVenc: "2035-05-15", dataAnal: null, taxaMerc: null, reinv: 100, modo: "base" }; } })();
 const saveMk = () => store.set("marcacao", JSON.stringify(mkCfg));
+let mkMsg = "";
 
 function renderMarcacao() {
   const el = $("#ferramentas");
@@ -1156,9 +1157,17 @@ function renderMarcacao() {
   const melhor = r ? (r.diferenca > 0 ? "Vender e reaplicar" : "Manter até o vencimento") : "";
 
   const sens = [-1, 0, 1, 2].map(d => { const t = mkCfg.taxa + d; const x = calc(t); return { t, x }; }).filter(o => o.x);
+  // Prefixados e IPCA+ da carteira ainda vigentes: o formulário é preenchido a partir do título
+  const vivosMk = rfW.filter(x => x.venc && x.venc > hoje && (x.idx === "pre" || x.idx === "ipca"));
+  const secaoMinhaMk = `<h3>Seu investimento</h3>
+    ${vivosMk.length ? `<div style="display:flex;flex-wrap:wrap;gap:8px;max-width:100%"><select id="mk-minha-sel" style="flex:1 1 260px;min-width:0;max-width:100%">${vivosMk.map(x => `<option value="${esc(x.id)}">${esc(x.nome)} · ${esc(x.tipo)} · ${TAXA_TXT(x)} · vence ${isoBR(x.venc)}</option>`).join("")}</select>
+      <button type="button" id="mk-minha">Usar este título</button></div>`
+      : `<div class="hint">Nenhum prefixado ou IPCA+ vigente na carteira. Cadastre em Carteira › Renda fixa.</div>`}
+    ${mkMsg ? `<div class="status">${esc(mkMsg)}</div>` : ""}`;
   el.innerHTML = toolBack + `<div class="panel">
     <h2>Marcação a mercado</h2>
     <div class="hint">Quanto você receberia vendendo o título hoje, e se compensa mais que manter até o vencimento. A taxa de mercado é a que um título equivalente paga hoje; se ela subir, o preço do título cai.</div>
+    ${secaoMinhaMk}
     <form class="w-add proj-form" id="f-mk">
       <label>Título<select name="tipo">${["Tesouro IPCA+", "Tesouro Prefixado"].map(t => `<option ${t === mkCfg.tipo ? "selected" : ""}>${t}</option>`).join("")}</select></label>
       <label>Quantidade de títulos<input type="number" name="qtd" min="0" step="1" value="${mkCfg.qtd}"></label>
@@ -1212,12 +1221,23 @@ function renderMarcacao() {
   };
   $("#mk-ex").onclick = () => { Object.assign(mkCfg, { tipo: "Tesouro IPCA+", qtd: 1, pu: 1000, taxa: 6, dataCompra: "2024-01-02", dataVenc: "2035-05-15", dataAnal: null, taxaMerc: null, reinv: 100 }); saveMk(); renderMarcacao(); };
   $("#mk-tm").onclick = () => { mkCfg.taxaMerc = null; saveMk(); renderMarcacao(); };
+  $("#mk-minha")?.addEventListener("click", () => {
+    const item = rfW.find(x => String(x.id) === $("#mk-minha-sel").value);
+    if (!item) return;
+    // O título inteiro entra como 1 unidade de preço igual ao valor aplicado; as contas são lineares, então o resultado vale para o total
+    mkCfg = { ...mkCfg, tipo: item.idx === "ipca" ? "Tesouro IPCA+" : "Tesouro Prefixado", qtd: 1, pu: item.aplicado, taxa: item.taxa,
+      dataCompra: item.data, dataVenc: item.venc, dataAnal: todayISO(), taxaMerc: null, carteiraId: item.id };
+    mkMsg = `${item.nome}: tratado como 1 título de ${money(item.aplicado)} comprado em ${isoBR(item.data)}. A taxa de mercado começa igual à contratada; ajuste para ver o efeito da taxa de hoje.`;
+    saveMk(); renderMarcacao();
+  });
 }
 
 // ---------- Ferramenta: projeção da renda fixa ----------
 function renderProjection() {
   const el = $("#ferramentas");
-  const rf = rfW.map(e => ({ ...e, calc: rfCalc(e) }));
+  if (projCfg.only && !rfW.some(x => x.id === projCfg.only)) projCfg.only = null;
+  const todos = rfW.map(e => ({ ...e, calc: rfCalc(e) }));
+  const rf = projCfg.only ? todos.filter(r => r.id === projCfg.only) : todos;
   const vRf = rf.reduce((a, r) => a + (r.calc?.liquido || 0), 0);
   // Projeção
   let projHtml = "";
@@ -1242,6 +1262,7 @@ function renderProjection() {
       <h2>Projeção da renda fixa</h2>
       <div class="hint">Quanto seus títulos de renda fixa vão valer numa data futura.</div>
       <form class="w-add proj-form" id="f-proj">
+        <label>Títulos<select name="only"><option value="">Todos os títulos (${rfW.length})</option>${rfW.map(x => `<option value="${esc(x.id)}" ${x.id === projCfg.only ? "selected" : ""}>${esc(x.nome)} · ${esc(x.tipo)}</option>`).join("")}</select></label>
         <label>Quanto terei em<input type="date" name="target" min="${addDays(todayISO(), 1)}" value="${cfg.target}"></label>
         <label>CDI projetado (% a.a.)<input type="number" name="cdi" step="0.01" value="${cfg.cdi}"></label>
         <label>IPCA projetado (% a.a.)<input type="number" name="ipca" step="0.01" value="${cfg.ipca}"></label>
@@ -1285,6 +1306,7 @@ function renderProjection() {
       if (e.target.name === "cdi") projCfg.cdi = fP.cdi.value === "" ? null : Number(fP.cdi.value);
       if (e.target.name === "ipca") projCfg.ipca = fP.ipca.value === "" ? null : Number(fP.ipca.value);
       if (e.target.name === "reinvest") projCfg.reinvest = fP.reinvest.checked;
+      if (e.target.name === "only") projCfg.only = fP.only.value || null;
       saveProj(); renderTools();
     };
     fP.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { projCfg.target = addMonths(todayISO(), +b.dataset.m); saveProj(); renderTools(); });
