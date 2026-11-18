@@ -968,7 +968,7 @@ function renderTermometro() {
 }
 
 // ---------- Ferramenta: comparador de renda fixa ----------
-// Tipos e a forma como cada um rende: cdi = % do CDI (CDI ≈ Selic meta), pre = % a.a., ipca = IPCA + % a.a.
+// Tipos e a forma como cada um rende: cdi = % do CDI (CDI = Selic meta − 0,10 p.p.), pre = % a.a., ipca = IPCA + % a.a.
 const TIPOS_RF = {
   "CDB": { idx: "cdi", padrao: 110, isento: false },
   "LCI": { idx: "cdi", padrao: 90, isento: true },
@@ -1213,7 +1213,7 @@ function renderMarcacao() {
         <td>${money(x.vendaReaplicada)}</td><td>${money(x.liqVenc)}</td>
         <td class="${signCls(x.diferenca)}">${x.diferenca >= 0 ? "+" : "−"}${money(Math.abs(x.diferenca))}</td></tr>`).join("")}</tbody></table></div>` : `<div class="hint" style="margin-top:10px">${!mkCfg.qtd || !mkCfg.pu ? "Informe quantidade e preço de compra." : "Confira as datas: a análise tem que ficar entre a compra e o vencimento."}</div>`}
 
-    <div class="status">Estimativa, não é cotação do Tesouro Direto. ${semFocus ? "Sem as expectativas do Focus agora: cenário com o último dado realizado. " : ""}Não considera os cupons semestrais do IPCA+ (NTN-B) nem os do prefixado com juros (NTN-F); a custódia da B3 fica de fora; o IR segue a tabela regressiva pelo tempo de cada operação; o CDI é tratado como Selic meta; a correção do IPCA é mensal. Conheça o conceito em <a href="/glossario#marcacao-a-mercado">marcação a mercado</a>.</div>
+    <div class="status">Estimativa, não é cotação do Tesouro Direto. ${semFocus ? "Sem as expectativas do Focus agora: cenário com o último dado realizado. " : ""}Não considera os cupons semestrais do IPCA+ (NTN-B) nem os do prefixado com juros (NTN-F); a custódia da B3 fica de fora; o IR segue a tabela regressiva pelo tempo de cada operação; na reaplicação, o CDI é a Selic meta menos 0,10 ponto; a correção do IPCA é mensal. Conheça o conceito em <a href="/glossario#marcacao-a-mercado">marcação a mercado</a>.</div>
   </div>`;
 
   const f = $("#f-mk");

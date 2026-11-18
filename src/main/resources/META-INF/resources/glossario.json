@@ -1,5 +1,5 @@
 {
-  "atualizadoEm": "2026-11-17",
+  "atualizadoEm": "2026-11-18",
   "aviso": "Conteúdo educativo, não é recomendação de investimento. Regras de imposto mudam: confira na Receita Federal antes de declarar.",
   "categorias": [
     {
@@ -104,12 +104,13 @@
       "categoria": "juros",
       "resumo": "CDI é o nome usualmente associado aos depósitos interfinanceiros de curtíssimo prazo entre instituições financeiras. No dia a dia dos investimentos, 'render X% do CDI' normalmente se refere à Taxa DI, usada como referência para vários produtos de renda fixa.",
       "exemplo": "Um CDB que paga 110% da Taxa DI acompanha 1,1 vez a variação acumulada dessa taxa no período, antes de impostos e custos.",
-      "importa": "CDI e Selic costumam caminhar próximos, mas não são a mesma taxa. Ao comparar produtos, observe o percentual do CDI, o prazo, a liquidez, o risco do emissor e a tributação.",
+      "importa": "CDI e Selic caminham juntos, mas não são a mesma taxa: na prática, a Taxa DI fica cerca de 0,10 ponto abaixo da Selic meta (Selic de 15% → CDI perto de 14,90%). Por isso, 100% do CDI rende um pouco menos que o Tesouro Selic. Ao comparar produtos, observe também o prazo, a liquidez, o risco do emissor e a tributação.",
       "relacionados": [
         "selic",
         "pos-fixado",
         "cdb",
-        "benchmark"
+        "benchmark",
+        "tesouro-selic"
       ]
     },
     {
@@ -246,7 +247,7 @@
       "categoria": "rf",
       "resumo": "Títulos que os bancos emitem para financiar imóveis ou o agronegócio. Para pessoa física, são isentos de imposto de renda e cobertos pelo FGC.",
       "exemplo": "Uma LCI a 90% do CDI rende o mesmo que um CDB a cerca de 106% do CDI pagando 15% de imposto (0,90 ÷ 0,85).",
-      "importa": "Para comparar com um CDB, converta para o equivalente antes do imposto. Têm prazo mínimo de carência, em geral de 9 a 12 meses.",
+      "importa": "Para comparar com um CDB, converta para o equivalente antes do imposto. Desde a Resolução CMN 5.215/2025, a carência mínima é de 6 meses para as emitidas sem correção por índice de preços (as atreladas ao CDI, por exemplo) e de 12 meses para as atreladas ao IPCA. Títulos antigos seguem o prazo do contrato.",
       "relacionados": [
         "cdb",
         "fgc",
@@ -313,13 +314,15 @@
       ],
       "resumo": "Título público pós-fixado cuja rentabilidade acompanha a taxa Selic. Seu preço costuma oscilar menos que o de títulos prefixados e IPCA+, mas pode variar se houver venda antes do vencimento.",
       "exemplo": "Se a Selic permanecer em determinado patamar durante o investimento, o título acompanha essa taxa, acrescida ou reduzida pelos efeitos de preço e custos aplicáveis.",
-      "importa": "É frequentemente usado para reserva de emergência por sua baixa volatilidade relativa e possibilidade de venda em dias úteis, conforme as regras e horários do Tesouro Direto. Não escolha automaticamente o vencimento mais longo: compare as condições disponíveis e alinhe o vencimento ao objetivo. Reaplicar após o vencimento expõe você às taxas que estiverem disponíveis naquele momento.",
+      "importa": "É frequentemente usado para reserva de emergência e para metas de curto prazo, por sua baixa volatilidade relativa e possibilidade de venda em dias úteis, conforme as regras e horários do Tesouro Direto. Rende a Selic cheia, um pouco acima de 100% do CDI. Não escolha automaticamente o vencimento mais longo: compare as condições disponíveis e alinhe o vencimento ao objetivo. Reaplicar após o vencimento expõe você às taxas que estiverem disponíveis naquele momento.",
       "relacionados": [
         "selic",
         "reserva-de-emergencia",
         "tesouro-direto",
         "pos-fixado",
-        "liquidez"
+        "liquidez",
+        "cdi",
+        "metas-financeiras"
       ]
     },
     {
@@ -368,7 +371,7 @@
       ],
       "resumo": "É a atualização diária do preço de um título pelo valor que ele teria em uma negociação no mercado naquele momento. Em títulos prefixados, quando as taxas de juros de mercado sobem, o preço do título que já foi emitido tende a cair; quando essas taxas caem, o preço do título tende a subir. Esse movimento é conhecido como relação inversa entre taxa e preço.",
       "exemplo": "Imagine que você comprou um Tesouro Prefixado que paga 10% ao ano. Depois, as taxas de mercado sobem para 12%: novos títulos passam a oferecer uma remuneração maior, então o seu título antigo, que paga 10%, perde atratividade e seu preço cai. Se as taxas de mercado caírem para 8%, acontece o contrário: seu título que paga 10% fica mais atraente e seu preço tende a subir. A Selic influencia essas taxas, mas a oscilação do preço depende principalmente das taxas negociadas no mercado para prazos semelhantes.",
-      "importa": "A relação é inversa: juros de mercado em alta tendem a desvalorizar títulos prefixados já comprados; juros em queda tendem a valorizá-los. A Selic é uma referência importante, mas não é uma relação automática de um para um: expectativas sobre juros futuros e o prazo do título também influenciam o preço. Se você levar um título público prefixado até o vencimento, recebe a rentabilidade contratada na compra; se vender antes, recebe o preço de mercado e pode ter ganho ou perda.",
+      "importa": "A relação é inversa: juros de mercado em alta tendem a desvalorizar títulos prefixados já comprados; juros em queda tendem a valorizá-los. A Selic é uma referência importante, mas não é uma relação automática de um para um: expectativas sobre juros futuros e o prazo do título também influenciam o preço. Se você levar um título público prefixado até o vencimento, recebe a rentabilidade contratada na compra; se vender antes, recebe o preço de mercado e pode ter ganho ou perda. Uma regra prática: se a venda hoje já entrega 80% a 90% do ganho previsto até o vencimento, vale considerar vender e reaplicar. A ferramenta de marcação a mercado mostra esse percentual.",
       "relacionados": [
         "tesouro-ipca",
         "tesouro-prefixado",
@@ -383,7 +386,7 @@
       "categoria": "rf",
       "resumo": "Fundo mantido pelos bancos que devolve seu dinheiro se a instituição quebrar: até R$ 250 mil por CPF por instituição, com limite total de R$ 1 milhão a cada 4 anos.",
       "exemplo": "Cobre CDB, LCI, LCA, LC e poupança. Não cobre Tesouro Direto (que é do governo), CRI, CRA, debêntures, fundos nem ações.",
-      "importa": "Em bancos menores, que pagam taxas maiores, fique dentro do limite por instituição.",
+      "importa": "Em bancos menores, que pagam taxas maiores, fique dentro do limite por instituição. O comparador da página Ferramentas avisa quando um valor passa de R$ 250 mil.",
       "relacionados": [
         "cdb",
         "lci-lca",
@@ -540,11 +543,12 @@
       "categoria": "rv",
       "resumo": "A parte da área de um FII de tijolo que está sem inquilino.",
       "exemplo": "Vacância de 15% num fundo de escritórios: 15% da área não gera aluguel.",
-      "importa": "Vacância alta reduz os rendimentos. Aparece nos cards de FII na página Ativos.",
+      "importa": "Vacância alta reduz os rendimentos. Há a vacância física (área vazia) e a financeira (aluguel que deixa de entrar, que inclui inadimplência e carência dada a inquilinos). Aparece nos cards de FII na página Ativos; se o número parecer estranho, confira no relatório gerencial do fundo.",
       "relacionados": [
         "fii-tijolo-papel",
         "cap-rate",
-        "fii"
+        "fii",
+        "inadimplencia"
       ]
     },
     {
@@ -660,11 +664,15 @@
       ],
       "resumo": "Indicador que relaciona os proventos por ação ou cota distribuídos em determinado período — frequentemente os últimos 12 meses — com o preço atual. É uma medida histórica, não uma promessa de rendimento futuro.",
       "exemplo": "Uma ação cotada a R$ 40 que distribuiu R$ 2,80 por ação nos últimos 12 meses apresenta DY histórico de 7%.",
-      "importa": "Um DY elevado pode refletir bons pagamentos, mas também uma queda acentuada do preço ou um provento extraordinário. Compare a recorrência dos pagamentos com a capacidade de geração de caixa.",
+      "importa": "Um DY elevado pode refletir bons pagamentos, mas também uma queda acentuada do preço ou um provento extraordinário. Em FIIs, DY de 15% a 20% ao ano merece desconfiança, e distribuir mais do que o FFO gera não se sustenta. Compare a recorrência dos pagamentos com a capacidade de geração de caixa.",
       "relacionados": [
         "dividendos",
         "proventos",
-        "pl"
+        "pl",
+        "ffo",
+        "armadilha-de-valor",
+        "numero-magico",
+        "preco-teto-bazin"
       ]
     },
     {
@@ -674,7 +682,7 @@
       "categoria": "indicadores",
       "resumo": "Relação entre o preço de mercado da ação e o lucro por ação (LPA), normalmente calculado com o lucro dos últimos 12 meses. Indica quantas vezes o lucro anual está embutido no preço.",
       "exemplo": "Uma ação a R$ 30 com LPA de R$ 3 tem P/L igual a 10.",
-      "importa": "Não é um prazo literal de retorno garantido. Lucros podem mudar, ser cíclicos ou extraordinários. Compare empresas do mesmo setor e observe crescimento, endividamento e qualidade do lucro.",
+      "importa": "Não é um prazo literal de retorno garantido. Lucros podem mudar, ser cíclicos ou extraordinários. Compare só empresas do mesmo setor (a tabela por setor do analisador faz isso) e observe crescimento, endividamento e qualidade do lucro.",
       "relacionados": [
         "pvp",
         "roe",
@@ -688,11 +696,12 @@
       "categoria": "indicadores",
       "resumo": "Relação entre o preço de mercado e o valor patrimonial por ação ou por cota. Mostra quanto o mercado paga por cada R$ 1 de patrimônio contábil.",
       "exemplo": "P/VP de 0,9 significa que o mercado negocia o ativo por R$ 0,90 para cada R$ 1,00 de valor patrimonial registrado.",
-      "importa": "Abaixo de 1 pode indicar desconto, mas também problemas nos ativos, rentabilidade baixa ou risco percebido. É especialmente observado em bancos e FIIs; sua utilidade varia conforme o setor.",
+      "importa": "Abaixo de 1 pode indicar desconto, mas também problemas nos ativos, rentabilidade baixa ou risco percebido. Em FIIs, P/VP muito baixo (0,2 a 0,5) costuma ser sinal de problema, não de barganha: o mercado desconfia do valor dos ativos. É especialmente observado em bancos e FIIs; sua utilidade varia conforme o setor.",
       "relacionados": [
         "pl",
         "roe",
-        "fii"
+        "fii",
+        "armadilha-de-valor"
       ]
     },
     {
@@ -750,11 +759,12 @@
       ],
       "resumo": "Dívidas da empresa menos o caixa, divididas pelo patrimônio líquido.",
       "exemplo": "Dívida líquida de R$ 4 bilhões e patrimônio de R$ 8 bilhões: 0,5. Valor negativo quer dizer que a empresa tem mais caixa que dívida.",
-      "importa": "Empresas muito endividadas sofrem mais com juros altos e crises.",
+      "importa": "Empresas muito endividadas sofrem mais com juros altos e crises. Para ver se a empresa consegue pagar a dívida, a medida mais usada é a dívida líquida sobre o EBITDA.",
       "relacionados": [
         "roe",
         "ev-ebitda",
-        "juros"
+        "juros",
+        "divida-liquida-ebitda"
       ]
     },
     {
@@ -864,7 +874,7 @@
       ],
       "resumo": "A guarda dos seus ativos em seu nome. Algumas instituições cobram uma taxa anual por ela.",
       "exemplo": "A B3 cobra 0,20% ao ano sobre títulos do Tesouro Direto; a maioria das corretoras não cobra custódia de ações.",
-      "importa": "É um custo pequeno, mas que reduz o rendimento todo ano.",
+      "importa": "É um custo pequeno, mas que reduz o rendimento todo ano. No Tesouro Direto, a B3 cobra 0,20% ao ano sobre o valor dos títulos; no Tesouro Selic, os primeiros R$ 10 mil são isentos.",
       "relacionados": [
         "b3",
         "corretora",
@@ -1216,7 +1226,7 @@
       "categoria": "carteira",
       "resumo": "Trazer a carteira de volta às porcentagens-alvo de cada classe, aportando no que ficou para trás ou vendendo o que cresceu demais.",
       "exemplo": "Meta de 50% em renda fixa e 50% em ações; as ações sobem e viram 60%: o próximo aporte vai todo para a renda fixa.",
-      "importa": "Força a comprar o que está mais barato e a vender o que está mais caro, sem tentar adivinhar o mercado.",
+      "importa": "Força a comprar o que está mais barato e a vender o que está mais caro, sem tentar adivinhar o mercado. Para quem ainda está acumulando, dá para rebalancear só com os aportes: o dinheiro novo vai para as classes mais abaixo da meta, sem vender nada nem pagar imposto.",
       "relacionados": [
         "diversificacao",
         "aporte"
@@ -1415,7 +1425,7 @@
       ],
       "resumo": "Registro e planejamento das receitas e despesas de uma pessoa ou família, para entender para onde o dinheiro vai e decidir como distribuí-lo.",
       "exemplo": "Uma família soma as rendas, registra aluguel, mercado, transporte, lazer e parcelas, e acompanha os gastos semanalmente para comparar o planejado com o realizado.",
-      "importa": "Investir fica mais sustentável quando o orçamento mostra quanto pode ser poupado sem comprometer despesas essenciais. As categorias e percentuais devem ser adaptados à realidade de cada família.",
+      "importa": "Investir fica mais sustentável quando o orçamento mostra quanto pode ser poupado sem comprometer despesas essenciais. Um modelo comum divide a renda em áreas: custo fixo até 30%, conforto 15%, metas 15%, prazeres 10%, liberdade financeira 25% e conhecimento 5%. As categorias e percentuais devem ser adaptados à realidade de cada família.",
       "relacionados": [
         "aporte",
         "patrimonio",
@@ -1433,7 +1443,7 @@
       ],
       "resumo": "Despesa recorrente cujo valor tende a ser previsível, como aluguel, condomínio, mensalidade ou parcela. Nem toda despesa recorrente é rigorosamente fixa.",
       "exemplo": "Aluguel de R$ 1.500 é um custo fixo; a conta de energia pode ser recorrente, mas varia de valor a cada mês.",
-      "importa": "Conhecer os custos fixos ajuda a estimar o mínimo necessário para manter a casa e dimensionar a reserva de emergência.",
+      "importa": "Conhecer os custos fixos ajuda a estimar o mínimo necessário para manter a casa e dimensionar a reserva de emergência. Uma referência é manter o custo fixo em até 30% da renda; acima de 40%, sobra pouco para investir e qualquer imprevisto aperta.",
       "relacionados": [
         "orcamento",
         "reserva-de-emergencia",
@@ -1449,7 +1459,7 @@
       ],
       "resumo": "Objetivos que exigem planejamento e reserva de dinheiro, com valor, prazo e prioridade definidos.",
       "exemplo": "Guardar R$ 12.000 em 12 meses para uma viagem exige, sem considerar rendimentos, separar em média R$ 1.000 por mês.",
-      "importa": "Separar o dinheiro por objetivo ajuda a escolher investimentos adequados ao prazo e evita financiar compras planejáveis com crédito caro.",
+      "importa": "Separar o dinheiro por objetivo ajuda a escolher investimentos adequados ao prazo e evita financiar compras planejáveis com crédito caro. Dinheiro de meta de curto prazo deve ficar em algo com liquidez e pouca oscilação, como o Tesouro Selic, e não junto com a carteira de longo prazo. O planejador de metas da página Ferramentas calcula o aporte mensal.",
       "relacionados": [
         "orcamento",
         "aporte",
@@ -1565,13 +1575,15 @@
       ],
       "resumo": "Operação de crédito usada para comprar um imóvel, normalmente com prazo longo e garantia do próprio bem. O contrato define taxa, indexador, sistema de amortização e demais encargos.",
       "exemplo": "Uma pessoa dá entrada em um apartamento e financia o restante em parcelas mensais, que incluem juros, amortização e, conforme o contrato, seguros e tarifas.",
-      "importa": "Avalie o CET, a entrada, os custos de aquisição, a correção do saldo, a estabilidade da renda e o custo de oportunidade do capital. Alugar ou comprar depende de preço, prazo, localização e objetivos pessoais.",
+      "importa": "Avalie o CET, a entrada, os custos de aquisição, a correção do saldo, a estabilidade da renda e o custo de oportunidade do capital. Uma referência para alugar ou comprar: se o aluguel anual fica abaixo de cerca de 6% do valor do imóvel (0,5% ao mês), alugar e investir a diferença costuma sair mais barato. Mesmo assim, a decisão depende de prazo, localização e objetivos pessoais.",
       "relacionados": [
         "cet",
         "sac",
         "amortizacao",
         "orcamento",
-        "divida"
+        "divida",
+        "tabela-price",
+        "custo-de-oportunidade"
       ]
     },
     {
@@ -1587,7 +1599,8 @@
       "relacionados": [
         "financiamento-imobiliario",
         "amortizacao",
-        "cet"
+        "cet",
+        "tabela-price"
       ]
     },
     {
@@ -1647,14 +1660,15 @@
         "independência financeira"
       ],
       "resumo": "Situação em que patrimônio, renda e planejamento permitem sustentar o padrão de vida desejado com menor dependência do trabalho ativo. O significado e a meta variam de pessoa para pessoa.",
-      "exemplo": "Uma pessoa estima que precisa de R$ 6.000 mensais para viver e calcula quanto patrimônio e renda sustentável seriam necessários para cobrir esse valor ao longo do tempo.",
-      "importa": "Não existe um número universal. Considere inflação, impostos, volatilidade, longevidade, saúde, dependentes, custos e margem de segurança.",
+      "exemplo": "Uma pessoa precisa de R$ 6.000 por mês. Supondo retorno real de 8% ao ano (cerca de 0,64% ao mês) e gastando só 75% dos juros, para guardar margem contra meses ruins e inflação, ela precisaria de cerca de R$ 1,25 milhão (6.000 ÷ 0,0064 ÷ 0,75).",
+      "importa": "Não existe um número universal. Considere inflação, impostos, volatilidade, longevidade, saúde, dependentes, custos e margem de segurança. O simulador de aportes da página Ferramentas faz essa conta com as suas premissas.",
       "relacionados": [
         "patrimonio",
         "rentabilidade",
         "aporte",
         "juros-reais",
-        "renda-passiva"
+        "renda-passiva",
+        "custo-de-oportunidade"
       ]
     },
     {
@@ -1781,7 +1795,7 @@
       ],
       "resumo": "Mecanismo de proteção ao acionista minoritário em caso de alienação do controle da companhia, que assegura condições de saída previstas na legislação e nas regras do segmento de listagem.",
       "exemplo": "Se o controlador vende o controle, acionistas elegíveis podem ter o direito de vender suas ações por um percentual do preço pago ao controlador.",
-      "importa": "O percentual e a abrangência dependem da lei, do tipo de ação e das regras de governança assumidas pela companhia. Verifique o estatuto e o segmento de listagem.",
+      "importa": "O percentual e a abrangência dependem da lei, do tipo de ação e das regras de governança assumidas pela companhia. Na lei, as ações ON têm tag along de 80%; empresas do Novo Mercado oferecem 100%, o que investidores mais conservadores costumam exigir. Verifique o estatuto e o segmento de listagem.",
       "relacionados": [
         "acionista-minoritario",
         "governanca-corporativa",
@@ -2208,12 +2222,13 @@
       ],
       "resumo": "FII que investe principalmente em títulos de crédito ligados ao setor imobiliário, como CRIs, em vez de adquirir diretamente imóveis físicos.",
       "exemplo": "Um fundo pode deter CRIs indexados ao IPCA mais uma taxa fixa, recebendo juros e amortizações dos devedores.",
-      "importa": "A análise deve considerar risco de crédito, garantias, concentração, indexadores, subordinação, inadimplência e qualidade da gestão.",
+      "importa": "A análise deve considerar risco de crédito, garantias, concentração, indexadores, subordinação, inadimplência e qualidade da gestão. Fundos de papel com carteira high yield costumam pagar DY alto com P/VP baixo; esse par, sozinho, não é sinal de compra.",
       "relacionados": [
         "fii",
         "high-grade",
         "high-yield",
-        "inadimplencia"
+        "inadimplencia",
+        "armadilha-de-valor"
       ]
     },
     {
@@ -2518,6 +2533,144 @@
         "data-ex",
         "dividendos",
         "proventos"
+      ]
+    },
+    {
+      "id": "divida-liquida-ebitda",
+      "nome": "Dívida líquida / EBITDA",
+      "categoria": "indicadores",
+      "outrosNomes": [
+        "alavancagem"
+      ],
+      "resumo": "Dívida da empresa menos o caixa, dividida pelo EBITDA dos últimos 12 meses. Diz quantos anos de geração de caixa operacional seriam necessários para quitar a dívida.",
+      "exemplo": "Dívida líquida de R$ 6 bilhões e EBITDA de R$ 3 bilhões: 2 vezes. Valor negativo quer dizer mais caixa que dívida.",
+      "importa": "Até 2 vezes costuma ser considerado confortável para quem busca empresas conservadoras; acima de 3 vezes, juros altos pesam bastante. Bancos não usam essa medida.",
+      "relacionados": [
+        "divida-patrimonio",
+        "ev-ebitda",
+        "juros"
+      ]
+    },
+    {
+      "id": "preco-justo-graham",
+      "nome": "Preço justo de Graham",
+      "categoria": "indicadores",
+      "outrosNomes": [
+        "fórmula de Graham",
+        "número de Graham"
+      ],
+      "resumo": "Estimativa simples de valor de uma ação criada por Benjamin Graham: a raiz quadrada de 22,5 × LPA × VPA. O 22,5 vem de aceitar no máximo P/L de 15 e P/VP de 1,5.",
+      "exemplo": "LPA de R$ 2 e VPA de R$ 10: √(22,5 × 2 × 10) = R$ 21,21. Com a ação a R$ 15, a margem de segurança seria de cerca de 29%.",
+      "importa": "Funciona melhor em empresas maduras e lucrativas. Não vale para quem tem prejuízo ou patrimônio negativo, e ignora crescimento e qualidade do lucro. O analisador da página Ferramentas mostra esse preço.",
+      "relacionados": [
+        "lpa",
+        "vpa",
+        "valor-intrinseco",
+        "margem-de-seguranca",
+        "preco-teto-bazin"
+      ]
+    },
+    {
+      "id": "preco-teto-bazin",
+      "nome": "Preço-teto de Bazin",
+      "categoria": "indicadores",
+      "outrosNomes": [
+        "método Bazin"
+      ],
+      "resumo": "Preço máximo a pagar por uma ação para receber pelo menos 6% ao ano em dividendos, pelo método de Décio Bazin: dividendos por ação dos últimos 12 meses divididos por 0,06.",
+      "exemplo": "A empresa pagou R$ 1,80 por ação em 12 meses: preço-teto de R$ 30. Acima disso, o dividend yield fica abaixo de 6%.",
+      "importa": "Só faz sentido para empresas que pagam dividendos de forma estável. Um dividendo extraordinário infla o preço-teto e engana. O analisador da página Ferramentas mostra esse preço.",
+      "relacionados": [
+        "dividend-yield",
+        "dividendos",
+        "payout",
+        "preco-justo-graham"
+      ]
+    },
+    {
+      "id": "numero-magico",
+      "nome": "Número mágico",
+      "categoria": "indicadores",
+      "outrosNomes": [
+        "efeito bola de neve"
+      ],
+      "resumo": "Quantidade de cotas de um FII (ou ações) a partir da qual o rendimento de um mês compra uma cota nova sozinho. É o preço da cota dividido pelo rendimento mensal por cota, o mesmo que 12 ÷ DY anual.",
+      "exemplo": "Cota a R$ 100 pagando R$ 0,80 por mês (DY de 9,6% ao ano): 100 ÷ 0,80 = 12 ÷ 0,096 = 125 cotas. A partir daí, cada mês de rendimentos compra mais uma.",
+      "importa": "É um marco motivacional, não um critério de escolha: um FII de DY alto alcança o número mais cedo, mas pode estar pagando mais do que sustenta.",
+      "relacionados": [
+        "fii",
+        "dividend-yield",
+        "juros-compostos",
+        "aporte"
+      ]
+    },
+    {
+      "id": "armadilha-de-valor",
+      "nome": "Armadilha de valor",
+      "categoria": "rv",
+      "outrosNomes": [
+        "value trap"
+      ],
+      "resumo": "Ativo que parece barato pelos indicadores (P/L ou P/VP baixos, DY alto), mas está barato porque o negócio está piorando ou os números não vão se repetir.",
+      "exemplo": "Um FII de papel com P/VP de 0,3 e DY de 20% pode refletir calotes na carteira de CRIs que ainda não apareceram por completo no patrimônio.",
+      "importa": "Indicador bom demais é motivo para investigar, não para comprar. Veja a tendência dos resultados, o endividamento, a inadimplência e o motivo da queda do preço.",
+      "relacionados": [
+        "value-investing",
+        "pvp",
+        "dividend-yield",
+        "fii-de-papel",
+        "margem-de-seguranca"
+      ]
+    },
+    {
+      "id": "setor-perene",
+      "nome": "Setor perene e setor cíclico",
+      "categoria": "rv",
+      "outrosNomes": [
+        "empresas perenes",
+        "setor cíclico",
+        "setores defensivos"
+      ],
+      "resumo": "Setor perene é aquele de que as pessoas precisam em qualquer fase da economia, como bancos e seguros, energia elétrica, saneamento, saúde e materiais básicos. Setor cíclico acompanha o humor da economia, como varejo, construção, turismo e commodities.",
+      "exemplo": "Numa recessão, as pessoas continuam pagando a conta de luz, mas adiam a compra de carro e a reforma da casa.",
+      "importa": "Lucros de empresas cíclicas oscilam muito: um P/L baixo no pico do ciclo pode enganar. Para quem quer renda estável no longo prazo, setores perenes costumam ser o núcleo da carteira de ações.",
+      "relacionados": [
+        "acao",
+        "pl",
+        "dividendos",
+        "diversificacao"
+      ]
+    },
+    {
+      "id": "tabela-price",
+      "nome": "Tabela Price",
+      "categoria": "carteira",
+      "outrosNomes": [
+        "sistema francês de amortização",
+        "parcelas fixas"
+      ],
+      "resumo": "Sistema de financiamento com parcelas iguais. No começo, a maior parte da parcela é juros; a amortização do principal cresce com o tempo.",
+      "exemplo": "Num financiamento de R$ 120.000 em 120 meses a 1% ao mês, a parcela fica perto de R$ 1.722, mas no primeiro mês só R$ 522 abatem a dívida; o resto é juros.",
+      "importa": "A parcela inicial é menor que no SAC, mas o total pago em juros é maior, porque o saldo devedor cai mais devagar. Amortizações extras reduzem bastante esse custo.",
+      "relacionados": [
+        "sac",
+        "amortizacao",
+        "financiamento-imobiliario",
+        "cet"
+      ]
+    },
+    {
+      "id": "custo-de-oportunidade",
+      "nome": "Custo de oportunidade",
+      "categoria": "carteira",
+      "resumo": "O que você deixa de ganhar ao escolher uma opção em vez da melhor alternativa disponível.",
+      "exemplo": "Usar R$ 100 mil de entrada num imóvel tem como custo de oportunidade o que esse dinheiro renderia investido, por exemplo 14% ao ano no Tesouro Selic: R$ 14 mil por ano antes do imposto.",
+      "importa": "Entra em toda decisão: pagar à vista ou parcelar, alugar ou financiar, quitar dívida ou investir. Compare sempre com o rendimento líquido que o dinheiro teria.",
+      "relacionados": [
+        "financiamento-imobiliario",
+        "juros",
+        "rentabilidade",
+        "amortizacao"
       ]
     }
   ]
