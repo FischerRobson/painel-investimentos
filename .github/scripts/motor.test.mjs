@@ -201,3 +201,33 @@ test("fator de IPCA: meses realizados e projeção para os demais", () => {
   perto(f, 1.01 * 1.02 * 1.12 ** (1 / 12), 1e-9);
   perto(Motor.fatorIpcaPeriodo([], "2025-01-01", "2026-01-01", 10), 1.10, 1e-9);
 });
+
+test("aporte mensal: sem juro, o aporte é alvo ÷ meses", () => {
+  perto(Motor.aporteMensal({ alvo: 12000, meses: 12, taxaAa: 0 }), 1000, 1e-9);
+  perto(Motor.aporteMensal({ alvo: 12000, atual: 2000, meses: 10, taxaAa: 0 }), 1000, 1e-9);
+});
+
+test("aporte mensal: com juro, o aporte acumulado chega no alvo", () => {
+  const aporte = Motor.aporteMensal({ alvo: 100000, atual: 5000, meses: 60, taxaAa: 12 });
+  // conferência por simulação mês a mês
+  const r = Math.pow(1.12, 1 / 12) - 1;
+  let saldo = 5000;
+  for (let m = 0; m < 60; m++) saldo = saldo * (1 + r) + aporte;
+  perto(saldo, 100000, 0.01);
+});
+
+test("aporte mensal: patrimônio atual que já basta dá zero; prazo inválido dá null", () => {
+  assert.equal(Motor.aporteMensal({ alvo: 10000, atual: 20000, meses: 12, taxaAa: 10 }), 0);
+  assert.equal(Motor.aporteMensal({ alvo: 10000, meses: 0, taxaAa: 10 }), null);
+});
+
+test("meses até a meta: inverso do aporte mensal", () => {
+  const aporte = Motor.aporteMensal({ alvo: 100000, atual: 5000, meses: 60, taxaAa: 12 });
+  perto(Motor.mesesAteMeta({ alvo: 100000, atual: 5000, aporte, taxaAa: 12 }), 60, 1e-6);
+  perto(Motor.mesesAteMeta({ alvo: 12000, aporte: 1000, taxaAa: 0 }), 12, 1e-9);
+});
+
+test("meses até a meta: sem aporte e sem patrimônio nunca chega; já atingido dá zero", () => {
+  assert.equal(Motor.mesesAteMeta({ alvo: 1000, atual: 0, aporte: 0, taxaAa: 10 }), null);
+  assert.equal(Motor.mesesAteMeta({ alvo: 1000, atual: 2000, aporte: 0, taxaAa: 10 }), 0);
+});
