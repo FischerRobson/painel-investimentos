@@ -157,6 +157,31 @@ const Motor = (() => {
     };
   }
 
+  // ---------- Planejador de metas ----------
+  // Taxa mensal equivalente à anual (mesma convenção do simulador). Sem IR: é uma estimativa bruta.
+  const taxaMensal = taxaAa => Math.pow(1 + taxaAa / 100, 1 / 12) - 1;
+
+  // Aporte mensal (no fim de cada mês) para chegar em `alvo` em `meses`, partindo de `atual`.
+  // Zero se o patrimônio atual já basta. Null se o prazo não for positivo.
+  function aporteMensal({ alvo, atual = 0, meses, taxaAa }) {
+    if (!(meses > 0)) return null;
+    const r = taxaMensal(taxaAa), n = meses;
+    const futuroAtual = atual * Math.pow(1 + r, n);
+    if (futuroAtual >= alvo) return 0;
+    if (r === 0) return (alvo - atual) / n;
+    return (alvo - futuroAtual) * r / (Math.pow(1 + r, n) - 1);
+  }
+
+  // Meses até chegar em `alvo` com aporte fixo mensal. Zero se já atingiu. Null se nunca chega (aporte e patrimônio zerados).
+  function mesesAteMeta({ alvo, atual = 0, aporte, taxaAa }) {
+    if (atual >= alvo) return 0;
+    const r = taxaMensal(taxaAa);
+    if (r === 0) return aporte > 0 ? (alvo - atual) / aporte : null;
+    const num = alvo * r + aporte, den = atual * r + aporte;
+    if (num <= 0 || den <= 0) return null;
+    return Math.log(num / den) / Math.log(1 + r);
+  }
+
   // ---------- Analisador de ações e FIIs ----------
   // Cada critério vira nota de 0 a 100 por interpolação linear entre `zero` (nota 0) e `cem` (nota 100).
   // Vale para métrica em que subir é bom (zero < cem) e para a que é ruim (zero > cem, como dívida e P/L).
@@ -246,6 +271,6 @@ const Motor = (() => {
   }
 
   return { aliqIR, simulate, ipcaEquilibrio, fatorPre, fatorIpca, ipcaVsPre, acumulado12, cdiAnual, juroReal, comparaRF, cenarioFocus,
-    diasUteis, diasCorridos, fatorIpcaPeriodo, marcacao, notaLinear, tipoFii, analisaAcao, analisaFii };
+    diasUteis, diasCorridos, fatorIpcaPeriodo, marcacao, aporteMensal, mesesAteMeta, notaLinear, tipoFii, analisaAcao, analisaFii };
 })();
 if (typeof module !== "undefined") module.exports = Motor;

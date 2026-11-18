@@ -740,6 +740,9 @@ const TOOL_ART = {
   comparador: ART([60, 120, 90, 160].map((w, i) => `<rect x="24" y="${18 + i * 22}" width="${w + 50}" height="14" rx="4" style="fill:var(--text-3);opacity:${0.35 + i * 0.12}"/>`).join(""), "Barras comparando investimentos"),
   marcacao: ART(`<path d="M30 20 Q90 86 236 92" style="fill:none;stroke:var(--text-3);stroke-width:2.5"/><circle cx="96" cy="66" r="6" style="fill:var(--text-3)"/>`, "Preço do título caindo quando a taxa sobe"),
   analisador: ART([[24, 150, 0.8], [84, 110, 0.55], [144, 170, 0.35], [204, 90, 0.65]].map(([x, h, o]) => `<rect x="${x}" y="${100 - h / 2 - 8}" width="36" height="${h / 2}" rx="5" style="fill:var(--text-3);opacity:${o}"/>`).join(""), "Barras de pontuação de ativos"),
+  planejador: ART(`<path d="M30 14 L40 14 L40 96" style="fill:none;stroke:var(--text-3);stroke-width:2.5;stroke-linecap:round"/>
+    <path d="M40 18 L110 18 L96 32 L110 46 L40 46 Z" style="fill:var(--text-3);opacity:.5"/>
+    <path d="M60 96 V80 M100 96 V66 M140 96 V52 M180 96 V40 M220 96 V26" style="stroke:var(--text-3);stroke-width:8;stroke-linecap:round;opacity:.35"/>`, "Bandeira de meta e barras de aportes subindo"),
 };
 const TOOLS = [
   { id: "renda-fixa", nome: "Projeção da renda fixa", desc: "Quanto os seus títulos de renda fixa vão valer numa data futura, já descontado o IR.", render: () => renderProjection() },
@@ -749,6 +752,7 @@ const TOOLS = [
   { id: "comparador", nome: "Comparador de renda fixa", desc: "CDB, LCI, LCA e Tesouro lado a lado, com IR e cenários de juros e inflação do Focus.", render: () => renderComparador() },
   { id: "marcacao", nome: "Marcação a mercado", desc: "Quanto você recebe vendendo um Tesouro antes do vencimento, e se compensa mais que manter.", render: () => renderMarcacao() },
   { id: "analisador", nome: "Analisador de ações e FIIs", desc: "Pontuação de 0 a 100 de ações e FIIs pelos fundamentos, com o peso de cada critério.", render: () => renderAnalisador() },
+  { id: "planejador", nome: "Planejador de metas", desc: "Quanto aportar por mês para chegar na sua meta, comparado com o que sobra do seu orçamento.", render: () => renderPlanejador() },
 ];
 const toolBack = `<a class="tool-back" href="#">← Ferramentas</a>`;
 let projCharts = [];
@@ -1663,6 +1667,112 @@ function renderAnalisador() {
     anaTickers = t; anaCfg.tickers = t; store.set("analisador", JSON.stringify(anaCfg));
     analisar(t);
   };
+}
+
+// ---------- Ferramenta: Planejador de metas ----------
+// Lê o orçamento (últimos 12 meses e metas) e compara o aporte necessário com o que de fato sobra e se aporta.
+let planCfg = (() => { try { return JSON.parse(store.get("planejador", "{}")) || {}; } catch { return {}; } })();
+const savePlan = () => store.set("planejador", JSON.stringify(planCfg));
+let planBudget = null, planErr = null, planCarregando = false;
+async function loadPlanejador() {
+  planCarregando = true;
+  try {
+    const [sum, set] = await Promise.all([
+      fetch(`/api/budget/summary?to=${monthKeyOf(new Date())}&months=12`),
+      fetch("/api/budget/settings"),
+    ]);
+    if (!sum.ok || !set.ok) throw new Error("Não foi possível ler o orçamento agora.");
+    planBudget = { meses: await sum.json(), settings: await set.json() };
+    planErr = null;
+  } catch (e) {
+    planErr = e.message || "Falha ao ler o orçamento.";
+  } finally {
+    planCarregando = false;
+  }
+}
+// Médias mensais dos meses com movimento: renda (meses com entrada), despesas, sobra e aporte em liberdade financeira.
+function planMedias(meses, settings) {
+  const ativos = meses.filter(m => m.income > 0 || m.expenses > 0 || (m.areas?.financialFreedom ?? 0) > 0);
+  const media = (lista, f) => lista.length ? lista.reduce((a, m) => a + f(m), 0) / lista.length : null;
+  const comRenda = meses.filter(m => m.income > 0);
+  const renda = media(comRenda, m => m.income) ?? settings?.referenceIncome ?? null;
+  const despesas = media(ativos, m => m.expenses);
+  const aporteHist = media(ativos, m => m.areas?.financialFreedom ?? 0);
+  return {
+    renda, despesas, aporteHist, meses: ativos.length,
+    sobra: renda != null && despesas != null ? renda - despesas : null,
+  };
+}
+function renderPlanejador() {
+  const el = $("#ferramentas");
+  if (!planBudget && !planErr) {
+    el.innerHTML = toolBack + `<div class="panel"><h2>Planejador de metas</h2><div class="hint">Carregando o seu orçamento…</div></div>`;
+    if (!planCarregando) loadPlanejador().then(() => { if (location.hash === "#planejador") renderPlanejador(); });
+    return;
+  }
+  if (planErr) {
+    el.innerHTML = toolBack + `<div class="panel err">${esc(planErr)}</div>`;
+    return;
+  }
+  const cur = currentRates();
+  const def = { nome: "Minha meta", alvo: 100000, atual: 0, meses: 60, taxa: cur ? +cur.cdi.toFixed(2) : 12 };
+  const cfg = { ...def };
+  for (const k of Object.keys(def)) if (planCfg[k] != null) cfg[k] = planCfg[k];
+  const med = planMedias(planBudget.meses, planBudget.settings);
+  const hist = med.aporteHist ?? 0;
+  const aporte = cfg.alvo > 0 ? Motor.aporteMensal({ alvo: cfg.alvo, atual: cfg.atual, meses: cfg.meses, taxaAa: cfg.taxa }) : null;
+  const mesesComHist = hist > 0 ? Motor.mesesAteMeta({ alvo: cfg.alvo, atual: cfg.atual, aporte: hist, taxaAa: cfg.taxa }) : null;
+  const pctRenda = med.renda && aporte != null ? aporte / med.renda * 100 : null;
+
+  let veredito = "Informe a meta e o prazo para ver o aporte necessário.", classe = "muted";
+  if (aporte === 0) { veredito = "O patrimônio que você já tem para essa meta basta. Não precisa aportar."; classe = "up"; }
+  else if (aporte != null && aporte <= hist) { veredito = `Cabe no que você já aporta: a média dos últimos meses é ${money(hist)}/mês.`; classe = "up"; }
+  else if (aporte != null && med.sobra != null && aporte <= med.sobra) {
+    veredito = hist > 0
+      ? `Cabe na sobra do orçamento (${money(med.sobra)}/mês), mas é mais que a sua média de aportes (${money(hist)}/mês). Faltam ${money(aporte - hist)}/mês.`
+      : `Cabe na sobra do orçamento (${money(med.sobra)}/mês). Ainda não há aportes registrados em liberdade financeira.`;
+    classe = "muted";
+  }
+  else if (aporte != null && med.sobra != null) { veredito = `Não cabe no orçamento atual. Mesmo usando toda a sobra (${money(med.sobra)}/mês), faltam ${money(aporte - med.sobra)}/mês.`; classe = "down"; }
+  else if (aporte != null) { veredito = "Não há renda e despesas registradas no orçamento para comparar."; }
+
+  const prazos = [6, 12, 24, 36, 60, 120].map(p => ({ p, a: Motor.aporteMensal({ alvo: cfg.alvo, atual: cfg.atual, meses: p, taxaAa: cfg.taxa }) }));
+  const movimento = med.meses
+    ? `Médias dos últimos 12 meses com movimento (${med.meses} ${med.meses > 1 ? "meses" : "mês"}): renda ${money(med.renda)}, despesas ${money(med.despesas)}, sobra ${money(med.sobra)}, aporte em liberdade financeira ${money(hist)}.`
+    : "Ainda não há lançamentos no orçamento dos últimos 12 meses. Lance renda e despesas no Orçamento para a comparação.";
+
+  el.innerHTML = toolBack + `<div class="panel">
+    <h2>Planejador de metas</h2>
+    <div class="hint">Quanto aportar todo mês para chegar na sua meta, e se isso cabe no seu orçamento. As contas são brutas: sem IR e com rentabilidade constante.</div>
+    <form class="w-add proj-form" id="f-plan">
+      <label>Nome da meta<input type="text" name="nome" maxlength="60" value="${esc(cfg.nome)}"></label>
+      <label>Valor da meta (R$)<input type="number" name="alvo" min="0" step="1000" value="${cfg.alvo}"></label>
+      <label>Já guardado para ela (R$)<input type="number" name="atual" min="0" step="100" value="${cfg.atual}"></label>
+      <label>Prazo (meses)<input type="number" name="meses" min="1" max="600" step="1" value="${cfg.meses}"></label>
+      <label>Rentabilidade (% a.a.)<input type="number" name="taxa" min="0" step="0.1" value="${cfg.taxa}"></label>
+      <div class="quick"><button type="button" id="plan-reset" title="Volta a rentabilidade para o CDI atual">Usar CDI atual</button>
+        <button type="button" id="plan-atualizar" title="Lê o orçamento de novo">Atualizar orçamento</button></div>
+    </form>
+    <div class="status ${classe}" style="margin:12px 0">${esc(veredito)}</div>
+    <div class="tiles">
+      <div class="tile"><div class="k">Aporte mensal necessário</div><div class="v">${aporte != null ? money(aporte) : "—"}</div><div class="s">${pctRenda != null ? brl(pctRenda, 1) + "% da renda média" : "—"}</div></div>
+      <div class="tile"><div class="k">Com a sua média atual (${money(hist)}/mês)</div><div class="v">${mesesComHist != null ? fmtPrazo(Math.ceil(mesesComHist)) : "—"}</div><div class="s">${mesesComHist != null ? "chega em " + mesAno(Math.ceil(mesesComHist)) : "sem aportes registrados"}</div></div>
+      <div class="tile"><div class="k">Sobra do orçamento</div><div class="v">${med.sobra != null ? money(med.sobra) : "—"}</div><div class="s">renda média menos despesas médias</div></div>
+    </div>
+    <div class="table-wrap" style="margin-top:12px"><table class="w-table">
+      <thead><tr><th>Prazo</th><th>Quando</th><th>Aporte mensal</th><th>% da renda</th></tr></thead>
+      <tbody>${prazos.map(({ p, a }) => `<tr><td>${fmtPrazo(p)}</td><td>${mesAno(p)}</td><td><b>${money(a)}</b></td><td>${a != null && med.renda ? brl(a / med.renda * 100, 1) + "%" : "—"}</td></tr>`).join("")}</tbody>
+    </table></div>
+    <div class="status">${esc(movimento)}</div>
+  </div>`;
+  const f = $("#f-plan");
+  f.onchange = e => {
+    const n = e.target.name; if (!n) return;
+    planCfg[n] = n === "nome" ? e.target.value : (e.target.value === "" ? null : Number(e.target.value));
+    savePlan(); renderPlanejador();
+  };
+  $("#plan-reset").onclick = () => { planCfg.taxa = null; savePlan(); renderPlanejador(); };
+  $("#plan-atualizar").onclick = () => { planBudget = null; planErr = null; renderPlanejador(); };
 }
 
 // ---------- Carteira: evolução do patrimônio ----------
