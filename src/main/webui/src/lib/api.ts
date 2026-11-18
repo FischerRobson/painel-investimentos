@@ -156,8 +156,13 @@ export async function textoDoErro(r: Response): Promise<string> {
 }
 
 // GET que devolve JSON ou lança ErroApi; é o que as queries do TanStack Query usam.
+// Falha de fonte externa (câmbio, custos, brapi...) chega como HTTP 200 com {error} (ErrorResponse no backend): também vira ErroApi.
 export async function getJson<T>(url: string): Promise<T> {
   const r = await apiFetch(url);
   if (!r.ok) throw new ErroApi(await textoDoErro(r), r.status);
-  return r.json() as Promise<T>;
+  const j = await r.json();
+  if (j && typeof j === "object" && !Array.isArray(j) && typeof j.error === "string" && Object.keys(j).length === 1) {
+    throw new ErroApi(j.error, r.status);
+  }
+  return j as T;
 }

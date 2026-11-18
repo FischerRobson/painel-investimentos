@@ -111,3 +111,14 @@ describe("textoDoErro", () => {
     expect(await api.textoDoErro(new Response("x", { status: 503 }))).toBe("HTTP 503");
   });
 });
+
+describe("getJson", () => {
+  test("{error} com status 200 (fonte externa fora do ar) vira ErroApi", async () => {
+    const { api, respostas } = await carregar();
+    respostas["/api/fx?days=2"] = () => Response.json({ error: "Câmbio indisponível agora: 429" });
+    await expect(api.getJson("/api/fx?days=2")).rejects.toMatchObject({ message: "Câmbio indisponível agora: 429", status: 200 });
+    respostas["/api/x"] = () => Response.json({ prices: {}, error: "parcial" });
+    expect(await api.getJson("/api/x")).toEqual({ prices: {}, error: "parcial" });
+    expect(await api.getJson("/api/y")).toEqual({ ok: true });
+  });
+});
