@@ -156,6 +156,13 @@ a { color: var(--accent); }
 .tile { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
 .tile .k { font-size: 11px; color: var(--text-3); }
 .tile .v { font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
+.ana-card { margin-top: 12px; }
+.ana-card > summary { cursor: pointer; display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-size: 14px; }
+.ana-card > summary .ana-nota { margin-left: auto; font-weight: 700; font-size: 18px; }
+.ana-bar { height: 6px; border-radius: 3px; background: var(--border); margin: 10px 0 4px; overflow: hidden; }
+.ana-bar > span { display: block; height: 100%; background: var(--s1); }
+.ana-alertas { margin: 8px 0; padding-left: 18px; color: var(--text-2); font-size: 13px; }
+.ana-extras { margin: 8px 0; padding-left: 18px; font-size: 13px; }
 .tile .s { font-size: 12px; color: var(--text-2); }
 .w-table th, .w-table td { padding: 8px 7px; }
 .w-table .alloc .track { width: 56px; }
@@ -733,6 +740,7 @@ const TOOL_ART = {
     <path d="M24 88 L60 84 L96 78 L132 80 L168 70 L204 72 L236 66" style="fill:none;stroke:var(--text-3);stroke-width:2.5;stroke-dasharray:5 4"/>`, "Linhas de inflação e juros"),
   comparador: ART([60, 120, 90, 160].map((w, i) => `<rect x="24" y="${18 + i * 22}" width="${w + 50}" height="14" rx="4" style="fill:var(--text-3);opacity:${0.35 + i * 0.12}"/>`).join(""), "Barras comparando investimentos"),
   marcacao: ART(`<path d="M30 20 Q90 86 236 92" style="fill:none;stroke:var(--text-3);stroke-width:2.5"/><circle cx="96" cy="66" r="6" style="fill:var(--text-3)"/>`, "Preço do título caindo quando a taxa sobe"),
+  analisador: ART([[24, 150, 0.8], [84, 110, 0.55], [144, 170, 0.35], [204, 90, 0.65]].map(([x, h, o]) => `<rect x="${x}" y="${100 - h / 2 - 8}" width="36" height="${h / 2}" rx="5" style="fill:var(--text-3);opacity:${o}"/>`).join(""), "Barras de pontuação de ativos"),
   planejador: ART(`<path d="M30 14 L40 14 L40 96" style="fill:none;stroke:var(--text-3);stroke-width:2.5;stroke-linecap:round"/>
     <path d="M40 18 L110 18 L96 32 L110 46 L40 46 Z" style="fill:var(--text-3);opacity:.5"/>
     <path d="M60 96 V80 M100 96 V66 M140 96 V52 M180 96 V40 M220 96 V26" style="stroke:var(--text-3);stroke-width:8;stroke-linecap:round;opacity:.35"/>`, "Bandeira de meta e barras de aportes subindo"),
@@ -744,6 +752,7 @@ const TOOLS = [
   { id: "termometro", nome: "Termômetro econômico", desc: "IPCA, Selic, CDI e juros reais, com histórico e expectativas do mercado.", render: () => renderTermometro() },
   { id: "comparador", nome: "Comparador de renda fixa", desc: "CDB, LCI, LCA e Tesouro lado a lado, com IR e cenários de juros e inflação do Focus.", render: () => renderComparador() },
   { id: "marcacao", nome: "Marcação a mercado", desc: "Quanto você recebe vendendo um Tesouro antes do vencimento, e se compensa mais que manter.", render: () => renderMarcacao() },
+  { id: "analisador", nome: "Analisador de ações e FIIs", desc: "Pontuação de 0 a 100 de ações e FIIs pelos fundamentos, com o peso de cada critério.", render: () => renderAnalisador() },
   { id: "planejador", nome: "Planejador de metas", desc: "Quanto aportar por mês para chegar na sua meta, comparado com o que sobra do seu orçamento.", render: () => renderPlanejador() },
 ];
 const toolBack = `<a class="tool-back" href="#">← Ferramentas</a>`;
@@ -959,17 +968,18 @@ function renderTermometro() {
 }
 
 // ---------- Ferramenta: comparador de renda fixa ----------
-// Tipos e a forma como cada um rende: cdi = % do CDI (CDI ≈ Selic meta), pre = % a.a., ipca = IPCA + % a.a.
+// Tipos e a forma como cada um rende: cdi = % do CDI (CDI = Selic meta − 0,10 p.p.), pre = % a.a., ipca = IPCA + % a.a.
 const TIPOS_RF = {
   "CDB": { idx: "cdi", padrao: 110, isento: false },
   "LCI": { idx: "cdi", padrao: 90, isento: true },
   "LCA": { idx: "cdi", padrao: 90, isento: true },
-  "Tesouro Selic": { idx: "cdi", padrao: 100, isento: false },
+  "Tesouro Selic": { idx: "cdi", padrao: 100, isento: false, selic: true }, // rende a Selic cheia, não o CDI
   "Tesouro Prefixado": { idx: "pre", padrao: 12, isento: false },
   "Tesouro IPCA+": { idx: "ipca", padrao: 6, isento: false },
   "Prefixado (outro)": { idx: "pre", padrao: 13, isento: false },
   "IPCA+ (outro)": { idx: "ipca", padrao: 7, isento: false },
 };
+const FGC_TIPOS = ["CDB", "LCI", "LCA"]; // cobertos pelo FGC (R$ 250 mil por instituição)
 const CENARIOS_RF = {
   base: "Focus: medianas",
   "juros-caem": "Focus: juros caem (Selic no mínimo)",
@@ -979,7 +989,7 @@ const CENARIOS_RF = {
 const TAXA_TXT = p => p.idx === "cdi" ? `${brl(p.taxa)}% do CDI` : p.idx === "pre" ? `${brl(p.taxa)}% a.a.` : `IPCA + ${brl(p.taxa)}%`;
 let cmpCfg = (() => { try { return { valor: 10000, anos: 5, modo: "base", ordem: "liquido", produtos: [], ...JSON.parse(store.get("comparador", "{}")) }; } catch { return { valor: 10000, anos: 5, modo: "base", ordem: "liquido", produtos: [] }; } })();
 const saveCmp = () => store.set("comparador", JSON.stringify(cmpCfg));
-let cmpId = 1;
+let cmpId = 1, cmpMsg = "";
 
 function renderComparador() {
   const el = $("#ferramentas");
@@ -995,9 +1005,20 @@ function renderComparador() {
     : { selic: termo?.selic?.at(-1)?.[1] ?? null, ipca: termo?.ipca ? Motor.acumulado12(termo.ipca.map(([date, value]) => ({ date, value }))).at(-1)?.value ?? null : null };
   const semFocus = !termo?.focus?.length;
 
+  // Títulos da carteira que ainda não venceram: viram produto do comparador sem redigitar nada
+  const hoje = todayISO();
+  const vivos = rfW.filter(x => x.venc && x.venc > hoje);
+  const secaoMinha = `<h3>Seu investimento</h3>
+    <div class="hint">Escolha um título da sua carteira. O valor de hoje é estimado pela série do CDI e pelo IPCA desde a aplicação; o prazo passa a ser o que falta, e o IR é calculado pelo prazo total.</div>
+    ${vivos.length ? `<div style="display:flex;flex-wrap:wrap;gap:8px;max-width:100%"><select id="cmp-minha-sel" style="flex:1 1 260px;min-width:0;max-width:100%">${vivos.map(x => `<option value="${esc(x.id)}">${esc(x.nome)} · ${esc(x.tipo)} · ${TAXA_TXT(x)} · vence ${isoBR(x.venc)}</option>`).join("")}</select>
+      <button type="button" id="cmp-minha">Comparar este investimento</button></div>`
+      : `<div class="hint">Nenhum título vigente na carteira. Cadastre em Carteira › Renda fixa.</div>`}
+    ${cmpMsg ? `<div class="status">${esc(cmpMsg)}</div>` : ""}`;
+
   const produtos = cmpCfg.produtos.map(p => {
     const t = TIPOS_RF[p.tipo] || TIPOS_RF["CDB"];
-    return { id: p.id, nome: p.nome || p.tipo, tipo: p.tipo, idx: t.idx, taxa: Number(p.taxa) || 0, isento: t.isento, anosVenc: Number(p.anosVenc) || 0 };
+    return { id: p.id, nome: p.nome || p.tipo, tipo: p.tipo, idx: t.idx, taxa: Number(p.taxa) || 0, isento: p.isento ?? t.isento, anosVenc: Number(p.anosVenc) || 0,
+      minha: !!p.minha, irBase: p.irBase, irDias: p.irDias, carteiraId: p.carteiraId, selic: !!t.selic };
   }).filter(p => p.anosVenc > 0 && p.taxa >= 0);
   const valido = cmpCfg.valor > 0 && cmpCfg.anos > 0 && cen.selic != null && cen.ipca != null;
   const res = valido && produtos.length ? Motor.comparaRF({ valor: cmpCfg.valor, anos: cmpCfg.anos, selic: cen.selic, ipca: cen.ipca, produtos }) : [];
@@ -1006,11 +1027,12 @@ function renderComparador() {
   const depois = res.filter(r => r.status === "depois");
   const melhor = ordenados[0];
   const linha = r => `<tr>
-    <td><b>${esc(r.nome)}</b>${r.nome !== r.tipo ? ` <span class="muted">${esc(r.tipo)}</span>` : ""}</td>
-    <td>${TAXA_TXT(r)}</td><td>${r.anosVenc} ano${r.anosVenc > 1 ? "s" : ""}</td>
+    <td><b>${esc(r.nome)}</b>${r.nome !== r.tipo ? ` <span class="muted">${esc(r.tipo)}</span>` : ""}${r.minha ? ` <span class="tool-tag">da carteira</span>` : ""}</td>
+    <td>${TAXA_TXT(r)}</td><td>${brl(r.anosVenc, Number.isInteger(r.anosVenc) ? 0 : 2)} ano${r.anosVenc > 1 ? "s" : ""}</td>
     <td>${money(r.bruto)}</td><td>${r.isento ? '<span class="muted">isento</span>' : money(r.ir)}</td>
     <td><b>${money(r.liquido)}</b></td><td>${money(r.real)}</td>
-    <td class="muted">${r.status === "antes" ? `vence antes: reaplicado no CDI até ${cmpCfg.anos} anos` : ""}</td></tr>`;
+    <td class="muted">${[r.status === "antes" ? `vence antes: reaplicado a 100% do CDI até ${brl(cmpCfg.anos, Number.isInteger(cmpCfg.anos) ? 0 : 2)} anos` : "",
+      /^LC[IA]$/.test(r.tipo) && r.anosVenc < 0.5 ? "LCI e LCA têm carência mínima de 6 meses" : ""].filter(Boolean).join(" · ")}</td></tr>`;
   const linhaDepois = r => `<tr><td><b>${esc(r.nome)}</b> <span class="muted">${esc(r.tipo)}</span></td><td>${TAXA_TXT(r)}</td><td>${r.anosVenc} anos</td>
     <td colspan="5" class="muted">vence depois do prazo: seria preciso vender antes do vencimento (marcação a mercado, ainda não disponível aqui)</td></tr>`;
 
@@ -1019,10 +1041,11 @@ function renderComparador() {
     <div class="hint">Mesmo valor, mesmo prazo, produtos diferentes. Cada um rende de um jeito: % do CDI, prefixado ou IPCA+. Cadastre os produtos com a taxa da oferta que você tem em mãos.</div>
     <form class="w-add proj-form" id="f-cmp">
       <label>Valor investido (R$)<input type="number" name="valor" min="0" step="100" value="${cmpCfg.valor}"></label>
-      <label>Prazo (anos)<input type="number" name="anos" min="1" max="40" step="1" value="${cmpCfg.anos}"></label>
+      <label>Prazo (anos)<input type="number" name="anos" min="0.1" max="40" step="any" value="${cmpCfg.anos}"></label>
       <label>Cenário de juros e inflação<select name="modo">${Object.entries(CENARIOS_RF).map(([k, v]) => `<option value="${k}" ${k === cmpCfg.modo ? "selected" : ""}>${v}</option>`).join("")}</select></label>
       <label>Ordenar por<select name="ordem"><option value="liquido" ${cmpCfg.ordem !== "real" ? "selected" : ""}>Maior patrimônio líquido</option><option value="real" ${cmpCfg.ordem === "real" ? "selected" : ""}>Maior rentabilidade real</option></select></label>
     </form>
+    ${secaoMinha}
     <h3>Produtos</h3>
     <div class="table-wrap"><table class="w-table" id="cmp-prod">
       <thead><tr><th>Produto</th><th>Tipo</th><th>Taxa</th><th>Vencimento (anos)</th><th></th></tr></thead>
@@ -1039,7 +1062,7 @@ function renderComparador() {
       <button type="button" id="cmp-ex">Carregar exemplo</button></div>
 
     <div class="tiles" style="margin-top:14px">
-      <div class="tile"><div class="k">Cenário: CDI médio (Selic)</div><div class="v">${cen.selic != null ? brl(cen.selic) + "%" : "—"}</div><div class="s">IPCA médio ${cen.ipca != null ? brl(cen.ipca) + "%" : "—"} a.a.</div></div>
+      <div class="tile"><div class="k">Cenário: CDI médio</div><div class="v">${cen.selic != null ? brl(Motor.cdiDaSelic(cen.selic)) + "%" : "—"}</div><div class="s">Selic ${cen.selic != null ? brl(cen.selic) + "%" : "—"} · IPCA ${cen.ipca != null ? brl(cen.ipca) + "%" : "—"} a.a.</div></div>
       <div class="tile"><div class="k">Melhor no cenário</div><div class="v ${melhor ? "up" : ""}">${melhor ? esc(melhor.nome) : "—"}</div><div class="s">${melhor ? `líquido ${money(melhor.liquido)} · real ${money(melhor.real)}` : "adicione produtos com vencimento"}</div></div>
       <div class="tile"><div class="k">Valor investido</div><div class="v">${money(cmpCfg.valor)}</div><div class="s">${cmpCfg.anos} ano${cmpCfg.anos > 1 ? "s" : ""} · ${CENARIOS_RF[cmpCfg.modo]}</div></div>
     </div>
@@ -1047,7 +1070,8 @@ function renderComparador() {
     <div class="table-wrap"><table class="w-table">
       <thead><tr><th>Produto</th><th>Taxa</th><th>Vencimento</th><th>Bruto</th><th>IR</th><th>Líquido</th><th>Real</th><th>Observação</th></tr></thead>
       <tbody>${[...ordenados.map(linha), ...depois.map(linhaDepois)].join("")}</tbody></table></div>` : `<div class="hint" style="margin-top:10px">${produtos.length ? "" : "Adicione produtos para comparar."}</div>`}
-    <div class="status">${semFocus ? "Sem as expectativas do Focus agora: usando o último dado realizado do Banco Central. " : ""}Estimativa: CDI tratado como Selic meta, taxas médias constantes no prazo, capitalização anual, IR pela tabela regressiva com o prazo total (inclusive para o que é reaplicado), sem custódia da B3 nem taxas de corretora. "Real" = líquido corrigido pelo IPCA do cenário. Liquidez e risco de crédito ainda não entram na ordenação.</div>
+    ${cmpCfg.valor > 250000 && produtos.some(p => FGC_TIPOS.includes(p.tipo)) ? `<div class="status down">Acima de R$ 250 mil numa mesma instituição, o FGC não cobre o excedente de CDB, LCI e LCA (o limite total é de R$ 1 milhão por CPF a cada 4 anos). Divida entre bancos. Tesouro Direto não depende do FGC.</div>` : ""}
+    <div class="status">${semFocus ? "Sem as expectativas do Focus agora: usando o último dado realizado do Banco Central. " : ""}Estimativa: CDI = Selic − 0,10 p.p. e Tesouro Selic = Selic (regras do AUVP), taxas médias constantes no prazo, capitalização anual, IR pela tabela regressiva com o prazo total (inclusive para o que é reaplicado), sem custódia da B3 nem taxas de corretora. "Real" = líquido corrigido pelo IPCA do cenário. Liquidez e risco de crédito ainda não entram na ordenação.</div>
   </div>`;
 
   const f = $("#f-cmp");
@@ -1070,6 +1094,29 @@ function renderComparador() {
     cmpCfg.produtos = cmpCfg.produtos.filter(x => x.id !== Number(b.dataset.del)); saveCmp(); renderComparador();
   };
   $("#cmp-add").onclick = () => { cmpCfg.produtos.push({ id: Date.now() + cmpId++, nome: "", tipo: "CDB", taxa: TIPOS_RF.CDB.padrao, anosVenc: cmpCfg.anos }); saveCmp(); renderComparador(); };
+  $("#cmp-minha")?.addEventListener("click", () => {
+    const item = rfW.find(x => String(x.id) === $("#cmp-minha-sel").value);
+    if (!item) return;
+    const cdiSerie = (termo.cdi || []).map(([date, value]) => [date, value]);
+    const ipcaMensal = (termo.ipca || []).map(([date, value]) => ({ date, value }));
+    const anosRest = (new Date(item.venc + "T12:00:00") - new Date(hoje + "T12:00:00")) / 86400000 / 365;
+    const irDias = Math.round((new Date(item.venc + "T12:00:00") - new Date(item.data + "T12:00:00")) / 86400000);
+    const v = Motor.valorAtualRF({ aplicado: item.aplicado, idx: item.idx, taxa: item.taxa, data: item.data, hoje, cdiSerie, ipcaMensal, ipcaProj: cen.ipca ?? 0 });
+    if (v.valor == null) { cmpMsg = "Sem a série do CDI agora para estimar o valor de hoje. Tente de novo mais tarde."; renderComparador(); return; }
+    // tipo de comparação: o primeiro tipo com o mesmo indexador (e isenção), ou o próprio tipo do título se ele existir
+    const mesmos = Object.keys(TIPOS_RF).filter(k => TIPOS_RF[k].idx === item.idx);
+    const tipo = mesmos.includes(item.tipo) ? item.tipo : mesmos[0];
+    const prod = { id: Date.now() + cmpId++, nome: item.nome, tipo, taxa: item.taxa, anosVenc: Math.round(anosRest * 100) / 100,
+      minha: true, carteiraId: item.id, isento: !!item.isento, irBase: item.aplicado, irDias };
+    // Um investimento da carteira por vez: a escolha nova substitui a anterior (cada prazo tem a sua comparação)
+    cmpCfg.produtos = cmpCfg.produtos.filter(x => !x.minha).concat(prod);
+    cmpCfg.valor = Math.round(v.valor * 100) / 100;
+    cmpCfg.anos = prod.anosVenc;
+    cmpMsg = `${item.nome}: valor bruto de hoje estimado em ${money(cmpCfg.valor)} (aplicado ${money(item.aplicado)} em ${isoBR(item.data)}). O prazo passou a ser os ${brl(prod.anosVenc, 2)} anos que faltam.` +
+      (v.cobertura ? "" : " A série do CDI começa depois da aplicação: o valor de hoje pode estar subestimado.") +
+      " Escolher outro título substitui este na comparação.";
+    saveCmp(); renderComparador();
+  });
   $("#cmp-ex").onclick = () => {
     cmpCfg.produtos = [
       { id: Date.now() + 1, nome: "", tipo: "Tesouro Prefixado", taxa: 12, anosVenc: 5 },
@@ -1084,6 +1131,7 @@ function renderComparador() {
 // ---------- Ferramenta: marcação a mercado (Tesouro Prefixado e IPCA+) ----------
 let mkCfg = (() => { try { return { tipo: "Tesouro IPCA+", qtd: 1, pu: 1000, taxa: 6, dataCompra: "2024-01-02", dataVenc: "2035-05-15", dataAnal: null, taxaMerc: null, reinv: 100, modo: "base", ...JSON.parse(store.get("marcacao", "{}")) }; } catch { return { tipo: "Tesouro IPCA+", qtd: 1, pu: 1000, taxa: 6, dataCompra: "2024-01-02", dataVenc: "2035-05-15", dataAnal: null, taxaMerc: null, reinv: 100, modo: "base" }; } })();
 const saveMk = () => store.set("marcacao", JSON.stringify(mkCfg));
+let mkMsg = "";
 
 function renderMarcacao() {
   const el = $("#ferramentas");
@@ -1106,16 +1154,24 @@ function renderMarcacao() {
   const taxaMerc = mkCfg.taxaMerc ?? mkCfg.taxa;
   const calc = tm => (cen.selic == null || cen.ipca == null) ? null : Motor.marcacao({
     qtd: mkCfg.qtd, puCompra: mkCfg.pu, taxaCont: mkCfg.taxa, taxaMerc: tm, dataCompra: mkCfg.dataCompra,
-    dataAnalise: dataAnal, dataVenc: mkCfg.dataVenc, accrHoje, accrVenc, cdiTaxa: cen.selic, reinvestPct: mkCfg.reinv });
+    dataAnalise: dataAnal, dataVenc: mkCfg.dataVenc, accrHoje, accrVenc, cdiTaxa: Motor.cdiDaSelic(cen.selic), reinvestPct: mkCfg.reinv });
   const r = calc(taxaMerc);
   const taxaTxt = t => ipca ? `IPCA + ${brl(t)}%` : `${brl(t)}% a.a.`;
   const valido = r && mkCfg.qtd > 0 && mkCfg.pu > 0;
   const melhor = r ? (r.diferenca > 0 ? "Vender e reaplicar" : "Manter até o vencimento") : "";
 
   const sens = [-1, 0, 1, 2].map(d => { const t = mkCfg.taxa + d; const x = calc(t); return { t, x }; }).filter(o => o.x);
+  // Prefixados e IPCA+ da carteira ainda vigentes: o formulário é preenchido a partir do título
+  const vivosMk = rfW.filter(x => x.venc && x.venc > hoje && (x.idx === "pre" || x.idx === "ipca"));
+  const secaoMinhaMk = `<h3>Seu investimento</h3>
+    ${vivosMk.length ? `<div style="display:flex;flex-wrap:wrap;gap:8px;max-width:100%"><select id="mk-minha-sel" style="flex:1 1 260px;min-width:0;max-width:100%">${vivosMk.map(x => `<option value="${esc(x.id)}">${esc(x.nome)} · ${esc(x.tipo)} · ${TAXA_TXT(x)} · vence ${isoBR(x.venc)}</option>`).join("")}</select>
+      <button type="button" id="mk-minha">Usar este título</button></div>`
+      : `<div class="hint">Nenhum prefixado ou IPCA+ vigente na carteira. Cadastre em Carteira › Renda fixa.</div>`}
+    ${mkMsg ? `<div class="status">${esc(mkMsg)}</div>` : ""}`;
   el.innerHTML = toolBack + `<div class="panel">
     <h2>Marcação a mercado</h2>
     <div class="hint">Quanto você receberia vendendo o título hoje, e se compensa mais que manter até o vencimento. A taxa de mercado é a que um título equivalente paga hoje; se ela subir, o preço do título cai.</div>
+    ${secaoMinhaMk}
     <form class="w-add proj-form" id="f-mk">
       <label>Título<select name="tipo">${["Tesouro IPCA+", "Tesouro Prefixado"].map(t => `<option ${t === mkCfg.tipo ? "selected" : ""}>${t}</option>`).join("")}</select></label>
       <label>Quantidade de títulos<input type="number" name="qtd" min="0" step="1" value="${mkCfg.qtd}"></label>
@@ -1136,6 +1192,7 @@ function renderMarcacao() {
       <div class="tile"><div class="k">Valor de mercado (bruto)</div><div class="v">${money(r.valorMercado)}</div><div class="s">PU ${money(r.puMercado)} com taxa de ${taxaTxt(taxaMerc)}</div></div>
       <div class="tile"><div class="k">Lucro ou prejuízo bruto</div><div class="v ${r.lucroBruto >= 0 ? "up" : "down"}">${r.lucroBruto >= 0 ? "+" : ""}${money(r.lucroBruto)}</div><div class="s">em relação ao que você pagou (${money(mkCfg.qtd * mkCfg.pu)})</div></div>
       <div class="tile"><div class="k">Líquido se vender hoje</div><div class="v">${money(r.liqVenda)}</div><div class="s">IR estimado ${money(r.irVenda)} · sem custódia</div></div>
+      <div class="tile"><div class="k">Ganho já antecipado</div><div class="v ${r.ganhoAntecipado >= 0.8 ? "up" : ""}">${r.ganhoAntecipado != null ? brl(Math.max(0, r.ganhoAntecipado) * 100, 0) + "%" : "—"}</div><div class="s">${r.ganhoAntecipado >= 0.8 ? "do ganho até o vencimento: pela regra do AUVP (80% a 90%), já vale considerar vender" : "do ganho até o vencimento que a venda de hoje entrega (AUVP: venda a partir de 80% a 90%)"}</div></div>
     </div>
 
     <h3>Vender agora ou manter até o vencimento</h3>
@@ -1156,7 +1213,7 @@ function renderMarcacao() {
         <td>${money(x.vendaReaplicada)}</td><td>${money(x.liqVenc)}</td>
         <td class="${signCls(x.diferenca)}">${x.diferenca >= 0 ? "+" : "−"}${money(Math.abs(x.diferenca))}</td></tr>`).join("")}</tbody></table></div>` : `<div class="hint" style="margin-top:10px">${!mkCfg.qtd || !mkCfg.pu ? "Informe quantidade e preço de compra." : "Confira as datas: a análise tem que ficar entre a compra e o vencimento."}</div>`}
 
-    <div class="status">Estimativa, não é cotação do Tesouro Direto. ${semFocus ? "Sem as expectativas do Focus agora: cenário com o último dado realizado. " : ""}Não considera os cupons semestrais do IPCA+ (NTN-B) nem os do prefixado com juros (NTN-F); a custódia da B3 fica de fora; o IR segue a tabela regressiva pelo tempo de cada operação; o CDI é tratado como Selic meta; a correção do IPCA é mensal. Conheça o conceito em <a href="/glossario#marcacao-a-mercado">marcação a mercado</a>.</div>
+    <div class="status">Estimativa, não é cotação do Tesouro Direto. ${semFocus ? "Sem as expectativas do Focus agora: cenário com o último dado realizado. " : ""}Não considera os cupons semestrais do IPCA+ (NTN-B) nem os do prefixado com juros (NTN-F); a custódia da B3 fica de fora; o IR segue a tabela regressiva pelo tempo de cada operação; na reaplicação, o CDI é a Selic meta menos 0,10 ponto; a correção do IPCA é mensal. Conheça o conceito em <a href="/glossario#marcacao-a-mercado">marcação a mercado</a>.</div>
   </div>`;
 
   const f = $("#f-mk");
@@ -1169,12 +1226,23 @@ function renderMarcacao() {
   };
   $("#mk-ex").onclick = () => { Object.assign(mkCfg, { tipo: "Tesouro IPCA+", qtd: 1, pu: 1000, taxa: 6, dataCompra: "2024-01-02", dataVenc: "2035-05-15", dataAnal: null, taxaMerc: null, reinv: 100 }); saveMk(); renderMarcacao(); };
   $("#mk-tm").onclick = () => { mkCfg.taxaMerc = null; saveMk(); renderMarcacao(); };
+  $("#mk-minha")?.addEventListener("click", () => {
+    const item = rfW.find(x => String(x.id) === $("#mk-minha-sel").value);
+    if (!item) return;
+    // O título inteiro entra como 1 unidade de preço igual ao valor aplicado; as contas são lineares, então o resultado vale para o total
+    mkCfg = { ...mkCfg, tipo: item.idx === "ipca" ? "Tesouro IPCA+" : "Tesouro Prefixado", qtd: 1, pu: item.aplicado, taxa: item.taxa,
+      dataCompra: item.data, dataVenc: item.venc, dataAnal: todayISO(), taxaMerc: null, carteiraId: item.id };
+    mkMsg = `${item.nome}: tratado como 1 título de ${money(item.aplicado)} comprado em ${isoBR(item.data)}. A taxa de mercado começa igual à contratada; ajuste para ver o efeito da taxa de hoje.`;
+    saveMk(); renderMarcacao();
+  });
 }
 
 // ---------- Ferramenta: projeção da renda fixa ----------
 function renderProjection() {
   const el = $("#ferramentas");
-  const rf = rfW.map(e => ({ ...e, calc: rfCalc(e) }));
+  if (projCfg.only && !rfW.some(x => x.id === projCfg.only)) projCfg.only = null;
+  const todos = rfW.map(e => ({ ...e, calc: rfCalc(e) }));
+  const rf = projCfg.only ? todos.filter(r => r.id === projCfg.only) : todos;
   const vRf = rf.reduce((a, r) => a + (r.calc?.liquido || 0), 0);
   // Projeção
   let projHtml = "";
@@ -1199,6 +1267,7 @@ function renderProjection() {
       <h2>Projeção da renda fixa</h2>
       <div class="hint">Quanto seus títulos de renda fixa vão valer numa data futura.</div>
       <form class="w-add proj-form" id="f-proj">
+        <label>Títulos<select name="only"><option value="">Todos os títulos (${rfW.length})</option>${rfW.map(x => `<option value="${esc(x.id)}" ${x.id === projCfg.only ? "selected" : ""}>${esc(x.nome)} · ${esc(x.tipo)}</option>`).join("")}</select></label>
         <label>Quanto terei em<input type="date" name="target" min="${addDays(todayISO(), 1)}" value="${cfg.target}"></label>
         <label>CDI projetado (% a.a.)<input type="number" name="cdi" step="0.01" value="${cfg.cdi}"></label>
         <label>IPCA projetado (% a.a.)<input type="number" name="ipca" step="0.01" value="${cfg.ipca}"></label>
@@ -1242,6 +1311,7 @@ function renderProjection() {
       if (e.target.name === "cdi") projCfg.cdi = fP.cdi.value === "" ? null : Number(fP.cdi.value);
       if (e.target.name === "ipca") projCfg.ipca = fP.ipca.value === "" ? null : Number(fP.ipca.value);
       if (e.target.name === "reinvest") projCfg.reinvest = fP.reinvest.checked;
+      if (e.target.name === "only") projCfg.only = fP.only.value || null;
       saveProj(); renderTools();
     };
     fP.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { projCfg.target = addMonths(todayISO(), +b.dataset.m); saveProj(); renderTools(); });
@@ -1549,7 +1619,8 @@ function simulatorHtml() {
       <label>Meta de patrimônio (R$)<input type="number" name="meta" min="0" step="1000" value="${cfg.meta}"></label>
       <label>Renda mensal desejada (R$)<input type="number" name="renda" min="0" step="100" value="${cfg.renda}"></label>
       <label class="chk"><input type="checkbox" name="real" ${cfg.real ? "checked" : ""}> Mostrar em reais de hoje (descontando a inflação)</label>
-      <div class="quick"><button type="button" id="sim-reset" title="Volta valor inicial, rentabilidade e inflação para os valores atuais">Usar valores atuais</button></div>
+      <div class="quick"><button type="button" id="sim-reset" title="Volta valor inicial, rentabilidade e inflação para os valores atuais">Usar valores atuais</button>
+        <button type="button" id="sim-auvp" title="Rentabilidade que entrega 8% acima da inflação informada, em reais de hoje">Premissa AUVP: 8% reais</button></div>
     </form>
     <div class="hint">Padrões: valor inicial = seus investimentos ${lastSnap ? `(${isoBR(lastSnap)})` : "(abra a Carteira para preencher)"}, rentabilidade = CDI atual, inflação = IPCA dos últimos 12 meses. Rendimento mensal ${cfg.real ? "real" : "nominal"} usado: ${brl(sim.r * 100, 3)}%.</div>
     <div class="tiles">
@@ -1561,9 +1632,9 @@ function simulatorHtml() {
     <div class="proj-box"><canvas id="sim-chart" aria-label="Evolução simulada do patrimônio"></canvas></div>
     <div class="table-wrap"><table class="w-table">
       <thead><tr><th>Prazo</th><th>Quando</th><th>Patrimônio</th><th>Total aportado</th><th>Rendimentos</th><th>Renda mensal possível</th></tr></thead>
-      <tbody>${marcos.map(a => { const x = sim.rows[a * 12]; return `<tr><td>${a} ano${a > 1 ? "s" : ""}</td><td>${mesAno(a * 12)}</td><td><b>${money(x.saldo)}</b></td><td>${money(x.aportado)}</td><td>${money(x.saldo - x.aportado)}</td><td>${money(x.saldo * sim.r)}</td></tr>`; }).join("")}</tbody>
+      <tbody>${marcos.map(a => { const x = sim.rows[a * 12]; return `<tr><td>${a} ano${a > 1 ? "s" : ""}</td><td>${mesAno(a * 12)}</td><td><b>${money(x.saldo)}</b></td><td>${money(x.aportado)}</td><td>${money(x.saldo - x.aportado)}</td><td>${money(x.saldo * sim.r * (1 - sim.margem))}</td></tr>`; }).join("")}</tbody>
     </table></div>
-    <div class="status">Simulação com rentabilidade constante, aporte no fim de cada mês e sem IR. "Renda mensal possível" = quanto o patrimônio rende por mês${cfg.real ? " acima da inflação" : ""}.</div>
+    <div class="status">Simulação com rentabilidade constante, aporte no fim de cada mês e sem IR. "Renda mensal possível" = juros do mês${cfg.real ? " acima da inflação" : ""} menos 25% de margem para impostos e reinvestimento (regra do AUVP). Para uma simulação séria de longo prazo, o AUVP usa 8% ao ano acima da inflação.</div>
   </div>`;
   const start = new Date(); start.setDate(1);
   const tx = m => { const d = new Date(start); d.setMonth(d.getMonth() + m); return d.getTime(); };
@@ -1581,6 +1652,126 @@ function bindSimulator(def) {
     saveSim(); renderTools();
   };
   $("#sim-reset").onclick = () => { simCfg.inicial = null; simCfg.taxa = null; simCfg.inflacao = null; saveSim(); renderTools(); };
+  $("#sim-auvp").onclick = () => {
+    const inf = simCfg.inflacao ?? def.inflacao;
+    simCfg.taxa = +Motor.nominalParaReal(Motor.PREMISSA_REAL, inf).toFixed(2); simCfg.real = true; saveSim(); renderTools();
+  };
+}
+
+// ---------- Ferramenta: Analisador de ações e FIIs ----------
+// Os números vêm de /api/data (Fundamentus); a pontuação, os pesos e as faixas ficam em motor.js.
+let anaCfg = (() => { try { return JSON.parse(store.get("analisador", "{}")) || {}; } catch { return {}; } })();
+let anaTickers = anaCfg.tickers || "PETR4, ITUB4, HGLG11, MXRF11";
+let anaRes = null, anaErr = null, anaCarregando = false;
+async function analisar(tickers) {
+  anaCarregando = true; anaErr = null; anaRes = null;
+  renderAnalisador();
+  try {
+    const r = await fetch(`/api/data?symbols=${encodeURIComponent(tickers)}&range=1mo`);
+    if (!r.ok) throw new Error("Não foi possível consultar os ativos agora.");
+    const data = await r.json();
+    anaRes = data.items.map(it => {
+      const f = it.fund;
+      const analise = f ? (f.kind === "fii" ? Motor.analisaFii(f, { nome: it.name }) : Motor.analisaAcao(f)) : null;
+      return { ticker: it.ticker, nome: it.name, setor: it.sector, industria: it.industry, preco: it.price, fund: f,
+        erro: it.error || (f ? null : "sem indicadores no Fundamentus"), analise };
+    }).sort((a, b) => (b.analise?.nota ?? -1) - (a.analise?.nota ?? -1));
+  } catch (e) {
+    anaErr = e.message || "Falha ao consultar os ativos.";
+  } finally {
+    anaCarregando = false;
+  }
+  renderAnalisador();
+}
+const fmtCriterio = (v, f) => v == null ? "—" : f === "%" ? brl(v * 100, 1) + "%" : f === "R$" ? "R$ " + big(v) : brl(v, f === "n" ? 0 : 2);
+function renderAnalisador() {
+  const el = $("#ferramentas");
+  let resultado = "";
+  if (anaCarregando) resultado = `<div class="status">Consultando os indicadores…</div>`;
+  else if (anaErr) resultado = `<div class="panel err">${esc(anaErr)}</div>`;
+  else if (anaRes) {
+    const cor = n => n == null ? "" : n >= 70 ? "up" : n >= 50 ? "" : "down";
+    const linhas = anaRes.map(x => {
+      const a = x.analise;
+      return `<tr><td><b>${esc(x.ticker)}</b><div class="muted">${esc(x.nome || "")}</div></td>
+        <td>${a ? esc(a.tipo) + (a.segmento ? `<div class="muted">${esc(a.segmento)}</div>` : "") : "—"}</td>
+        <td><b class="${cor(a?.nota)}">${a?.nota ?? "—"}</b></td>
+        <td>${a ? a.faixa : esc(x.erro || "sem dados")}</td>
+        <td>${a ? Math.round(a.cobertura * 100) + "%" : "—"}</td></tr>`;
+    }).join("");
+    const cards = anaRes.map(x => {
+      const a = x.analise;
+      if (!a) return `<div class="panel"><b>${esc(x.ticker)}</b><div class="hint">${esc(x.erro || "Sem dados para pontuar.")}</div></div>`;
+      const alertas = a.alertas.length ? `<ul class="ana-alertas">${a.alertas.map(t => `<li>${esc(t)}</li>`).join("")}</ul>` : "";
+      // Referências do AUVP (Módulos 4.1 e 4.2): não entram na nota, porque dependem da tese de cada investidor
+      const rel = m => `${brl(Math.abs(m) * 100, 0)}% ${m >= 0 ? "acima" : "abaixo"} do preço atual`;
+      const extras = [];
+      if (a.kind === "acao") {
+        const set = Motor.classificaSetor(x.setor, x.industria);
+        if (set.texto) extras.push(`<li class="${set.tipo === "perene" ? "up" : set.tipo === "ciclico" ? "down" : ""}">${esc(set.texto)}</li>`);
+        const g = Motor.precoGraham(x.preco, x.fund?.pl, x.fund?.pvp);
+        if (g) extras.push(`<li>Preço justo de Graham, √(22,5 × LPA × VPA): <b>R$ ${brl(g.justo)}</b>, ${rel(g.margem)}.</li>`);
+        const b = Motor.precoBazin(x.preco, x.fund?.dy);
+        if (b) extras.push(`<li>Preço-teto de Bazin (dividendo mínimo de 6%): <b>R$ ${brl(b.teto)}</b>, ${rel(b.margem)}.</li>`);
+      } else {
+        const m = Motor.numeroMagico(x.fund?.dy, x.preco);
+        if (m) extras.push(`<li>Número mágico: <b>${m.cotas} cotas</b> (cerca de ${money(m.investimento)}) para que os dividendos de um mês comprem uma cota nova.</li>`);
+      }
+      const extrasHtml = extras.length ? `<ul class="ana-extras">${extras.join("")}</ul>` : "";
+      return `<details class="panel ana-card" ${anaRes.length === 1 ? "open" : ""}>
+        <summary><b>${esc(x.ticker)}</b> · ${esc(x.nome || "")} <span class="muted">${x.preco != null ? "R$ " + brl(x.preco) : ""}</span>
+          <span class="ana-nota">${a.nota ?? "—"}</span></summary>
+        <div class="ana-bar"><span style="width:${a.nota ?? 0}%"></span></div>
+        <div class="hint">${esc(a.tipo)}${a.segmento ? " · " + esc(a.segmento) : ""}${x.setor && a.kind === "acao" ? " · " + esc(x.setor) : ""} · cobertura ${Math.round(a.cobertura * 100)}%${a.cobertura < 0.6 ? " (poucos dados para uma nota firme)" : ""}</div>
+        ${extrasHtml}
+        ${alertas}
+        <div class="table-wrap"><table class="w-table">
+          <thead><tr><th>Critério</th><th>Valor</th><th>Nota</th><th>Peso</th></tr></thead>
+          <tbody>${a.criterios.map(c => `<tr><td>${esc(c.nome)}</td><td>${fmtCriterio(c.valor, c.fmt)}</td><td>${c.nota ?? "sem dado"}</td><td>${c.peso}</td></tr>`).join("")}</tbody>
+        </table></div></details>`;
+    }).join("");
+    // Comparação dentro do setor (AUVP, Módulo 4.1): só faz sentido entre concorrentes
+    const acoes = anaRes.filter(x => x.analise?.kind === "acao");
+    // "Energia" no Yahoo junta petróleo e elétricas, que não são concorrentes: nesse caso o grupo é a indústria
+    const grupoDe = x => {
+      if (!x.setor || !/^energia$/i.test(x.setor.trim()) || !x.industria) return x.setor;
+      return /petr|g[aá]s|combust/i.test(x.industria) ? "Energia · petróleo e gás" : /el[eé]tric/i.test(x.industria) ? "Energia · energia elétrica" : `Energia · ${x.industria}`;
+    };
+    const grupos = Motor.comparaSetor(acoes.map(x => ({ ticker: x.ticker, setor: grupoDe(x), fund: x.fund })));
+    const fmtInd = (v, f) => v == null || v === 0 ? "—" : f === "%" ? brl(v * 100, 1) + "%" : brl(v, 2);
+    const setorHtml = grupos.length ? grupos.map(g => `<div class="panel"><h3>Comparação no setor: ${esc(g.setor)}</h3>
+        <div class="hint">O AUVP compara sempre dentro do mesmo setor. Em destaque, o melhor valor de cada indicador entre as empresas que você analisou.</div>
+        <div class="table-wrap"><table class="w-table"><thead><tr><th>Ativo</th>${Motor.INDICADORES_SETOR.map(i => `<th>${esc(i.nome)}</th>`).join("")}</tr></thead>
+        <tbody>${g.tickers.map(t => {
+          const f = anaRes.find(x => x.ticker === t).fund;
+          return `<tr><td><b>${esc(t)}</b></td>${Motor.INDICADORES_SETOR.map(i => {
+            const best = g.melhores[i.id]?.includes(t);
+            return `<td class="${best ? "up" : ""}">${best ? "<b>" : ""}${fmtInd(f[i.campo], i.fmt)}${best ? "</b>" : ""}</td>`;
+          }).join("")}</tr>`;
+        }).join("")}</tbody></table></div></div>`).join("")
+      : acoes.length ? `<div class="status">Para comparar no setor, como o AUVP recomenda, inclua concorrentes do mesmo setor (por exemplo, BBAS3, ITUB4 e BBDC4).</div>` : "";
+    resultado = `<div class="table-wrap"><table class="w-table">
+        <thead><tr><th>Ativo</th><th>Tipo</th><th>Nota</th><th>Faixa</th><th>Cobertura</th></tr></thead>
+        <tbody>${linhas}</tbody></table></div>${setorHtml}${cards}`;
+  }
+  el.innerHTML = toolBack + `<div class="panel">
+    <h2>Analisador de ações e FIIs</h2>
+    <div class="hint">Pontuação de 0 a 100 pelos indicadores do Fundamentus, com pesos fixos por critério. Ações: P/L, P/VP, EV/EBITDA, ROE, ROIC, margem, dívida, crescimento e dividend yield. FIIs: DY, P/VP, FFO, liquidez e, nos de tijolo, vacância, cap rate e número de imóveis.
+      Nos FIIs, P/VP e dividend yield têm faixa ideal: muito baixo ou muito alto vira alerta, como ensina o AUVP.
+      <b>É uma leitura dos números, não recomendação de compra ou venda.</b></div>
+    <form class="w-add proj-form" id="f-ana">
+      <label style="grid-column: 1 / -1">Tickers (separados por vírgula, até 30)<input type="text" name="tickers" value="${esc(anaTickers)}" placeholder="PETR4, ITUB4, HGLG11"></label>
+      <div class="quick"><button type="submit" ${anaCarregando ? "disabled" : ""}>Analisar</button></div>
+    </form>
+    <div class="status">Dados do Fundamentus: o site usa 0 quando não tem o número, então esse critério fica de fora da nota e a cobertura cai.</div>
+  </div>${resultado}`;
+  $("#f-ana").onsubmit = e => {
+    e.preventDefault();
+    const t = new FormData(e.target).get("tickers").trim();
+    if (!t) return;
+    anaTickers = t; anaCfg.tickers = t; store.set("analisador", JSON.stringify(anaCfg));
+    analisar(t);
+  };
 }
 
 // ---------- Ferramenta: Planejador de metas ----------
@@ -1635,16 +1826,16 @@ function renderPlanejador() {
   const med = planMedias(planBudget.meses, planBudget.settings);
   const hist = med.aporteHist ?? 0;
   const aporte = cfg.alvo > 0 ? Motor.aporteMensal({ alvo: cfg.alvo, atual: cfg.atual, meses: cfg.meses, taxaAa: cfg.taxa }) : null;
-  const mesesComHist = hist > 0 ? Motor.mesesAteMeta({ alvo: cfg.alvo, atual: cfg.atual, aporte: hist, taxaAa: cfg.taxa }) : null;
   const pctRenda = med.renda && aporte != null ? aporte / med.renda * 100 : null;
+  // AUVP, Módulo 2: "Metas (15%)" é a fatia da renda para objetivos específicos, separada da liberdade financeira (25%, aporte de longo prazo)
+  const FATIA_METAS = 0.15;
+  const metas = med.renda != null ? med.renda * FATIA_METAS : null;
 
   let veredito = "Informe a meta e o prazo para ver o aporte necessário.", classe = "muted";
   if (aporte === 0) { veredito = "O patrimônio que você já tem para essa meta basta. Não precisa aportar."; classe = "up"; }
-  else if (aporte != null && aporte <= hist) { veredito = `Cabe no que você já aporta: a média dos últimos meses é ${money(hist)}/mês.`; classe = "up"; }
+  else if (aporte != null && metas != null && aporte <= metas) { veredito = `Cabe na fatia de Metas: o AUVP sugere separar 15% da renda (${money(metas)}/mês) para objetivos como este.`; classe = "up"; }
   else if (aporte != null && med.sobra != null && aporte <= med.sobra) {
-    veredito = hist > 0
-      ? `Cabe na sobra do orçamento (${money(med.sobra)}/mês), mas é mais que a sua média de aportes (${money(hist)}/mês). Faltam ${money(aporte - hist)}/mês.`
-      : `Cabe na sobra do orçamento (${money(med.sobra)}/mês). Ainda não há aportes registrados em liberdade financeira.`;
+    veredito = `Passa dos 15% de Metas (${money(metas)}/mês), mas cabe na sobra do orçamento (${money(med.sobra)}/mês): a diferença de ${money(aporte - metas)}/mês sairia de outras áreas.`;
     classe = "muted";
   }
   else if (aporte != null && med.sobra != null) { veredito = `Não cabe no orçamento atual. Mesmo usando toda a sobra (${money(med.sobra)}/mês), faltam ${money(aporte - med.sobra)}/mês.`; classe = "down"; }
@@ -1657,7 +1848,8 @@ function renderPlanejador() {
 
   el.innerHTML = toolBack + `<div class="panel">
     <h2>Planejador de metas</h2>
-    <div class="hint">Quanto aportar todo mês para chegar na sua meta, e se isso cabe no seu orçamento. As contas são brutas: sem IR e com rentabilidade constante.</div>
+    <div class="hint">Quanto aportar todo mês para chegar na sua meta, e se isso cabe no seu orçamento. As contas são brutas: sem IR e com rentabilidade constante.
+      Pelo AUVP, o dinheiro de metas (viagem, compra planejada) é separado do aporte de longo prazo e fica no Tesouro Selic, que permite resgatar sem perdas.</div>
     <form class="w-add proj-form" id="f-plan">
       <label>Nome da meta<input type="text" name="nome" maxlength="60" value="${esc(cfg.nome)}"></label>
       <label>Valor da meta (R$)<input type="number" name="alvo" min="0" step="1000" value="${cfg.alvo}"></label>
@@ -1670,7 +1862,7 @@ function renderPlanejador() {
     <div class="status ${classe}" style="margin:12px 0">${esc(veredito)}</div>
     <div class="tiles">
       <div class="tile"><div class="k">Aporte mensal necessário</div><div class="v">${aporte != null ? money(aporte) : "—"}</div><div class="s">${pctRenda != null ? brl(pctRenda, 1) + "% da renda média" : "—"}</div></div>
-      <div class="tile"><div class="k">Com a sua média atual (${money(hist)}/mês)</div><div class="v">${mesesComHist != null ? fmtPrazo(Math.ceil(mesesComHist)) : "—"}</div><div class="s">${mesesComHist != null ? "chega em " + mesAno(Math.ceil(mesesComHist)) : "sem aportes registrados"}</div></div>
+      <div class="tile"><div class="k">Fatia de Metas (15% da renda)</div><div class="v">${metas != null ? money(metas) : "—"}</div><div class="s">sugestão do AUVP para objetivos de curto e médio prazo</div></div>
       <div class="tile"><div class="k">Sobra do orçamento</div><div class="v">${med.sobra != null ? money(med.sobra) : "—"}</div><div class="s">renda média menos despesas médias</div></div>
     </div>
     <div class="table-wrap" style="margin-top:12px"><table class="w-table">

@@ -6,7 +6,11 @@ const Motor = (() => {
 
   // Simulador de aportes: aporte no fim de cada mês, rentabilidade constante, sem IR. Até 50 anos.
   // real = true desconta a inflação (valores em reais de hoje).
+  // Renda possível = juros do mês menos uma margem de segurança (padrão 25%, para impostos e reinvestimento),
+  // como na regra do AUVP (Módulo 2: "olhe os juros do último mês e subtraia 25%").
+  const MARGEM_RENDA = 0.25;
   function simulate(cfg) {
+    const margem = cfg.margemRenda ?? MARGEM_RENDA;
     const nominal = Math.pow(1 + cfg.taxa / 100, 1 / 12) - 1;
     const r = cfg.real ? Math.pow((1 + cfg.taxa / 100) / (1 + cfg.inflacao / 100), 1 / 12) - 1 : nominal;
     let saldo = cfg.inicial, aportado = cfg.inicial, mMeta = null, mRenda = null;
@@ -16,10 +20,13 @@ const Motor = (() => {
       aportado += cfg.aporte;
       rows.push({ m, saldo, aportado });
       if (mMeta == null && cfg.meta && saldo >= cfg.meta) mMeta = m;
-      if (mRenda == null && cfg.renda && saldo * r >= cfg.renda) mRenda = m;
+      if (mRenda == null && cfg.renda && saldo * r * (1 - margem) >= cfg.renda) mRenda = m;
     }
-    return { rows, r, mMeta, mRenda };
+    return { rows, r, mMeta, mRenda, margem };
   }
+  // Taxa nominal (% a.a.) que entrega `real` % acima da inflação (Fisher). Premissa do AUVP: 8% reais no longo prazo.
+  const PREMISSA_REAL = 8;
+  const nominalParaReal = (real, inflacao) => ((1 + real / 100) * (1 + inflacao / 100) - 1) * 100;
 
   // ---------- IPCA+ × Prefixado ----------
   // Taxas em % a.a. Equação de Fisher: (1 + pré) = (1 + IPCA) × (1 + juro real).
@@ -60,20 +67,27 @@ const Motor = (() => {
   const juroReal = (nominal, inflacao) => ((1 + nominal / 100) / (1 + inflacao / 100) - 1) * 100;
 
   // ---------- Comparador de renda fixa ----------
-  // Taxas do cenário em % a.a., médias do período. O CDI é tratado como a Selic meta (aproximação; o CDI real fica ~0,10 p.p. abaixo).
-  // Produto: { nome, tipo, idx: "cdi"|"pre"|"ipca", taxa, isento, anosVenc }.
+  // Taxas do cenário em % a.a., médias do período. CDI = Selic − 0,10 p.p. (AUVP, Módulo 3: "o CDI rende 0,10% abaixo da Selic";
+  // exemplo: Selic 13% e CDB de 108% do CDI = 12,90% × 1,08 = 13,932%). O Tesouro Selic (p.selic) rende a própria Selic.
+  // Produto: { nome, tipo, idx: "cdi"|"pre"|"ipca", taxa, isento, anosVenc, selic? }.
   // Estimativa: IR pela tabela regressiva com o prazo total da comparação; vencimento antes do prazo é reaplicado no CDI.
+  const SPREAD_CDI = 0.10;
+  const cdiDaSelic = selic => selic - SPREAD_CDI;
   function comparaRF({ valor, anos, selic, ipca, produtos }) {
+    const cdi = cdiDaSelic(selic);
     return produtos.map(p => {
       const m = Math.min(p.anosVenc, anos);
-      const fator = p.idx === "cdi" ? Math.pow(1 + (selic / 100) * (p.taxa / 100), m)
+      const base = p.selic ? selic : cdi;
+      const fator = p.idx === "cdi" ? Math.pow(1 + (base / 100) * (p.taxa / 100), m)
         : p.idx === "pre" ? fatorPre(p.taxa, m)
         : fatorIpca(p.taxa, ipca, m);
       let bruto = valor * fator;
-      if (p.anosVenc < anos) bruto *= Math.pow(1 + selic / 100, anos - p.anosVenc); // reaplica no CDI após o vencimento
+      if (p.anosVenc < anos) bruto *= Math.pow(1 + cdi / 100, anos - p.anosVenc); // reaplica a 100% do CDI após o vencimento
       const status = p.anosVenc > anos ? "depois" : p.anosVenc < anos ? "antes" : "ok";
       if (status === "depois") return { ...p, status, bruto: null, ir: null, liquido: null, real: null };
-      const ir = p.isento ? 0 : Math.max(0, bruto - valor) * aliqIR(Math.round(anos * 365));
+      // Investimento que já existe: o IR incide sobre o ganho desde a aplicação, com a alíquota do prazo total (irDias).
+      const ir = p.isento ? 0 : p.irBase != null ? Math.max(0, bruto - p.irBase) * aliqIR(p.irDias)
+        : Math.max(0, bruto - valor) * aliqIR(Math.round(anos * 365));
       const liquido = bruto - ir;
       return { ...p, status, bruto, ir, liquido, real: liquido / Math.pow(1 + ipca / 100, anos) };
     });
@@ -153,8 +167,30 @@ const Motor = (() => {
       vendaReaplicada: liqReinv, taxaReinv,
       brutoVenc, irVenc, liqVenc,
       diferenca: liqReinv - liqVenc,
+      // Fração do ganho até o vencimento que a venda de hoje já entrega (bruto, antes do IR).
+      // AUVP, Módulo 3: "se o título, muito antecipadamente, entregou 90% ou até 80% da rentabilidade contratada, você já pode vender".
+      ganhoAntecipado: brutoVenc > custo ? (brutoVenda - custo) / (brutoVenc - custo) : null,
       duRem, dcRem,
     };
+  }
+
+  // ---------- Investimento que você já tem ----------
+  // Valor de hoje de uma aplicação de renda fixa feita em `data`. Usa a série diária do CDI (BCB, % ao dia) e
+  // o IPCA mensal; meses sem IPCA divulgado usam ipcaProj. Retorna valor null sem a série do CDI.
+  // cobertura = false quando a série começa depois da aplicação (o valor fica subestimado).
+  function valorAtualRF({ aplicado, idx, taxa, data, hoje, cdiSerie = [], ipcaMensal = [], ipcaProj = 0 }) {
+    const anos = diasCorridos(data, hoje) / 365;
+    if (idx === "pre") return { valor: aplicado * Math.pow(1 + taxa / 100, anos), cobertura: true };
+    if (idx === "ipca") {
+      const fator = fatorIpcaPeriodo(ipcaMensal, data, hoje, ipcaProj) * Math.pow(1 + taxa / 100, anos);
+      return { valor: aplicado * fator, cobertura: ipcaMensal.length > 0 };
+    }
+    if (!cdiSerie.length) return { valor: null, cobertura: false };
+    let fator = 1;
+    for (const [d, v] of cdiSerie) {
+      if (d >= data && d < hoje) fator *= 1 + (taxa / 100) * (v / 100);
+    }
+    return { valor: aplicado * fator, cobertura: cdiSerie[0][0] <= data };
   }
 
   // ---------- Planejador de metas ----------
@@ -182,7 +218,195 @@ const Motor = (() => {
     return Math.log(num / den) / Math.log(1 + r);
   }
 
+  // ---------- Analisador de ações e FIIs ----------
+  // Cada critério vira nota de 0 a 100 por interpolação linear entre `zero` (nota 0) e `cem` (nota 100).
+  // Vale para métrica em que subir é bom (zero < cem) e para a que é ruim (zero > cem, como dívida e P/L).
+  // Valor 0 ou ausente é "sem dado" (o Fundamentus usa 0 quando não tem o número): o critério sai da média e o peso se redistribui.
+  // Negativo em múltiplos de preço (P/L, P/VP, EV/EBITDA) não é "barato": nota 0.
+  const notaLinear = (v, zero, cem) => Math.max(0, Math.min(100, (v - zero) / (cem - zero) * 100));
+  // Nota por faixa ideal: 0 abaixo de zeroBaixo, sobe até 100 em cemBaixo, fica em 100 até cemAlto e cai a 0 em zeroAlto.
+  // Para métricas em que pouco é ruim e muito é suspeito, como o P/VP e o DY de FIIs (AUVP, Módulo 4.2).
+  function notaFaixa(v, zeroBaixo, cemBaixo, cemAlto, zeroAlto) {
+    if (v <= zeroBaixo || v >= zeroAlto) return 0;
+    if (v < cemBaixo) return notaLinear(v, zeroBaixo, cemBaixo);
+    if (v > cemAlto) return notaLinear(v, zeroAlto, cemAlto);
+    return 100;
+  }
+  const pctBR = (v, d = 1) => (v * 100).toFixed(d).replace(".", ",") + "%";
+  const numBR = (v, d = 2) => v.toFixed(d).replace(".", ",");
+  const semAcento = s => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+  const CRITERIOS_ACAO = [
+    { id: "pl", nome: "P/L", peso: 13, zero: 25, cem: 8, negativoZera: true, valor: f => f.pl, fmt: "x" },
+    { id: "pvp", nome: "P/VP", peso: 10, zero: 4, cem: 1, negativoZera: true, valor: f => f.pvp, fmt: "x" },
+    { id: "evEbitda", nome: "EV/EBITDA", peso: 9, zero: 15, cem: 5, negativoZera: true, valor: f => f.evEbitda, fmt: "x" },
+    { id: "roe", nome: "ROE", peso: 13, zero: 0, cem: 0.20, valor: f => f.roe, fmt: "%" },
+    { id: "roic", nome: "ROIC", peso: 10, zero: 0, cem: 0.15, valor: f => f.roic, fmt: "%" },
+    { id: "margem", nome: "Margem líquida", peso: 10, zero: 0, cem: 0.20, valor: f => f.margemLiq, fmt: "%" },
+    { id: "divida", nome: "Dívida líquida / patrimônio", peso: 10, zero: 3, cem: 0, valor: f => f.divLiqPatrim, fmt: "x" },
+    { id: "cresc", nome: "Crescimento da receita (5 anos)", peso: 10, zero: -0.10, cem: 0.15, valor: f => f.crescRec5a, fmt: "%" },
+    { id: "dy", nome: "Dividend yield", peso: 15, zero: 0, cem: 0.10, valor: f => f.dy, fmt: "%" },
+  ];
+
+  // FIIs de tijolo (imóveis físicos) são avaliados também por vacância, cap rate e diversificação.
+  // FIIs de papel e fundos de fundos não têm imóvel próprio para medir isso.
+  // P/VP e DY por faixa (AUVP, Módulo 4.2): o ideal é P/VP abaixo de 1 ou no preço justo, um pouco acima de 1 só tira margem de
+  // segurança, e P/VP "extremamente baixo (0,20 ou 0,30)" costuma esconder um problema. DY de 15% a 20% ao ano é "bom demais
+  // para ser verdade" até prova em contrário (calote, venda de imóveis, pagamento extraordinário).
+  const FAIXA_PVP_FII = [0.5, 0.8, 1.0, 1.3];
+  const FAIXA_DY_FII = [0.04, 0.08, 0.12, 0.20];
+  const CRITERIOS_FII_PAPEL = [
+    { id: "dy", nome: "Dividend yield", peso: 30, faixa: FAIXA_DY_FII, valor: f => f.dy, fmt: "%" },
+    { id: "pvp", nome: "P/VP", peso: 25, faixa: FAIXA_PVP_FII, negativoZera: true, valor: f => f.pvp, fmt: "x" },
+    { id: "ffo", nome: "FFO cobre o dividendo", peso: 25, zero: 0.6, cem: 1.0, valor: f => ratioFfo(f), fmt: "x" },
+    { id: "liq", nome: "Liquidez", peso: 20, zero: 100000, cem: 2000000, valor: f => f.liquidez, fmt: "R$" },
+  ];
+  const CRITERIOS_FII_TIJOLO = [
+    { id: "dy", nome: "Dividend yield", peso: 25, faixa: FAIXA_DY_FII, valor: f => f.dy, fmt: "%" },
+    { id: "pvp", nome: "P/VP", peso: 20, faixa: FAIXA_PVP_FII, negativoZera: true, valor: f => f.pvp, fmt: "x" },
+    { id: "ffo", nome: "FFO cobre o dividendo", peso: 15, zero: 0.6, cem: 1.0, valor: f => ratioFfo(f), fmt: "x" },
+    { id: "liq", nome: "Liquidez", peso: 10, zero: 100000, cem: 2000000, valor: f => f.liquidez, fmt: "R$" },
+    { id: "vacancia", nome: "Vacância média", peso: 15, zero: 0.20, cem: 0, valor: f => f.vacancia, fmt: "%" },
+    { id: "capRate", nome: "Cap rate", peso: 10, zero: 0.05, cem: 0.10, valor: f => f.capRate, fmt: "%" },
+    { id: "imoveis", nome: "Número de imóveis", peso: 5, zero: 1, cem: 10, valor: f => f.imoveis, fmt: "n" },
+  ];
+
+  // FFO / dividendo: acima de 1 o fundo distribui menos do que gera de caixa recorrente
+  function ratioFfo(f) {
+    return f.ffoYield > 0 && f.dy > 0 ? f.ffoYield / f.dy : null;
+  }
+
+  // Tipo de critério de um FII. O segmento do Fundamentus não basta: fundos de papel aparecem como "Multicategoria" ou "Outros"
+  // (ex.: KNCR11, HCTR11). Por isso também conta como papel o fundo sem imóvel próprio (imoveis = 0) ou com nome de recebíveis.
+  // Híbrido com imóveis (ex.: KNRI11, lajes e galpões) é tijolo: tem vacância e cap rate a medir.
+  function tipoFii(segmento, { imoveis, nome } = {}) {
+    const s = semAcento(segmento), n = semAcento(nome);
+    if (/papel|\bcri\b|titulos|val\.? ?mob|fundo de fundos|fundos de fundos|\bfof\b/.test(s)) return "papel";
+    if (imoveis === 0) return "papel";
+    if (/receb|securit|\bcri\b|credito imob|rendimentos imob/.test(n)) return "papel";
+    return "tijolo";
+  }
+
+  // Avalia um conjunto de critérios. Retorna nota ponderada (0–100), cobertura (fração do peso com dado) e as linhas.
+  function pontua(criterios, fund) {
+    const linhas = criterios.map(c => {
+      const v = c.valor(fund);
+      const ausente = v == null || !isFinite(v) || v === 0;
+      let nota = null;
+      if (!ausente) {
+        nota = c.negativoZera && v < 0 ? 0 : c.faixa ? notaFaixa(v, ...c.faixa) : notaLinear(v, c.zero, c.cem);
+      }
+      return { id: c.id, nome: c.nome, peso: c.peso, valor: ausente ? null : v, fmt: c.fmt, nota: nota == null ? null : Math.round(nota) };
+    });
+    const usados = linhas.filter(l => l.nota != null);
+    const pesoTotal = criterios.reduce((a, c) => a + c.peso, 0);
+    const pesoUsado = usados.reduce((a, l) => a + l.peso, 0);
+    const nota = usados.length ? usados.reduce((a, l) => a + l.nota * l.peso, 0) / pesoUsado : null;
+    return { nota: nota == null ? null : Math.round(nota), cobertura: pesoUsado / pesoTotal, criterios: linhas };
+  }
+
+  // Faixas da nota: só descrevem a pontuação, não são recomendação de compra ou venda.
+  const faixaNota = n => n == null ? "sem dados" : n >= 70 ? "alta" : n >= 50 ? "média" : "baixa";
+
+  function analisaAcao(f) {
+    const r = pontua(CRITERIOS_ACAO, f);
+    const alertas = [];
+    if (f.pl != null && f.pl < 0) alertas.push("Prejuízo nos últimos 12 meses (P/L negativo).");
+    if (f.liquidez != null && f.liquidez > 0 && f.liquidez < 1000000) alertas.push("Liquidez baixa: negociação pequena, o preço pode se afastar do valor justo na venda.");
+    return { kind: "acao", tipo: "Ação", ...r, faixa: faixaNota(r.nota), alertas };
+  }
+
+  function analisaFii(f, { nome } = {}) {
+    const tipo = tipoFii(f.segmento, { imoveis: f.imoveis, nome });
+    const r = pontua(tipo === "papel" ? CRITERIOS_FII_PAPEL : CRITERIOS_FII_TIJOLO, f);
+    const seg = semAcento(f.segmento);
+    const alertas = [];
+    if (f.vacancia != null && f.vacancia >= 0.2 && tipo === "tijolo") alertas.push(`Vacância alta (${pctBR(f.vacancia)}, dado do Fundamentus): imóvel vazio custa condomínio e IPTU. Confira no relatório do fundo.`);
+    if (f.ffoYield > 0 && f.dy > 0 && f.ffoYield < f.dy) alertas.push("O dividendo passa do FFO: o fundo distribui mais do que gera de caixa, o que não se sustenta no longo prazo.");
+    if (f.dy > 0.14) alertas.push(`Dividend yield muito alto (${pctBR(f.dy)}): pode ser calote nos recebíveis, venda de imóveis ou um pagamento extraordinário. Desconfie do "bom demais para ser verdade".`);
+    if (f.pvp > 0 && f.pvp < 0.5) alertas.push(`P/VP muito baixo (${numBR(f.pvp)}): quando algo que vale R$ 1,00 sai por menos de R$ 0,50, o mercado costuma estar vendo um problema (vacância, imóvel obsoleto, inadimplência).`);
+    if (tipo === "tijolo" && f.imoveis === 1) alertas.push("Monoativo: um único imóvel. Se o inquilino sair, a renda vai a zero e a despesa continua.");
+    if (/desenvolv/.test(seg)) alertas.push("Fundo de desenvolvimento: depende de obra e venda; mais arriscado e não indicado para quem quer viver de renda.");
+    if (/hotel|hospital|educ|escola/.test(seg)) alertas.push("Hotéis, hospitais e escolas costumam ter um único inquilino e receitas mais sensíveis a ciclos.");
+    if (/fundo de fundos|fundos de fundos|\bfof\b/.test(seg)) alertas.push("Fundo de fundos: você paga a taxa do FOF e também a dos fundos que ele compra.");
+    if (f.liquidez != null && f.liquidez > 0 && f.liquidez < 1000000) alertas.push("Liquidez baixa para um FII.");
+    return { kind: "fii", tipo: tipo === "papel" ? "Papel / fundo de fundos" : "Tijolo", segmento: f.segmento || null, ...r, faixa: faixaNota(r.nota), alertas };
+  }
+
+  // Preço justo de Graham: √(22,5 × LPA × VPA), com LPA = preço ÷ P/L e VPA = preço ÷ P/VP (AUVP, Módulo 4.1).
+  // Só faz sentido para empresa com lucro e patrimônio positivos. margem = quanto o preço justo está acima (+) ou abaixo (−) do preço.
+  function precoGraham(preco, pl, pvp) {
+    if (!(preco > 0 && pl > 0 && pvp > 0)) return null;
+    const justo = Math.sqrt(22.5 * (preco / pl) * (preco / pvp));
+    return { justo, margem: justo / preco - 1 };
+  }
+  // Preço-teto de Bazin: dividendos dos últimos 12 meses ÷ 6% (dividendo mínimo que Bazin considera atrativo).
+  const DY_BAZIN = 0.06;
+  function precoBazin(preco, dy) {
+    if (!(preco > 0 && dy > 0)) return null;
+    const teto = preco * dy / DY_BAZIN;
+    return { teto, margem: teto / preco - 1 };
+  }
+  // Número mágico de um FII: cotas necessárias para que os dividendos de um mês comprem uma cota nova (12 ÷ DY).
+  // AUVP, Módulo 4.2: cota de R$ 144 pagando R$ 1 por mês pede 144 cotas.
+  function numeroMagico(dy, preco) {
+    if (!(dy > 0 && preco > 0)) return null;
+    const cotas = Math.ceil(12 / dy - 1e-9);
+    return { cotas, investimento: cotas * preco };
+  }
+
+  // Setor perene ou cíclico (AUVP, Módulo 4.1). Recomendados: financeiro, materiais básicos, saúde e utilidade pública.
+  // Petróleo, gás, biocombustíveis, varejo e consumo cíclico "exigem maior atenção"; telefonia e aviação são expostas a regulação.
+  // O setor "Energia" do Yahoo junta elétricas (perenes) e petróleo (cíclico), então a indústria decide.
+  function classificaSetor(setor, industria) {
+    const s = semAcento(setor), i = semAcento(industria);
+    if (/petroleo|\bgas\b|biocombust|combustiv/.test(i)) return { tipo: "ciclico", texto: "Setor cíclico (petróleo, gás e combustíveis): pode ser lucrativo, mas tem mais risco e exige atenção." };
+    if (/aere|aviac/.test(i)) return { tipo: "atencao", texto: "Aviação: setor regulado, com custos (aeronaves, combustível, taxas) fora do controle da empresa." };
+    if (/financ|banc|segur/.test(s) || /materiais basicos/.test(s) || /saude/.test(s) || /medicament|hospital|saude/.test(i)
+      || /saneamento|utilidade/.test(s) || /energia eletrica|agua/.test(i)) return { tipo: "perene", texto: "Setor perene, entre os que o AUVP recomenda (financeiro, materiais básicos, saúde ou utilidade pública)." };
+    if (/consumo ciclico/.test(s) || /varejo/.test(i)) return { tipo: "ciclico", texto: "Consumo cíclico e varejo: setor sensível à economia, com maior taxa de falência." };
+    if (/telecom/.test(s)) return { tipo: "atencao", texto: "Telecomunicações: setor exposto a regulação e a mudanças tecnológicas." };
+    return { tipo: "neutro", texto: null };
+  }
+
+  // Comparação dentro do setor (AUVP: "é impossível avaliar se uma empresa é boa ou ruim sem compará-la com outras do mesmo setor").
+  // itens: [{ ticker, setor, fund }] de ações. Para cada setor com 2 ou mais empresas, diz quem tem o melhor valor de cada indicador.
+  // Zero é "sem dado" (Fundamentus); P/L e P/VP só contam quando positivos.
+  const INDICADORES_SETOR = [
+    { id: "pl", nome: "P/L", campo: "pl", melhor: "menor", positivo: true, fmt: "x" },
+    { id: "pvp", nome: "P/VP", campo: "pvp", melhor: "menor", positivo: true, fmt: "x" },
+    { id: "dy", nome: "DY", campo: "dy", melhor: "maior", fmt: "%" },
+    { id: "roe", nome: "ROE", campo: "roe", melhor: "maior", fmt: "%" },
+    { id: "margem", nome: "Margem líquida", campo: "margemLiq", melhor: "maior", fmt: "%" },
+    { id: "divida", nome: "Dív. líq./patrimônio", campo: "divLiqPatrim", melhor: "menor", fmt: "x" },
+    { id: "cresc", nome: "Cresc. receita 5a", campo: "crescRec5a", melhor: "maior", fmt: "%" },
+  ];
+  function comparaSetor(itens) {
+    const grupos = new Map();
+    for (const it of itens) {
+      if (!it.setor || !it.fund) continue;
+      if (!grupos.has(it.setor)) grupos.set(it.setor, []);
+      grupos.get(it.setor).push(it);
+    }
+    const out = [];
+    for (const [setor, lista] of grupos) {
+      if (lista.length < 2) continue;
+      const melhores = {};
+      for (const ind of INDICADORES_SETOR) {
+        const validos = lista.map(it => ({ t: it.ticker, v: it.fund[ind.campo] }))
+          .filter(x => x.v != null && isFinite(x.v) && x.v !== 0 && (!ind.positivo || x.v > 0));
+        if (validos.length < 2) continue;
+        const alvo = ind.melhor === "menor" ? Math.min(...validos.map(x => x.v)) : Math.max(...validos.map(x => x.v));
+        melhores[ind.id] = validos.filter(x => x.v === alvo).map(x => x.t);
+      }
+      out.push({ setor, tickers: lista.map(it => it.ticker), melhores });
+    }
+    return out;
+  }
+
   return { aliqIR, simulate, ipcaEquilibrio, fatorPre, fatorIpca, ipcaVsPre, acumulado12, cdiAnual, juroReal, comparaRF, cenarioFocus,
-    diasUteis, diasCorridos, fatorIpcaPeriodo, marcacao, aporteMensal, mesesAteMeta };
+    diasUteis, diasCorridos, fatorIpcaPeriodo, marcacao, aporteMensal, mesesAteMeta, notaLinear, notaFaixa, tipoFii, analisaAcao, analisaFii,
+    valorAtualRF, cdiDaSelic, nominalParaReal, PREMISSA_REAL, MARGEM_RENDA, precoGraham, precoBazin, numeroMagico, classificaSetor,
+    comparaSetor, INDICADORES_SETOR };
 })();
 if (typeof module !== "undefined") module.exports = Motor;
