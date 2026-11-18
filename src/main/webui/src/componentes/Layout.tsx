@@ -7,6 +7,7 @@ import { PAGINAS } from "../rotas";
 import { ICONES } from "./icones";
 import { DEMO, alternarDemo, store } from "../lib/store";
 import { logout, offlineStore, type Sessao } from "../lib/api";
+import { carteiraStore, textoSalvar, useEstadoSalvar } from "../lib/carteira";
 
 const FONTES = "Cotação: brapi.dev · Indicadores: Fundamentus · Histórico e proventos: Yahoo Finance · Cripto: CoinGecko · Taxas: Banco Central";
 const QUINZE_MIN = 15 * 60 * 1000;
@@ -20,9 +21,8 @@ export function Layout({ sessao }: { sessao: Sessao }) {
           <div className="sub">{FONTES}</div>
         </div>
         <div className="head-r">
-          {/* "Atualizado às" (cotações) e "Salvando…/Salvo ✓" (carteira) entram aqui quando as páginas forem migradas */}
-          <div className="status" />
-          <div className="status" aria-live="polite" />
+          <Atualizado />
+          <EstadoSalvar />
           <Versao />
           {sessao.loginAtivo && !DEMO && ( // ao mostrar para alguém, o e-mail não aparece
             <div className="status">
@@ -88,4 +88,29 @@ function AvisoOffline() {
   const d = offline.salvoEm;
   const quando = d ? ` em ${d.toLocaleDateString("pt-BR")} às ${d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : "";
   return <div className="offline" role="status">Sem internet: mostrando os dados salvos{quando}. Alterações não serão salvas.</div>;
+}
+
+// "Salvando…", "Salvo ✓" ou o erro da última gravação da carteira
+function EstadoSalvar() {
+  const s = useEstadoSalvar();
+  return <div className={"status " + s.estado} aria-live="polite">{textoSalvar(s)}</div>;
+}
+
+// "Atualizado às 14:32": hora da última consulta que terminou com sucesso (como o setStatus do app atual)
+function Atualizado() {
+  const qc = useQueryClient();
+  const [hora, setHora] = useState<string | null>(null);
+  useEffect(() => {
+    const agora = () => setHora(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
+    let carteiraCarregada = !!carteiraStore.get().doc;
+    if (carteiraCarregada) agora();
+    const tirarQuery = qc.getQueryCache().subscribe(ev => {
+      if (ev.type === "updated" && ev.action.type === "success" && !["versao", "glossario"].includes(String(ev.query.queryKey[0]))) agora(); // como no app atual, só dados do servidor
+    });
+    const tirarCarteira = carteiraStore.subscribe(() => {
+      if (!carteiraCarregada && carteiraStore.get().doc) { carteiraCarregada = true; agora(); }
+    });
+    return () => { tirarQuery(); tirarCarteira(); };
+  }, [qc]);
+  return <div className="status">{hora && "Atualizado às " + hora}</div>;
 }

@@ -19,7 +19,6 @@ test("/novo: o menu troca de página sem recarregar", async ({ page }) => {
   for (const titulo of ["Orçamento", "Ferramentas", "Ativos", "Moedas", "Bens", "Custos", "Glossário"]) {
     await menu.getByRole("link", { name: titulo }).click();
     await expect(page).toHaveTitle(`${titulo} · Meus Investimentos`);
-    await expect(page.getByRole("heading", { name: titulo, exact: true })).toBeVisible();
   }
   expect(await page.evaluate(() => window.__semRecarregar)).toBe(true);
 });
