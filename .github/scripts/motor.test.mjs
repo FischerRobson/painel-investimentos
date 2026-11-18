@@ -97,9 +97,9 @@ test("comparador: prefixado bate com a conta direta e IR de 15% em 5 anos", () =
   assert.equal(pre.status, "ok");
 });
 
-test("comparador: CDB a 110% do CDI usa a Selic como proxy", () => {
+test("comparador: CDB a 110% do CDI usa CDI = Selic − 0,10 p.p.", () => {
   const [cdb] = Motor.comparaRF({ valor: 10000, anos: 5, selic: 10, ipca: 4, produtos: [produtos[2]] });
-  perto(cdb.bruto, 10000 * (1 + 0.10 * 1.10) ** 5, 0.01);
+  perto(cdb.bruto, 10000 * (1 + 0.099 * 1.10) ** 5, 0.01);
 });
 
 test("comparador: LCI é isenta de IR", () => {
@@ -124,7 +124,7 @@ test("comparador: vencimento depois do prazo não é comparável; antes reaplica
   assert.equal(l.status, "depois");
   assert.equal(l.liquido, null);
   assert.equal(c.status, "antes");
-  perto(c.bruto, 10000 * 1.12 ** 2 * 1.10 ** 3, 0.01);
+  perto(c.bruto, 10000 * 1.12 ** 2 * 1.099 ** 3, 0.01); // reaplica a 100% do CDI (Selic − 0,10)
 });
 
 test("cenário Focus: média do prazo e o último ano vale para os seguintes", () => {
@@ -257,13 +257,13 @@ test("tipo de FII pelo segmento: tijolo x papel, fundos de fundos e híbridos", 
   assert.equal(Motor.tipoFii("Papel"), "papel");
   assert.equal(Motor.tipoFii("Títulos e Val. Mob."), "papel");
   assert.equal(Motor.tipoFii("Fundo de Fundos"), "papel");
-  assert.equal(Motor.tipoFii("Híbrido"), "papel");
+  assert.equal(Motor.tipoFii("Híbrido"), "tijolo"); // híbrido com imóveis (ex.: KNRI11) tem vacância a medir
   assert.equal(Motor.tipoFii(null), "tijolo");
 });
 
 test("FII de papel não é avaliado por vacância nem cap rate", () => {
   const r = Motor.analisaFii(fii({ segmento: "Papel", dy: 0.12, pvp: 0.9, ffoYield: 0.12, liquidez: 3000000, vacancia: 0, capRate: 0 }));
-  assert.equal(r.tipo, "Papel / híbrido");
+  assert.equal(r.tipo, "Papel / fundo de fundos");
   assert.deepEqual(r.criterios.map(c => c.id), ["dy", "pvp", "ffo", "liq"]);
   perto(r.cobertura, 1, 1e-9);
 });
@@ -348,4 +348,133 @@ test("comparador: investimento que já existe paga IR pelo prazo total desde a a
   perto(r.bruto, 12544, 1e-6);
   perto(r.ir, (12544 - 10000) * 0.15, 1e-6);
   perto(r.liquido, 12544 - (12544 - 10000) * 0.15, 1e-6);
+});
+
+// ---------- Regras do AUVP (material da AUVP Escola) ----------
+test("AUVP M7: R$ 200 mil + R$ 1.250/mês por 28 anos a 8% real chegam a R$ 3.207.211,51", () => {
+  const s = Motor.simulate({ inicial: 200000, aporte: 1250, taxa: 8, inflacao: 0, real: false });
+  perto(s.rows[28 * 12].saldo, 3207211.51, 0.01);
+});
+
+test("AUVP M2: R$ 1 milhão a 8% ao ano rende R$ 6.434 no primeiro mês", () => {
+  const s = Motor.simulate({ inicial: 1000000, aporte: 0, taxa: 8, inflacao: 0, real: false });
+  perto(s.rows[1].saldo - 1000000, 6434, 0.5);
+});
+
+test("simulador: renda possível desconta a margem de 25% dos juros do mês", () => {
+  const r = Math.pow(1.12, 1 / 12) - 1;
+  const base = { inicial: 100000, aporte: 0, taxa: 12, inflacao: 0, real: false };
+  assert.equal(Motor.simulate({ ...base, renda: 100000 * r * 0.75 }).mRenda, 1);
+  assert.ok(Motor.simulate({ ...base, renda: 100000 * r }).mRenda > 1);
+  assert.equal(Motor.simulate({ ...base, renda: 100000 * r, margemRenda: 0 }).mRenda, 1);
+});
+
+test("premissa de 8% reais: taxa nominal pela equação de Fisher", () => {
+  perto(Motor.nominalParaReal(8, 4), (1.08 * 1.04 - 1) * 100, 1e-9);
+  assert.equal(Motor.PREMISSA_REAL, 8);
+});
+
+test("AUVP M3: Selic 13% e CDB de 108% do CDI rendem 13,932% ao ano", () => {
+  const [cdb] = Motor.comparaRF({ valor: 10000, anos: 1, selic: 13, ipca: 4, produtos: [{ ...produtos[2], taxa: 108, anosVenc: 1 }] });
+  perto(cdb.bruto, 11393.2, 0.01);
+  perto(Motor.cdiDaSelic(13), 12.9, 1e-9);
+});
+
+test("comparador: Tesouro Selic rende a Selic cheia, não o CDI", () => {
+  const ts = { nome: "TS", tipo: "Tesouro Selic", idx: "cdi", taxa: 100, isento: false, anosVenc: 1, selic: true };
+  const [r] = Motor.comparaRF({ valor: 10000, anos: 1, selic: 10, ipca: 4, produtos: [ts] });
+  perto(r.bruto, 11000, 0.01);
+});
+
+test("marcação: parte do ganho até o vencimento que a venda de hoje já entrega", () => {
+  const na = Motor.marcacao({ ...base, puCompra: 900, taxaCont: 12, taxaMerc: 12 });
+  assert.ok(na.ganhoAntecipado > 0 && na.ganhoAntecipado < 1);
+  const caiu = Motor.marcacao({ ...base, puCompra: 900, taxaCont: 12, taxaMerc: 6 });
+  assert.ok(caiu.ganhoAntecipado > na.ganhoAntecipado); // taxa de mercado cai, preço sobe, antecipa mais
+});
+
+test("nota por faixa: zero fora, sobe até a faixa ideal, cai depois dela", () => {
+  assert.equal(Motor.notaFaixa(0.3, 0.5, 0.8, 1.0, 1.3), 0);
+  assert.equal(Motor.notaFaixa(0.65, 0.5, 0.8, 1.0, 1.3), 50);
+  assert.equal(Motor.notaFaixa(0.9, 0.5, 0.8, 1.0, 1.3), 100);
+  perto(Motor.notaFaixa(1.15, 0.5, 0.8, 1.0, 1.3), 50, 1e-9);
+  assert.equal(Motor.notaFaixa(1.5, 0.5, 0.8, 1.0, 1.3), 0);
+});
+
+test("FII armadilha (perfil do HCTR11): P/VP 0,09 e DY 33% não ganham nota; viram alertas", () => {
+  const r = Motor.analisaFii(fii({ segmento: "Multicategoria", imoveis: 0, vacancia: 0, capRate: 0, dy: 0.3324, ffoYield: 0.3653, pvp: 0.09, liquidez: 3000000 }),
+    { nome: "Fundo de Investimento Imobiliario Hectare CE" });
+  assert.equal(r.tipo, "Papel / fundo de fundos");
+  assert.equal(r.criterios.find(c => c.id === "pvp").nota, 0);
+  assert.equal(r.criterios.find(c => c.id === "dy").nota, 0);
+  assert.ok(r.alertas.some(a => a.includes("muito alto")));
+  assert.ok(r.alertas.some(a => a.includes("muito baixo")));
+});
+
+test("FII sólido (perfil do KNRI11): híbrido com imóveis é tijolo e tem nota alta", () => {
+  const r = Motor.analisaFii(fii({ segmento: "Multicategoria", imoveis: 17, vacancia: 0.0007, capRate: 0.0834, dy: 0.0898, ffoYield: 0.0743, pvp: 0.9, liquidez: 5000000 }),
+    { nome: "Kinea Renda Imobiliaria" });
+  assert.equal(r.tipo, "Tijolo");
+  assert.ok(r.nota >= 70, `nota ${r.nota}`);
+});
+
+test("FII de papel reconhecido pelo nome ou por não ter imóveis, mesmo com segmento genérico", () => {
+  assert.equal(Motor.tipoFii("Multicategoria", { imoveis: 0 }), "papel");
+  assert.equal(Motor.tipoFii("Outros", { nome: "Capitania Securities II" }), "papel");
+  assert.equal(Motor.tipoFii("Multicategoria", { nome: "Merito Recebiveis Imobiliarios", imoveis: 3 }), "papel");
+  assert.equal(Motor.tipoFii("Logística", { imoveis: 18 }), "tijolo");
+});
+
+test("FII monoativo gera alerta", () => {
+  const r = Motor.analisaFii(fii({ segmento: "Lajes Corporativas", imoveis: 1, dy: 0.09, pvp: 0.9, liquidez: 3000000 }));
+  assert.ok(r.alertas.some(a => a.includes("Monoativo")));
+});
+
+test("AUVP M4.2: número mágico do KNRI11 (cota de R$ 144 pagando R$ 1/mês) é 144 cotas", () => {
+  const m = Motor.numeroMagico(12 / 144, 144);
+  assert.equal(m.cotas, 144);
+  perto(m.investimento, 144 * 144, 1e-6);
+  assert.equal(Motor.numeroMagico(0, 100), null);
+});
+
+test("preço justo de Graham: √(22,5 × LPA × VPA)", () => {
+  const g = Motor.precoGraham(10, 5, 1); // LPA 2, VPA 10
+  perto(g.justo, Math.sqrt(22.5 * 2 * 10), 1e-9);
+  perto(g.margem, Math.sqrt(450) / 10 - 1, 1e-9);
+  assert.equal(Motor.precoGraham(10, -3, 1), null);
+});
+
+test("preço-teto de Bazin: dividendos de 12 meses ÷ 6%", () => {
+  const b = Motor.precoBazin(10, 0.09);
+  perto(b.teto, 15, 1e-9);
+  perto(b.margem, 0.5, 1e-9);
+});
+
+test("setor perene x cíclico, com a indústria separando elétricas de petróleo", () => {
+  const t = (s, i) => Motor.classificaSetor(s, i).tipo;
+  assert.equal(t("Energia", "Petróleo e Gás Integrado"), "ciclico");
+  assert.equal(t("Energia", "Energia Elétrica"), "perene");
+  assert.equal(t("Serviços Financeiros", "Bancos Diversificados"), "perene");
+  assert.equal(t("Materiais Básicos", "Mineração de Minerais Metálicos"), "perene");
+  assert.equal(t("Saneamento", "Água e Saneamento"), "perene");
+  assert.equal(t("Consumo Não Cíclico", "Medicamentos e Outros Produtos"), "perene");
+  assert.equal(t("Consumo Cíclico", "Varejo Especializado"), "ciclico");
+  assert.equal(t("Telecomunicações", "Telecomunicações"), "atencao");
+  assert.equal(t("Consumo Não Cíclico", "Cervejas e Refrigerantes"), "neutro");
+  assert.equal(t("Bens Industriais", "Máquinas e Equipamentos"), "neutro");
+});
+
+test("comparação no setor: melhor indicador entre empresas do mesmo setor, ignorando zeros", () => {
+  const itens = [
+    { ticker: "BBAS3", setor: "Serviços Financeiros", fund: { pl: 4.9, pvp: 0.8, dy: 0.095, roe: 0.17, margemLiq: 0.107, divLiqPatrim: 0 } },
+    { ticker: "ITUB4", setor: "Serviços Financeiros", fund: { pl: 9.6, pvp: 2.06, dy: 0.076, roe: 0.21, margemLiq: 0.126, divLiqPatrim: 0 } },
+    { ticker: "VALE3", setor: "Materiais Básicos", fund: { pl: 7, pvp: 1.5, dy: 0.08 } },
+  ];
+  const [g] = Motor.comparaSetor(itens);
+  assert.equal(Motor.comparaSetor(itens).length, 1);
+  assert.deepEqual(g.tickers, ["BBAS3", "ITUB4"]);
+  assert.deepEqual(g.melhores.pl, ["BBAS3"]);
+  assert.deepEqual(g.melhores.roe, ["ITUB4"]);
+  assert.deepEqual(g.melhores.margem, ["ITUB4"]);
+  assert.equal(g.melhores.divida, undefined); // bancos: dívida líquida não se aplica (zero = sem dado)
 });

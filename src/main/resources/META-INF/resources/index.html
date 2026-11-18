@@ -162,6 +162,7 @@ a { color: var(--accent); }
 .ana-bar { height: 6px; border-radius: 3px; background: var(--border); margin: 10px 0 4px; overflow: hidden; }
 .ana-bar > span { display: block; height: 100%; background: var(--s1); }
 .ana-alertas { margin: 8px 0; padding-left: 18px; color: var(--text-2); font-size: 13px; }
+.ana-extras { margin: 8px 0; padding-left: 18px; font-size: 13px; }
 .tile .s { font-size: 12px; color: var(--text-2); }
 .w-table th, .w-table td { padding: 8px 7px; }
 .w-table .alloc .track { width: 56px; }
@@ -972,12 +973,13 @@ const TIPOS_RF = {
   "CDB": { idx: "cdi", padrao: 110, isento: false },
   "LCI": { idx: "cdi", padrao: 90, isento: true },
   "LCA": { idx: "cdi", padrao: 90, isento: true },
-  "Tesouro Selic": { idx: "cdi", padrao: 100, isento: false },
+  "Tesouro Selic": { idx: "cdi", padrao: 100, isento: false, selic: true }, // rende a Selic cheia, não o CDI
   "Tesouro Prefixado": { idx: "pre", padrao: 12, isento: false },
   "Tesouro IPCA+": { idx: "ipca", padrao: 6, isento: false },
   "Prefixado (outro)": { idx: "pre", padrao: 13, isento: false },
   "IPCA+ (outro)": { idx: "ipca", padrao: 7, isento: false },
 };
+const FGC_TIPOS = ["CDB", "LCI", "LCA"]; // cobertos pelo FGC (R$ 250 mil por instituição)
 const CENARIOS_RF = {
   base: "Focus: medianas",
   "juros-caem": "Focus: juros caem (Selic no mínimo)",
@@ -1016,7 +1018,7 @@ function renderComparador() {
   const produtos = cmpCfg.produtos.map(p => {
     const t = TIPOS_RF[p.tipo] || TIPOS_RF["CDB"];
     return { id: p.id, nome: p.nome || p.tipo, tipo: p.tipo, idx: t.idx, taxa: Number(p.taxa) || 0, isento: p.isento ?? t.isento, anosVenc: Number(p.anosVenc) || 0,
-      minha: !!p.minha, irBase: p.irBase, irDias: p.irDias, carteiraId: p.carteiraId };
+      minha: !!p.minha, irBase: p.irBase, irDias: p.irDias, carteiraId: p.carteiraId, selic: !!t.selic };
   }).filter(p => p.anosVenc > 0 && p.taxa >= 0);
   const valido = cmpCfg.valor > 0 && cmpCfg.anos > 0 && cen.selic != null && cen.ipca != null;
   const res = valido && produtos.length ? Motor.comparaRF({ valor: cmpCfg.valor, anos: cmpCfg.anos, selic: cen.selic, ipca: cen.ipca, produtos }) : [];
@@ -1029,7 +1031,8 @@ function renderComparador() {
     <td>${TAXA_TXT(r)}</td><td>${brl(r.anosVenc, Number.isInteger(r.anosVenc) ? 0 : 2)} ano${r.anosVenc > 1 ? "s" : ""}</td>
     <td>${money(r.bruto)}</td><td>${r.isento ? '<span class="muted">isento</span>' : money(r.ir)}</td>
     <td><b>${money(r.liquido)}</b></td><td>${money(r.real)}</td>
-    <td class="muted">${r.status === "antes" ? `vence antes: reaplicado no CDI até ${cmpCfg.anos} anos` : ""}</td></tr>`;
+    <td class="muted">${[r.status === "antes" ? `vence antes: reaplicado a 100% do CDI até ${brl(cmpCfg.anos, Number.isInteger(cmpCfg.anos) ? 0 : 2)} anos` : "",
+      /^LC[IA]$/.test(r.tipo) && r.anosVenc < 0.5 ? "LCI e LCA têm carência mínima de 6 meses" : ""].filter(Boolean).join(" · ")}</td></tr>`;
   const linhaDepois = r => `<tr><td><b>${esc(r.nome)}</b> <span class="muted">${esc(r.tipo)}</span></td><td>${TAXA_TXT(r)}</td><td>${r.anosVenc} anos</td>
     <td colspan="5" class="muted">vence depois do prazo: seria preciso vender antes do vencimento (marcação a mercado, ainda não disponível aqui)</td></tr>`;
 
@@ -1059,7 +1062,7 @@ function renderComparador() {
       <button type="button" id="cmp-ex">Carregar exemplo</button></div>
 
     <div class="tiles" style="margin-top:14px">
-      <div class="tile"><div class="k">Cenário: CDI médio (Selic)</div><div class="v">${cen.selic != null ? brl(cen.selic) + "%" : "—"}</div><div class="s">IPCA médio ${cen.ipca != null ? brl(cen.ipca) + "%" : "—"} a.a.</div></div>
+      <div class="tile"><div class="k">Cenário: CDI médio</div><div class="v">${cen.selic != null ? brl(Motor.cdiDaSelic(cen.selic)) + "%" : "—"}</div><div class="s">Selic ${cen.selic != null ? brl(cen.selic) + "%" : "—"} · IPCA ${cen.ipca != null ? brl(cen.ipca) + "%" : "—"} a.a.</div></div>
       <div class="tile"><div class="k">Melhor no cenário</div><div class="v ${melhor ? "up" : ""}">${melhor ? esc(melhor.nome) : "—"}</div><div class="s">${melhor ? `líquido ${money(melhor.liquido)} · real ${money(melhor.real)}` : "adicione produtos com vencimento"}</div></div>
       <div class="tile"><div class="k">Valor investido</div><div class="v">${money(cmpCfg.valor)}</div><div class="s">${cmpCfg.anos} ano${cmpCfg.anos > 1 ? "s" : ""} · ${CENARIOS_RF[cmpCfg.modo]}</div></div>
     </div>
@@ -1067,7 +1070,8 @@ function renderComparador() {
     <div class="table-wrap"><table class="w-table">
       <thead><tr><th>Produto</th><th>Taxa</th><th>Vencimento</th><th>Bruto</th><th>IR</th><th>Líquido</th><th>Real</th><th>Observação</th></tr></thead>
       <tbody>${[...ordenados.map(linha), ...depois.map(linhaDepois)].join("")}</tbody></table></div>` : `<div class="hint" style="margin-top:10px">${produtos.length ? "" : "Adicione produtos para comparar."}</div>`}
-    <div class="status">${semFocus ? "Sem as expectativas do Focus agora: usando o último dado realizado do Banco Central. " : ""}Estimativa: CDI tratado como Selic meta, taxas médias constantes no prazo, capitalização anual, IR pela tabela regressiva com o prazo total (inclusive para o que é reaplicado), sem custódia da B3 nem taxas de corretora. "Real" = líquido corrigido pelo IPCA do cenário. Liquidez e risco de crédito ainda não entram na ordenação.</div>
+    ${cmpCfg.valor > 250000 && produtos.some(p => FGC_TIPOS.includes(p.tipo)) ? `<div class="status down">Acima de R$ 250 mil numa mesma instituição, o FGC não cobre o excedente de CDB, LCI e LCA (o limite total é de R$ 1 milhão por CPF a cada 4 anos). Divida entre bancos. Tesouro Direto não depende do FGC.</div>` : ""}
+    <div class="status">${semFocus ? "Sem as expectativas do Focus agora: usando o último dado realizado do Banco Central. " : ""}Estimativa: CDI = Selic − 0,10 p.p. e Tesouro Selic = Selic (regras do AUVP), taxas médias constantes no prazo, capitalização anual, IR pela tabela regressiva com o prazo total (inclusive para o que é reaplicado), sem custódia da B3 nem taxas de corretora. "Real" = líquido corrigido pelo IPCA do cenário. Liquidez e risco de crédito ainda não entram na ordenação.</div>
   </div>`;
 
   const f = $("#f-cmp");
@@ -1150,7 +1154,7 @@ function renderMarcacao() {
   const taxaMerc = mkCfg.taxaMerc ?? mkCfg.taxa;
   const calc = tm => (cen.selic == null || cen.ipca == null) ? null : Motor.marcacao({
     qtd: mkCfg.qtd, puCompra: mkCfg.pu, taxaCont: mkCfg.taxa, taxaMerc: tm, dataCompra: mkCfg.dataCompra,
-    dataAnalise: dataAnal, dataVenc: mkCfg.dataVenc, accrHoje, accrVenc, cdiTaxa: cen.selic, reinvestPct: mkCfg.reinv });
+    dataAnalise: dataAnal, dataVenc: mkCfg.dataVenc, accrHoje, accrVenc, cdiTaxa: Motor.cdiDaSelic(cen.selic), reinvestPct: mkCfg.reinv });
   const r = calc(taxaMerc);
   const taxaTxt = t => ipca ? `IPCA + ${brl(t)}%` : `${brl(t)}% a.a.`;
   const valido = r && mkCfg.qtd > 0 && mkCfg.pu > 0;
@@ -1188,6 +1192,7 @@ function renderMarcacao() {
       <div class="tile"><div class="k">Valor de mercado (bruto)</div><div class="v">${money(r.valorMercado)}</div><div class="s">PU ${money(r.puMercado)} com taxa de ${taxaTxt(taxaMerc)}</div></div>
       <div class="tile"><div class="k">Lucro ou prejuízo bruto</div><div class="v ${r.lucroBruto >= 0 ? "up" : "down"}">${r.lucroBruto >= 0 ? "+" : ""}${money(r.lucroBruto)}</div><div class="s">em relação ao que você pagou (${money(mkCfg.qtd * mkCfg.pu)})</div></div>
       <div class="tile"><div class="k">Líquido se vender hoje</div><div class="v">${money(r.liqVenda)}</div><div class="s">IR estimado ${money(r.irVenda)} · sem custódia</div></div>
+      <div class="tile"><div class="k">Ganho já antecipado</div><div class="v ${r.ganhoAntecipado >= 0.8 ? "up" : ""}">${r.ganhoAntecipado != null ? brl(Math.max(0, r.ganhoAntecipado) * 100, 0) + "%" : "—"}</div><div class="s">${r.ganhoAntecipado >= 0.8 ? "do ganho até o vencimento: pela regra do AUVP (80% a 90%), já vale considerar vender" : "do ganho até o vencimento que a venda de hoje entrega (AUVP: venda a partir de 80% a 90%)"}</div></div>
     </div>
 
     <h3>Vender agora ou manter até o vencimento</h3>
@@ -1614,7 +1619,8 @@ function simulatorHtml() {
       <label>Meta de patrimônio (R$)<input type="number" name="meta" min="0" step="1000" value="${cfg.meta}"></label>
       <label>Renda mensal desejada (R$)<input type="number" name="renda" min="0" step="100" value="${cfg.renda}"></label>
       <label class="chk"><input type="checkbox" name="real" ${cfg.real ? "checked" : ""}> Mostrar em reais de hoje (descontando a inflação)</label>
-      <div class="quick"><button type="button" id="sim-reset" title="Volta valor inicial, rentabilidade e inflação para os valores atuais">Usar valores atuais</button></div>
+      <div class="quick"><button type="button" id="sim-reset" title="Volta valor inicial, rentabilidade e inflação para os valores atuais">Usar valores atuais</button>
+        <button type="button" id="sim-auvp" title="Rentabilidade que entrega 8% acima da inflação informada, em reais de hoje">Premissa AUVP: 8% reais</button></div>
     </form>
     <div class="hint">Padrões: valor inicial = seus investimentos ${lastSnap ? `(${isoBR(lastSnap)})` : "(abra a Carteira para preencher)"}, rentabilidade = CDI atual, inflação = IPCA dos últimos 12 meses. Rendimento mensal ${cfg.real ? "real" : "nominal"} usado: ${brl(sim.r * 100, 3)}%.</div>
     <div class="tiles">
@@ -1626,9 +1632,9 @@ function simulatorHtml() {
     <div class="proj-box"><canvas id="sim-chart" aria-label="Evolução simulada do patrimônio"></canvas></div>
     <div class="table-wrap"><table class="w-table">
       <thead><tr><th>Prazo</th><th>Quando</th><th>Patrimônio</th><th>Total aportado</th><th>Rendimentos</th><th>Renda mensal possível</th></tr></thead>
-      <tbody>${marcos.map(a => { const x = sim.rows[a * 12]; return `<tr><td>${a} ano${a > 1 ? "s" : ""}</td><td>${mesAno(a * 12)}</td><td><b>${money(x.saldo)}</b></td><td>${money(x.aportado)}</td><td>${money(x.saldo - x.aportado)}</td><td>${money(x.saldo * sim.r)}</td></tr>`; }).join("")}</tbody>
+      <tbody>${marcos.map(a => { const x = sim.rows[a * 12]; return `<tr><td>${a} ano${a > 1 ? "s" : ""}</td><td>${mesAno(a * 12)}</td><td><b>${money(x.saldo)}</b></td><td>${money(x.aportado)}</td><td>${money(x.saldo - x.aportado)}</td><td>${money(x.saldo * sim.r * (1 - sim.margem))}</td></tr>`; }).join("")}</tbody>
     </table></div>
-    <div class="status">Simulação com rentabilidade constante, aporte no fim de cada mês e sem IR. "Renda mensal possível" = quanto o patrimônio rende por mês${cfg.real ? " acima da inflação" : ""}.</div>
+    <div class="status">Simulação com rentabilidade constante, aporte no fim de cada mês e sem IR. "Renda mensal possível" = juros do mês${cfg.real ? " acima da inflação" : ""} menos 25% de margem para impostos e reinvestimento (regra do AUVP). Para uma simulação séria de longo prazo, o AUVP usa 8% ao ano acima da inflação.</div>
   </div>`;
   const start = new Date(); start.setDate(1);
   const tx = m => { const d = new Date(start); d.setMonth(d.getMonth() + m); return d.getTime(); };
@@ -1646,6 +1652,10 @@ function bindSimulator(def) {
     saveSim(); renderTools();
   };
   $("#sim-reset").onclick = () => { simCfg.inicial = null; simCfg.taxa = null; simCfg.inflacao = null; saveSim(); renderTools(); };
+  $("#sim-auvp").onclick = () => {
+    const inf = simCfg.inflacao ?? def.inflacao;
+    simCfg.taxa = +Motor.nominalParaReal(Motor.PREMISSA_REAL, inf).toFixed(2); simCfg.real = true; saveSim(); renderTools();
+  };
 }
 
 // ---------- Ferramenta: Analisador de ações e FIIs ----------
@@ -1662,8 +1672,9 @@ async function analisar(tickers) {
     const data = await r.json();
     anaRes = data.items.map(it => {
       const f = it.fund;
-      const analise = f ? (f.kind === "fii" ? Motor.analisaFii(f) : Motor.analisaAcao(f)) : null;
-      return { ticker: it.ticker, nome: it.name, setor: it.sector, preco: it.price, erro: it.error || (f ? null : "sem indicadores no Fundamentus"), analise };
+      const analise = f ? (f.kind === "fii" ? Motor.analisaFii(f, { nome: it.name }) : Motor.analisaAcao(f)) : null;
+      return { ticker: it.ticker, nome: it.name, setor: it.sector, industria: it.industry, preco: it.price, fund: f,
+        erro: it.error || (f ? null : "sem indicadores no Fundamentus"), analise };
     }).sort((a, b) => (b.analise?.nota ?? -1) - (a.analise?.nota ?? -1));
   } catch (e) {
     anaErr = e.message || "Falha ao consultar os ativos.";
@@ -1692,24 +1703,61 @@ function renderAnalisador() {
       const a = x.analise;
       if (!a) return `<div class="panel"><b>${esc(x.ticker)}</b><div class="hint">${esc(x.erro || "Sem dados para pontuar.")}</div></div>`;
       const alertas = a.alertas.length ? `<ul class="ana-alertas">${a.alertas.map(t => `<li>${esc(t)}</li>`).join("")}</ul>` : "";
+      // Referências do AUVP (Módulos 4.1 e 4.2): não entram na nota, porque dependem da tese de cada investidor
+      const rel = m => `${brl(Math.abs(m) * 100, 0)}% ${m >= 0 ? "acima" : "abaixo"} do preço atual`;
+      const extras = [];
+      if (a.kind === "acao") {
+        const set = Motor.classificaSetor(x.setor, x.industria);
+        if (set.texto) extras.push(`<li class="${set.tipo === "perene" ? "up" : set.tipo === "ciclico" ? "down" : ""}">${esc(set.texto)}</li>`);
+        const g = Motor.precoGraham(x.preco, x.fund?.pl, x.fund?.pvp);
+        if (g) extras.push(`<li>Preço justo de Graham, √(22,5 × LPA × VPA): <b>R$ ${brl(g.justo)}</b>, ${rel(g.margem)}.</li>`);
+        const b = Motor.precoBazin(x.preco, x.fund?.dy);
+        if (b) extras.push(`<li>Preço-teto de Bazin (dividendo mínimo de 6%): <b>R$ ${brl(b.teto)}</b>, ${rel(b.margem)}.</li>`);
+      } else {
+        const m = Motor.numeroMagico(x.fund?.dy, x.preco);
+        if (m) extras.push(`<li>Número mágico: <b>${m.cotas} cotas</b> (cerca de ${money(m.investimento)}) para que os dividendos de um mês comprem uma cota nova.</li>`);
+      }
+      const extrasHtml = extras.length ? `<ul class="ana-extras">${extras.join("")}</ul>` : "";
       return `<details class="panel ana-card" ${anaRes.length === 1 ? "open" : ""}>
         <summary><b>${esc(x.ticker)}</b> · ${esc(x.nome || "")} <span class="muted">${x.preco != null ? "R$ " + brl(x.preco) : ""}</span>
           <span class="ana-nota">${a.nota ?? "—"}</span></summary>
         <div class="ana-bar"><span style="width:${a.nota ?? 0}%"></span></div>
-        <div class="hint">${esc(a.tipo)}${a.segmento ? " · " + esc(a.segmento) : ""} · cobertura ${Math.round(a.cobertura * 100)}%${a.cobertura < 0.6 ? " (poucos dados para uma nota firme)" : ""}</div>
+        <div class="hint">${esc(a.tipo)}${a.segmento ? " · " + esc(a.segmento) : ""}${x.setor && a.kind === "acao" ? " · " + esc(x.setor) : ""} · cobertura ${Math.round(a.cobertura * 100)}%${a.cobertura < 0.6 ? " (poucos dados para uma nota firme)" : ""}</div>
+        ${extrasHtml}
         ${alertas}
         <div class="table-wrap"><table class="w-table">
           <thead><tr><th>Critério</th><th>Valor</th><th>Nota</th><th>Peso</th></tr></thead>
           <tbody>${a.criterios.map(c => `<tr><td>${esc(c.nome)}</td><td>${fmtCriterio(c.valor, c.fmt)}</td><td>${c.nota ?? "sem dado"}</td><td>${c.peso}</td></tr>`).join("")}</tbody>
         </table></div></details>`;
     }).join("");
+    // Comparação dentro do setor (AUVP, Módulo 4.1): só faz sentido entre concorrentes
+    const acoes = anaRes.filter(x => x.analise?.kind === "acao");
+    // "Energia" no Yahoo junta petróleo e elétricas, que não são concorrentes: nesse caso o grupo é a indústria
+    const grupoDe = x => {
+      if (!x.setor || !/^energia$/i.test(x.setor.trim()) || !x.industria) return x.setor;
+      return /petr|g[aá]s|combust/i.test(x.industria) ? "Energia · petróleo e gás" : /el[eé]tric/i.test(x.industria) ? "Energia · energia elétrica" : `Energia · ${x.industria}`;
+    };
+    const grupos = Motor.comparaSetor(acoes.map(x => ({ ticker: x.ticker, setor: grupoDe(x), fund: x.fund })));
+    const fmtInd = (v, f) => v == null || v === 0 ? "—" : f === "%" ? brl(v * 100, 1) + "%" : brl(v, 2);
+    const setorHtml = grupos.length ? grupos.map(g => `<div class="panel"><h3>Comparação no setor: ${esc(g.setor)}</h3>
+        <div class="hint">O AUVP compara sempre dentro do mesmo setor. Em destaque, o melhor valor de cada indicador entre as empresas que você analisou.</div>
+        <div class="table-wrap"><table class="w-table"><thead><tr><th>Ativo</th>${Motor.INDICADORES_SETOR.map(i => `<th>${esc(i.nome)}</th>`).join("")}</tr></thead>
+        <tbody>${g.tickers.map(t => {
+          const f = anaRes.find(x => x.ticker === t).fund;
+          return `<tr><td><b>${esc(t)}</b></td>${Motor.INDICADORES_SETOR.map(i => {
+            const best = g.melhores[i.id]?.includes(t);
+            return `<td class="${best ? "up" : ""}">${best ? "<b>" : ""}${fmtInd(f[i.campo], i.fmt)}${best ? "</b>" : ""}</td>`;
+          }).join("")}</tr>`;
+        }).join("")}</tbody></table></div></div>`).join("")
+      : acoes.length ? `<div class="status">Para comparar no setor, como o AUVP recomenda, inclua concorrentes do mesmo setor (por exemplo, BBAS3, ITUB4 e BBDC4).</div>` : "";
     resultado = `<div class="table-wrap"><table class="w-table">
         <thead><tr><th>Ativo</th><th>Tipo</th><th>Nota</th><th>Faixa</th><th>Cobertura</th></tr></thead>
-        <tbody>${linhas}</tbody></table></div>${cards}`;
+        <tbody>${linhas}</tbody></table></div>${setorHtml}${cards}`;
   }
   el.innerHTML = toolBack + `<div class="panel">
     <h2>Analisador de ações e FIIs</h2>
     <div class="hint">Pontuação de 0 a 100 pelos indicadores do Fundamentus, com pesos fixos por critério. Ações: P/L, P/VP, EV/EBITDA, ROE, ROIC, margem, dívida, crescimento e dividend yield. FIIs: DY, P/VP, FFO, liquidez e, nos de tijolo, vacância, cap rate e número de imóveis.
+      Nos FIIs, P/VP e dividend yield têm faixa ideal: muito baixo ou muito alto vira alerta, como ensina o AUVP.
       <b>É uma leitura dos números, não recomendação de compra ou venda.</b></div>
     <form class="w-add proj-form" id="f-ana">
       <label style="grid-column: 1 / -1">Tickers (separados por vírgula, até 30)<input type="text" name="tickers" value="${esc(anaTickers)}" placeholder="PETR4, ITUB4, HGLG11"></label>
@@ -1778,16 +1826,16 @@ function renderPlanejador() {
   const med = planMedias(planBudget.meses, planBudget.settings);
   const hist = med.aporteHist ?? 0;
   const aporte = cfg.alvo > 0 ? Motor.aporteMensal({ alvo: cfg.alvo, atual: cfg.atual, meses: cfg.meses, taxaAa: cfg.taxa }) : null;
-  const mesesComHist = hist > 0 ? Motor.mesesAteMeta({ alvo: cfg.alvo, atual: cfg.atual, aporte: hist, taxaAa: cfg.taxa }) : null;
   const pctRenda = med.renda && aporte != null ? aporte / med.renda * 100 : null;
+  // AUVP, Módulo 2: "Metas (15%)" é a fatia da renda para objetivos específicos, separada da liberdade financeira (25%, aporte de longo prazo)
+  const FATIA_METAS = 0.15;
+  const metas = med.renda != null ? med.renda * FATIA_METAS : null;
 
   let veredito = "Informe a meta e o prazo para ver o aporte necessário.", classe = "muted";
   if (aporte === 0) { veredito = "O patrimônio que você já tem para essa meta basta. Não precisa aportar."; classe = "up"; }
-  else if (aporte != null && aporte <= hist) { veredito = `Cabe no que você já aporta: a média dos últimos meses é ${money(hist)}/mês.`; classe = "up"; }
+  else if (aporte != null && metas != null && aporte <= metas) { veredito = `Cabe na fatia de Metas: o AUVP sugere separar 15% da renda (${money(metas)}/mês) para objetivos como este.`; classe = "up"; }
   else if (aporte != null && med.sobra != null && aporte <= med.sobra) {
-    veredito = hist > 0
-      ? `Cabe na sobra do orçamento (${money(med.sobra)}/mês), mas é mais que a sua média de aportes (${money(hist)}/mês). Faltam ${money(aporte - hist)}/mês.`
-      : `Cabe na sobra do orçamento (${money(med.sobra)}/mês). Ainda não há aportes registrados em liberdade financeira.`;
+    veredito = `Passa dos 15% de Metas (${money(metas)}/mês), mas cabe na sobra do orçamento (${money(med.sobra)}/mês): a diferença de ${money(aporte - metas)}/mês sairia de outras áreas.`;
     classe = "muted";
   }
   else if (aporte != null && med.sobra != null) { veredito = `Não cabe no orçamento atual. Mesmo usando toda a sobra (${money(med.sobra)}/mês), faltam ${money(aporte - med.sobra)}/mês.`; classe = "down"; }
@@ -1800,7 +1848,8 @@ function renderPlanejador() {
 
   el.innerHTML = toolBack + `<div class="panel">
     <h2>Planejador de metas</h2>
-    <div class="hint">Quanto aportar todo mês para chegar na sua meta, e se isso cabe no seu orçamento. As contas são brutas: sem IR e com rentabilidade constante.</div>
+    <div class="hint">Quanto aportar todo mês para chegar na sua meta, e se isso cabe no seu orçamento. As contas são brutas: sem IR e com rentabilidade constante.
+      Pelo AUVP, o dinheiro de metas (viagem, compra planejada) é separado do aporte de longo prazo e fica no Tesouro Selic, que permite resgatar sem perdas.</div>
     <form class="w-add proj-form" id="f-plan">
       <label>Nome da meta<input type="text" name="nome" maxlength="60" value="${esc(cfg.nome)}"></label>
       <label>Valor da meta (R$)<input type="number" name="alvo" min="0" step="1000" value="${cfg.alvo}"></label>
@@ -1813,7 +1862,7 @@ function renderPlanejador() {
     <div class="status ${classe}" style="margin:12px 0">${esc(veredito)}</div>
     <div class="tiles">
       <div class="tile"><div class="k">Aporte mensal necessário</div><div class="v">${aporte != null ? money(aporte) : "—"}</div><div class="s">${pctRenda != null ? brl(pctRenda, 1) + "% da renda média" : "—"}</div></div>
-      <div class="tile"><div class="k">Com a sua média atual (${money(hist)}/mês)</div><div class="v">${mesesComHist != null ? fmtPrazo(Math.ceil(mesesComHist)) : "—"}</div><div class="s">${mesesComHist != null ? "chega em " + mesAno(Math.ceil(mesesComHist)) : "sem aportes registrados"}</div></div>
+      <div class="tile"><div class="k">Fatia de Metas (15% da renda)</div><div class="v">${metas != null ? money(metas) : "—"}</div><div class="s">sugestão do AUVP para objetivos de curto e médio prazo</div></div>
       <div class="tile"><div class="k">Sobra do orçamento</div><div class="v">${med.sobra != null ? money(med.sobra) : "—"}</div><div class="s">renda média menos despesas médias</div></div>
     </div>
     <div class="table-wrap" style="margin-top:12px"><table class="w-table">
