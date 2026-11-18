@@ -210,7 +210,7 @@ O GitHub acessa a AWS por OIDC (credenciais temporárias, sem chave guardada). C
 | Variable | `AWS_DEPLOY_ROLE_ARN` | Output `DeployRoleArn` do stack `painel-github-oidc` |
 | Variable | `AWS_CFN_EXEC_ROLE_ARN` | Output `CloudFormationExecRoleArn` do stack `painel-github-oidc` |
 | Secret | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Cliente OAuth do Google (tipo "Aplicativo da Web") |
-| Secret | `ALLOWED_EMAILS` | E-mails que podem entrar, separados por vírgula |
+| Variable | `ALLOWED_EMAILS` | E-mails que podem criar conta, separados por vírgula. Para liberar alguém, edite a variable e rode o Deploy |
 | Secret | `BRAPI_TOKEN` | Token da brapi.dev (opcional) |
 
 ### Infraestrutura (CloudFormation)
