@@ -17,6 +17,8 @@ export default defineConfig({
     locale: "pt-BR",
     timezoneId: "America/Sao_Paulo",
     trace: "retain-on-failure",
+    // O service worker do app responde /api/* antes do page.route (e o Termômetro iria ao BCB de verdade)
+    serviceWorkers: "block",
   },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },

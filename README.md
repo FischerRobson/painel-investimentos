@@ -174,7 +174,7 @@ npm run typecheck     # TypeScript strict
 npm run motor:legado  # regenera o motor.js do app atual
 
 cd ../../../e2e       # ponta a ponta (Playwright), em modo demonstração, contra o jar empacotado
-npm ci && npx playwright install chromium-headless-shell
+npm ci && npx playwright install --only-shell chromium
 npx playwright test
 ```
 
