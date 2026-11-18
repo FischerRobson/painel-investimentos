@@ -24,10 +24,10 @@ test("/novo: o menu troca de página sem recarregar", async ({ page }) => {
 });
 
 test("/novo: página não migrada leva à versão atual", async ({ page }) => {
-  await page.goto("/novo/ferramentas#comparador");
-  await page.getByRole("link", { name: "Abrir Ferramentas na versão atual" }).click();
-  await expect(page).toHaveURL(/\/ferramentas#comparador$/);
-  await expect(page.getByRole("heading", { name: "Comparador de renda fixa" })).toBeVisible();
+  await page.goto("/novo/orcamento#2026-01");
+  await page.getByRole("link", { name: "Abrir Orçamento na versão atual" }).click();
+  await expect(page).toHaveURL(/\/orcamento#2026-01$/);
+  await expect(page.getByRole("heading", { name: "Meta × realizado" })).toBeVisible();
 });
 
 test("/novo: rota direta e /projecao funcionam ao recarregar", async ({ page }) => {

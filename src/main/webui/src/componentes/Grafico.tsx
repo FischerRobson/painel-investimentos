@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Chart, type ChartConfiguration } from "chart.js";
 
-export function Grafico({ config, deps }: {
+export function Grafico({ config, deps, rotulo }: {
   config: (canvas: HTMLCanvasElement) => ChartConfiguration<"line"> | ChartConfiguration<"bar"> | null;
   deps: unknown[];
+  rotulo?: string; // aria-label do canvas
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const tema = useTema();
@@ -18,7 +19,7 @@ export function Grafico({ config, deps }: {
     return () => ch.destroy();
     // recria só quando os dados (deps) ou o tema mudam; config é uma função nova a cada render
   }, [...deps, tema]);
-  return <canvas ref={ref} />;
+  return <canvas ref={ref} aria-label={rotulo} />;
 }
 
 // Muda a cada troca de tema do sistema (prefers-color-scheme), para redesenhar com as cores novas
