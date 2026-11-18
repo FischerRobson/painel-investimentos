@@ -1,11 +1,10 @@
-// Testes do motor financeiro (src/main/resources/META-INF/resources/motor.js). Rodar: node --test .github/scripts/
-import { test } from "node:test";
+// @ts-nocheck: suíte portada do JavaScript (motor.test.mjs) sem mudanças; a tipagem que importa é a do motor.ts.
+// Testes do motor financeiro (motor.ts). Rodar: npm test (em src/main/webui).
+import { test } from "vitest";
 import assert from "node:assert/strict";
-import { createRequire } from "node:module";
+import * as Motor from "./motor";
 
-const require = createRequire(import.meta.url);
-const Motor = require("../../src/main/resources/META-INF/resources/motor.js");
-const perto = (a, b, tol = 0.01) => assert.ok(Math.abs(a - b) <= tol, `${a} ≠ ${b} (±${tol})`);
+const perto = (a: number, b: number, tol = 0.01) => assert.ok(Math.abs(a - b) <= tol, `${a} ≠ ${b} (±${tol})`);
 
 test("tabela regressiva do IR", () => {
   assert.equal(Motor.aliqIR(180), 0.225);

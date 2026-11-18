@@ -66,17 +66,34 @@ jobs:
       - run: cfn-lint --non-zero-exit-code error template.yaml infra/github-oidc.yaml
 
   frontend:
-    name: Frontend (sintaxe JS e PWA)
+    name: Frontend (React, motor e app atual)
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/main/webui
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
-      - run: node --check src/main/resources/META-INF/resources/sw.js
-      - run: node --check src/main/resources/META-INF/resources/motor.js
-      - run: node .github/scripts/check-frontend.mjs
-      - run: node --test .github/scripts/motor.test.mjs
+          cache: npm
+          cache-dependency-path: src/main/webui/package-lock.json
+      - run: npm ci
+      - name: Tipos (TypeScript strict)
+        run: npm run typecheck
+      - name: Testes (Vitest; inclui o motor financeiro)
+        run: npm test
+      - name: motor.js do app atual gerado a partir do motor.ts
+        run: |
+          npm run -s motor:legado
+          git diff --exit-code -- ../resources/META-INF/resources/motor.js \
+            || { echo "::error file=src/main/resources/META-INF/resources/motor.js::motor.js desatualizado: rode 'npm run motor:legado' em src/main/webui e faça commit"; exit 1; }
+      - name: App atual (sintaxe do JS inline, PWA e glossário)
+        working-directory: .
+        run: |
+          node --check src/main/resources/META-INF/resources/sw.js
+          node --check src/main/resources/META-INF/resources/motor.js
+          node .github/scripts/check-frontend.mjs
 
   e2e:
     name: Ponta a ponta (Playwright, modo demonstração)
