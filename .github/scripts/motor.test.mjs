@@ -313,3 +313,39 @@ test("meses até a meta: sem aporte e sem patrimônio nunca chega; já atingido 
   assert.equal(Motor.mesesAteMeta({ alvo: 1000, atual: 0, aporte: 0, taxaAa: 10 }), null);
   assert.equal(Motor.mesesAteMeta({ alvo: 1000, atual: 2000, aporte: 0, taxaAa: 10 }), 0);
 });
+
+// ---------- Investimento que você já tem ----------
+test("valor atual de prefixado: aplicado × (1 + taxa)^(dias ÷ 365)", () => {
+  const r = Motor.valorAtualRF({ aplicado: 10000, idx: "pre", taxa: 12, data: "2025-01-01", hoje: "2026-01-01" });
+  perto(r.valor, 11200, 1e-6);
+});
+
+test("valor atual de CDI: rende o % do CDI de cada dia da série", () => {
+  const serie = [["2025-01-02", 0.04], ["2025-01-03", 0.04], ["2025-01-06", 0.04], ["2025-01-10", 0.5]];
+  const r = Motor.valorAtualRF({ aplicado: 1000, idx: "cdi", taxa: 100, data: "2025-01-02", hoje: "2025-01-07", cdiSerie: serie });
+  // três dias com 0,04% (o de 10/01 é depois de hoje e fica de fora)
+  perto(r.valor, 1000 * Math.pow(1.0004, 3), 1e-6);
+  assert.equal(r.cobertura, true);
+});
+
+test("valor atual de CDI sem a série desde a aplicação: sinaliza cobertura incompleta", () => {
+  const serie = [["2025-03-03", 0.04]];
+  const r = Motor.valorAtualRF({ aplicado: 1000, idx: "cdi", taxa: 100, data: "2025-01-02", hoje: "2025-04-01", cdiSerie: serie });
+  assert.equal(r.cobertura, false);
+});
+
+test("valor atual de IPCA+: IPCA dos meses realizados × juro real", () => {
+  const mensal = [];
+  for (let m = 1; m <= 12; m++) mensal.push({ date: `2025-${String(m).padStart(2, "0")}-01`, value: 1 });
+  const r = Motor.valorAtualRF({ aplicado: 10000, idx: "ipca", taxa: 6, data: "2025-01-01", hoje: "2026-01-01", ipcaMensal: mensal });
+  perto(r.valor, 10000 * Math.pow(1.01, 12) * 1.06, 1e-6);
+});
+
+test("comparador: investimento que já existe paga IR pelo prazo total desde a aplicação", () => {
+  // valor atual 11.200 (aplicado 10.000), 1 ano restante; prazo total de 1.000 dias → alíquota de 15%
+  const [r] = Motor.comparaRF({ valor: 11200, anos: 1, selic: 10, ipca: 4, produtos: [
+    { id: 1, idx: "pre", taxa: 12, anosVenc: 1, isento: false, irBase: 10000, irDias: 1000 }] });
+  perto(r.bruto, 12544, 1e-6);
+  perto(r.ir, (12544 - 10000) * 0.15, 1e-6);
+  perto(r.liquido, 12544 - (12544 - 10000) * 0.15, 1e-6);
+});

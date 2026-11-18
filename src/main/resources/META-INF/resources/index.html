@@ -987,7 +987,7 @@ const CENARIOS_RF = {
 const TAXA_TXT = p => p.idx === "cdi" ? `${brl(p.taxa)}% do CDI` : p.idx === "pre" ? `${brl(p.taxa)}% a.a.` : `IPCA + ${brl(p.taxa)}%`;
 let cmpCfg = (() => { try { return { valor: 10000, anos: 5, modo: "base", ordem: "liquido", produtos: [], ...JSON.parse(store.get("comparador", "{}")) }; } catch { return { valor: 10000, anos: 5, modo: "base", ordem: "liquido", produtos: [] }; } })();
 const saveCmp = () => store.set("comparador", JSON.stringify(cmpCfg));
-let cmpId = 1;
+let cmpId = 1, cmpMsg = "";
 
 function renderComparador() {
   const el = $("#ferramentas");
@@ -1003,9 +1003,20 @@ function renderComparador() {
     : { selic: termo?.selic?.at(-1)?.[1] ?? null, ipca: termo?.ipca ? Motor.acumulado12(termo.ipca.map(([date, value]) => ({ date, value }))).at(-1)?.value ?? null : null };
   const semFocus = !termo?.focus?.length;
 
+  // Títulos da carteira que ainda não venceram: viram produto do comparador sem redigitar nada
+  const hoje = todayISO();
+  const vivos = rfW.filter(x => x.venc && x.venc > hoje);
+  const secaoMinha = `<h3>Seu investimento</h3>
+    <div class="hint">Escolha um título da sua carteira. O valor de hoje é estimado pela série do CDI e pelo IPCA desde a aplicação; o prazo passa a ser o que falta, e o IR é calculado pelo prazo total.</div>
+    ${vivos.length ? `<div style="display:flex;flex-wrap:wrap;gap:8px;max-width:100%"><select id="cmp-minha-sel" style="flex:1 1 260px;min-width:0;max-width:100%">${vivos.map(x => `<option value="${esc(x.id)}">${esc(x.nome)} · ${esc(x.tipo)} · ${TAXA_TXT(x)} · vence ${isoBR(x.venc)}</option>`).join("")}</select>
+      <button type="button" id="cmp-minha">Comparar este investimento</button></div>`
+      : `<div class="hint">Nenhum título vigente na carteira. Cadastre em Carteira › Renda fixa.</div>`}
+    ${cmpMsg ? `<div class="status">${esc(cmpMsg)}</div>` : ""}`;
+
   const produtos = cmpCfg.produtos.map(p => {
     const t = TIPOS_RF[p.tipo] || TIPOS_RF["CDB"];
-    return { id: p.id, nome: p.nome || p.tipo, tipo: p.tipo, idx: t.idx, taxa: Number(p.taxa) || 0, isento: t.isento, anosVenc: Number(p.anosVenc) || 0 };
+    return { id: p.id, nome: p.nome || p.tipo, tipo: p.tipo, idx: t.idx, taxa: Number(p.taxa) || 0, isento: p.isento ?? t.isento, anosVenc: Number(p.anosVenc) || 0,
+      minha: !!p.minha, irBase: p.irBase, irDias: p.irDias, carteiraId: p.carteiraId };
   }).filter(p => p.anosVenc > 0 && p.taxa >= 0);
   const valido = cmpCfg.valor > 0 && cmpCfg.anos > 0 && cen.selic != null && cen.ipca != null;
   const res = valido && produtos.length ? Motor.comparaRF({ valor: cmpCfg.valor, anos: cmpCfg.anos, selic: cen.selic, ipca: cen.ipca, produtos }) : [];
@@ -1014,8 +1025,8 @@ function renderComparador() {
   const depois = res.filter(r => r.status === "depois");
   const melhor = ordenados[0];
   const linha = r => `<tr>
-    <td><b>${esc(r.nome)}</b>${r.nome !== r.tipo ? ` <span class="muted">${esc(r.tipo)}</span>` : ""}</td>
-    <td>${TAXA_TXT(r)}</td><td>${r.anosVenc} ano${r.anosVenc > 1 ? "s" : ""}</td>
+    <td><b>${esc(r.nome)}</b>${r.nome !== r.tipo ? ` <span class="muted">${esc(r.tipo)}</span>` : ""}${r.minha ? ` <span class="tool-tag">da carteira</span>` : ""}</td>
+    <td>${TAXA_TXT(r)}</td><td>${brl(r.anosVenc, Number.isInteger(r.anosVenc) ? 0 : 2)} ano${r.anosVenc > 1 ? "s" : ""}</td>
     <td>${money(r.bruto)}</td><td>${r.isento ? '<span class="muted">isento</span>' : money(r.ir)}</td>
     <td><b>${money(r.liquido)}</b></td><td>${money(r.real)}</td>
     <td class="muted">${r.status === "antes" ? `vence antes: reaplicado no CDI até ${cmpCfg.anos} anos` : ""}</td></tr>`;
@@ -1027,10 +1038,11 @@ function renderComparador() {
     <div class="hint">Mesmo valor, mesmo prazo, produtos diferentes. Cada um rende de um jeito: % do CDI, prefixado ou IPCA+. Cadastre os produtos com a taxa da oferta que você tem em mãos.</div>
     <form class="w-add proj-form" id="f-cmp">
       <label>Valor investido (R$)<input type="number" name="valor" min="0" step="100" value="${cmpCfg.valor}"></label>
-      <label>Prazo (anos)<input type="number" name="anos" min="1" max="40" step="1" value="${cmpCfg.anos}"></label>
+      <label>Prazo (anos)<input type="number" name="anos" min="0.1" max="40" step="any" value="${cmpCfg.anos}"></label>
       <label>Cenário de juros e inflação<select name="modo">${Object.entries(CENARIOS_RF).map(([k, v]) => `<option value="${k}" ${k === cmpCfg.modo ? "selected" : ""}>${v}</option>`).join("")}</select></label>
       <label>Ordenar por<select name="ordem"><option value="liquido" ${cmpCfg.ordem !== "real" ? "selected" : ""}>Maior patrimônio líquido</option><option value="real" ${cmpCfg.ordem === "real" ? "selected" : ""}>Maior rentabilidade real</option></select></label>
     </form>
+    ${secaoMinha}
     <h3>Produtos</h3>
     <div class="table-wrap"><table class="w-table" id="cmp-prod">
       <thead><tr><th>Produto</th><th>Tipo</th><th>Taxa</th><th>Vencimento (anos)</th><th></th></tr></thead>
@@ -1078,6 +1090,29 @@ function renderComparador() {
     cmpCfg.produtos = cmpCfg.produtos.filter(x => x.id !== Number(b.dataset.del)); saveCmp(); renderComparador();
   };
   $("#cmp-add").onclick = () => { cmpCfg.produtos.push({ id: Date.now() + cmpId++, nome: "", tipo: "CDB", taxa: TIPOS_RF.CDB.padrao, anosVenc: cmpCfg.anos }); saveCmp(); renderComparador(); };
+  $("#cmp-minha")?.addEventListener("click", () => {
+    const item = rfW.find(x => String(x.id) === $("#cmp-minha-sel").value);
+    if (!item) return;
+    const cdiSerie = (termo.cdi || []).map(([date, value]) => [date, value]);
+    const ipcaMensal = (termo.ipca || []).map(([date, value]) => ({ date, value }));
+    const anosRest = (new Date(item.venc + "T12:00:00") - new Date(hoje + "T12:00:00")) / 86400000 / 365;
+    const irDias = Math.round((new Date(item.venc + "T12:00:00") - new Date(item.data + "T12:00:00")) / 86400000);
+    const v = Motor.valorAtualRF({ aplicado: item.aplicado, idx: item.idx, taxa: item.taxa, data: item.data, hoje, cdiSerie, ipcaMensal, ipcaProj: cen.ipca ?? 0 });
+    if (v.valor == null) { cmpMsg = "Sem a série do CDI agora para estimar o valor de hoje. Tente de novo mais tarde."; renderComparador(); return; }
+    // tipo de comparação: o primeiro tipo com o mesmo indexador (e isenção), ou o próprio tipo do título se ele existir
+    const mesmos = Object.keys(TIPOS_RF).filter(k => TIPOS_RF[k].idx === item.idx);
+    const tipo = mesmos.includes(item.tipo) ? item.tipo : mesmos[0];
+    const prod = { id: Date.now() + cmpId++, nome: item.nome, tipo, taxa: item.taxa, anosVenc: Math.round(anosRest * 100) / 100,
+      minha: true, carteiraId: item.id, isento: !!item.isento, irBase: item.aplicado, irDias };
+    // Um investimento da carteira por vez: a escolha nova substitui a anterior (cada prazo tem a sua comparação)
+    cmpCfg.produtos = cmpCfg.produtos.filter(x => !x.minha).concat(prod);
+    cmpCfg.valor = Math.round(v.valor * 100) / 100;
+    cmpCfg.anos = prod.anosVenc;
+    cmpMsg = `${item.nome}: valor de hoje estimado em ${money(cmpCfg.valor)} (aplicado ${money(item.aplicado)} em ${isoBR(item.data)}). O prazo passou a ser os ${brl(prod.anosVenc, 2)} anos que faltam.` +
+      (v.cobertura ? "" : " A série do CDI começa depois da aplicação: o valor de hoje pode estar subestimado.") +
+      " Escolher outro título substitui este na comparação.";
+    saveCmp(); renderComparador();
+  });
   $("#cmp-ex").onclick = () => {
     cmpCfg.produtos = [
       { id: Date.now() + 1, nome: "", tipo: "Tesouro Prefixado", taxa: 12, anosVenc: 5 },

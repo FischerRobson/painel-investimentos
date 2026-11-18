@@ -73,7 +73,9 @@ const Motor = (() => {
       if (p.anosVenc < anos) bruto *= Math.pow(1 + selic / 100, anos - p.anosVenc); // reaplica no CDI após o vencimento
       const status = p.anosVenc > anos ? "depois" : p.anosVenc < anos ? "antes" : "ok";
       if (status === "depois") return { ...p, status, bruto: null, ir: null, liquido: null, real: null };
-      const ir = p.isento ? 0 : Math.max(0, bruto - valor) * aliqIR(Math.round(anos * 365));
+      // Investimento que já existe: o IR incide sobre o ganho desde a aplicação, com a alíquota do prazo total (irDias).
+      const ir = p.isento ? 0 : p.irBase != null ? Math.max(0, bruto - p.irBase) * aliqIR(p.irDias)
+        : Math.max(0, bruto - valor) * aliqIR(Math.round(anos * 365));
       const liquido = bruto - ir;
       return { ...p, status, bruto, ir, liquido, real: liquido / Math.pow(1 + ipca / 100, anos) };
     });
@@ -155,6 +157,25 @@ const Motor = (() => {
       diferenca: liqReinv - liqVenc,
       duRem, dcRem,
     };
+  }
+
+  // ---------- Investimento que você já tem ----------
+  // Valor de hoje de uma aplicação de renda fixa feita em `data`. Usa a série diária do CDI (BCB, % ao dia) e
+  // o IPCA mensal; meses sem IPCA divulgado usam ipcaProj. Retorna valor null sem a série do CDI.
+  // cobertura = false quando a série começa depois da aplicação (o valor fica subestimado).
+  function valorAtualRF({ aplicado, idx, taxa, data, hoje, cdiSerie = [], ipcaMensal = [], ipcaProj = 0 }) {
+    const anos = diasCorridos(data, hoje) / 365;
+    if (idx === "pre") return { valor: aplicado * Math.pow(1 + taxa / 100, anos), cobertura: true };
+    if (idx === "ipca") {
+      const fator = fatorIpcaPeriodo(ipcaMensal, data, hoje, ipcaProj) * Math.pow(1 + taxa / 100, anos);
+      return { valor: aplicado * fator, cobertura: ipcaMensal.length > 0 };
+    }
+    if (!cdiSerie.length) return { valor: null, cobertura: false };
+    let fator = 1;
+    for (const [d, v] of cdiSerie) {
+      if (d >= data && d < hoje) fator *= 1 + (taxa / 100) * (v / 100);
+    }
+    return { valor: aplicado * fator, cobertura: cdiSerie[0][0] <= data };
   }
 
   // ---------- Planejador de metas ----------
@@ -271,6 +292,6 @@ const Motor = (() => {
   }
 
   return { aliqIR, simulate, ipcaEquilibrio, fatorPre, fatorIpca, ipcaVsPre, acumulado12, cdiAnual, juroReal, comparaRF, cenarioFocus,
-    diasUteis, diasCorridos, fatorIpcaPeriodo, marcacao, aporteMensal, mesesAteMeta, notaLinear, tipoFii, analisaAcao, analisaFii };
+    diasUteis, diasCorridos, fatorIpcaPeriodo, marcacao, aporteMensal, mesesAteMeta, notaLinear, tipoFii, analisaAcao, analisaFii, valorAtualRF };
 })();
 if (typeof module !== "undefined") module.exports = Motor;
