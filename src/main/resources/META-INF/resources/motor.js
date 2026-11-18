@@ -27,6 +27,8 @@ var Motor = (() => {
     PREMISSA_REAL: () => PREMISSA_REAL,
     SPREAD_CDI: () => SPREAD_CDI,
     acumulado12: () => acumulado12,
+    addDays: () => addDays,
+    addMonths: () => addMonths,
     aliqIR: () => aliqIR,
     analisaAcao: () => analisaAcao,
     analisaFii: () => analisaFii,
@@ -37,6 +39,8 @@ var Motor = (() => {
     classificaSetor: () => classificaSetor,
     comparaRF: () => comparaRF,
     comparaSetor: () => comparaSetor,
+    currentRates: () => currentRates,
+    daysBetween: () => daysBetween,
     diasCorridos: () => diasCorridos,
     diasUteis: () => diasUteis,
     fatorIpca: () => fatorIpca,
@@ -53,9 +57,12 @@ var Motor = (() => {
     numeroMagico: () => numeroMagico,
     precoBazin: () => precoBazin,
     precoGraham: () => precoGraham,
+    projectOne: () => projectOne,
+    rfCalc: () => rfCalc,
     simulate: () => simulate,
     tipoFii: () => tipoFii,
-    valorAtualRF: () => valorAtualRF
+    valorAtualRF: () => valorAtualRF,
+    weekdays: () => weekdays
   });
 
   // src/motor/motor.ts
@@ -379,6 +386,76 @@ var Motor = (() => {
       out.push({ setor, tickers: lista.map((it) => it.ticker), melhores });
     }
     return out;
+  }
+  var addDays = (iso, n) => {
+    const d = /* @__PURE__ */ new Date(iso + "T12:00:00");
+    d.setDate(d.getDate() + n);
+    return d.toLocaleDateString("sv-SE");
+  };
+  var addMonths = (iso, n) => {
+    const d = /* @__PURE__ */ new Date(iso + "T12:00:00");
+    d.setMonth(d.getMonth() + n);
+    return d.toLocaleDateString("sv-SE");
+  };
+  var daysBetween = (a, b) => Math.round(((/* @__PURE__ */ new Date(b + "T12:00:00")).getTime() - (/* @__PURE__ */ new Date(a + "T12:00:00")).getTime()) / 864e5);
+  function weekdays(a, b) {
+    const n = daysBetween(a, b);
+    if (n <= 0) return 0;
+    let count = Math.floor(n / 7) * 5;
+    const start = /* @__PURE__ */ new Date(a + "T12:00:00");
+    for (let i = Math.floor(n / 7) * 7; i < n; i++) {
+      const wd = (start.getDay() + i) % 7;
+      if (wd !== 0 && wd !== 6) count++;
+    }
+    return count;
+  }
+  function rfCalc(e, rates, hoje) {
+    const end = e.venc && e.venc < hoje ? e.venc : hoje;
+    const days = rates.cdi.filter(([d]) => d >= e.data && d < end);
+    const du = days.length;
+    let f;
+    if (e.idx === "cdi") f = days.reduce((acc, [, r]) => acc * (1 + r / 100 * (e.taxa / 100)), 1);
+    else if (e.idx === "pre") f = Math.pow(1 + e.taxa / 100, du / 252);
+    else {
+      const m0 = e.data.slice(0, 7), m1 = end.slice(0, 7);
+      const ipca = rates.ipca.filter(([d]) => d.slice(0, 7) > m0 && d.slice(0, 7) < m1).reduce((acc, [, v]) => acc * (1 + v / 100), 1);
+      f = ipca * Math.pow(1 + e.taxa / 100, du / 252);
+    }
+    const bruto = e.aplicado * f, rend = bruto - e.aplicado;
+    const corridos = (new Date(end).getTime() - new Date(e.data).getTime()) / 864e5;
+    const aliq = corridos <= 180 ? 0.225 : corridos <= 360 ? 0.2 : corridos <= 720 ? 0.175 : 0.15;
+    const ir = e.isento ? 0 : Math.max(0, rend) * aliq;
+    return { bruto, rend, ir, aliq: e.isento ? 0 : aliq, liquido: bruto - ir, venceu: end !== hoje };
+  }
+  function currentRates(rates) {
+    const lastCdi = rates.cdi[rates.cdi.length - 1]?.[1] ?? 0;
+    const ipca12 = rates.ipca.slice(-12).reduce((a, [, v]) => a * (1 + v / 100), 1);
+    return { cdi: (Math.pow(1 + lastCdi / 100, 252) - 1) * 100, ipca: (ipca12 - 1) * 100 };
+  }
+  function projectOne(e, target, cfg, rates, hoje) {
+    const c = rfCalc(e, rates, hoje);
+    const rCdi = Math.pow(1 + cfg.cdi / 100, 1 / 252) - 1;
+    let bruto, ir, liq, end;
+    if (e.venc && e.venc <= hoje) {
+      end = e.venc;
+      bruto = c.bruto;
+      ir = c.ir;
+      liq = c.liquido;
+    } else {
+      end = e.venc && e.venc < target ? e.venc : target;
+      const du = weekdays(hoje, end);
+      const f = e.idx === "cdi" ? Math.pow(1 + rCdi * e.taxa / 100, du) : e.idx === "pre" ? Math.pow(1 + e.taxa / 100, du / 252) : Math.pow((1 + cfg.ipca / 100) * (1 + e.taxa / 100), du / 252);
+      bruto = c.bruto * f;
+      ir = e.isento ? 0 : Math.max(0, bruto - e.aplicado) * aliqIR(daysBetween(e.data, end));
+      liq = bruto - ir;
+    }
+    const venceAntes = end < target;
+    if (venceAntes && cfg.reinvest) {
+      const base = liq, b2 = base * Math.pow(1 + rCdi, weekdays(end, target));
+      const ir2 = Math.max(0, b2 - base) * aliqIR(daysBetween(end, target));
+      return { bruto: b2, ir: ir + ir2, liquido: b2 - ir2, venceAntes, end };
+    }
+    return { bruto, ir, liquido: liq, venceAntes, end };
   }
   return __toCommonJS(legado_exports);
 })();

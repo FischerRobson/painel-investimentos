@@ -463,3 +463,85 @@ export function comparaSetor(itens: ItemSetor[]): { setor: string; tickers: stri
   }
   return out;
 }
+
+// ---------- Renda fixa da carteira: valor na curva e projeção ----------
+// Datas "YYYY-MM-DD" no fuso local. hoje entra como parâmetro para as contas serem puras (e testáveis).
+/** Título de renda fixa da carteira (/api/carteira → rendaFixa). taxa: % do CDI, % a.a. ou o juro real do IPCA+. */
+export type TituloRF = {
+  id: string; nome: string; tipo: string; idx: Indexador; taxa: number; aplicado: number;
+  data: string; venc?: string | null; isento?: boolean;
+};
+/** Séries do Banco Central (/api/rates): CDI diário (% ao dia útil) e IPCA mensal (%), ambos [data, valor]. */
+export type TaxasBCB = { cdi: SerieDiaria; ipca: SerieDiaria };
+
+export const addDays = (iso: string, n: number): string => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + n); return d.toLocaleDateString("sv-SE"); };
+export const addMonths = (iso: string, n: number): string => { const d = new Date(iso + "T12:00:00"); d.setMonth(d.getMonth() + n); return d.toLocaleDateString("sv-SE"); };
+export const daysBetween = (a: string, b: string): number => Math.round((new Date(b + "T12:00:00").getTime() - new Date(a + "T12:00:00").getTime()) / 864e5);
+// Dias úteis (seg–sex) de a (inclusive) até b (exclusive). Não desconta feriados.
+export function weekdays(a: string, b: string): number {
+  const n = daysBetween(a, b);
+  if (n <= 0) return 0;
+  let count = Math.floor(n / 7) * 5;
+  const start = new Date(a + "T12:00:00");
+  for (let i = Math.floor(n / 7) * 7; i < n; i++) {
+    const wd = (start.getDay() + i) % 7;
+    if (wd !== 0 && wd !== 6) count++;
+  }
+  return count;
+}
+
+export type ValorRF = { bruto: number; rend: number; ir: number; aliq: number; liquido: number; venceu: boolean };
+// Valor estimado de um título "na curva" hoje (ou no vencimento, se já venceu), com CDI e IPCA reais do Banco Central
+export function rfCalc(e: TituloRF, rates: TaxasBCB, hoje: string): ValorRF {
+  const end = e.venc && e.venc < hoje ? e.venc : hoje;
+  const days = rates.cdi.filter(([d]) => d >= e.data && d < end); // dias úteis com CDI
+  const du = days.length;
+  let f: number;
+  if (e.idx === "cdi") f = days.reduce((acc, [, r]) => acc * (1 + (r / 100) * (e.taxa / 100)), 1);
+  else if (e.idx === "pre") f = Math.pow(1 + e.taxa / 100, du / 252);
+  else { // IPCA + taxa: IPCA dos meses completos após a aplicação
+    const m0 = e.data.slice(0, 7), m1 = end.slice(0, 7);
+    const ipca = rates.ipca.filter(([d]) => d.slice(0, 7) > m0 && d.slice(0, 7) < m1).reduce((acc, [, v]) => acc * (1 + v / 100), 1);
+    f = ipca * Math.pow(1 + e.taxa / 100, du / 252);
+  }
+  const bruto = e.aplicado * f, rend = bruto - e.aplicado;
+  const corridos = (new Date(end).getTime() - new Date(e.data).getTime()) / 864e5;
+  const aliq = corridos <= 180 ? 0.225 : corridos <= 360 ? 0.20 : corridos <= 720 ? 0.175 : 0.15;
+  const ir = e.isento ? 0 : Math.max(0, rend) * aliq;
+  return { bruto, rend, ir, aliq: e.isento ? 0 : aliq, liquido: bruto - ir, venceu: end !== hoje };
+}
+
+// Premissas atuais: CDI anualizado do último dia e IPCA acumulado em 12 meses (% a.a.)
+export function currentRates(rates: TaxasBCB): { cdi: number; ipca: number } {
+  const lastCdi = rates.cdi[rates.cdi.length - 1]?.[1] ?? 0;
+  const ipca12 = rates.ipca.slice(-12).reduce((a, [, v]) => a * (1 + v / 100), 1);
+  return { cdi: (Math.pow(1 + lastCdi / 100, 252) - 1) * 100, ipca: (ipca12 - 1) * 100 };
+}
+
+export type ProjecaoRF = { bruto: number; ir: number; liquido: number; venceAntes: boolean; end: string };
+// Valor de um título numa data futura (líquido = o que você receberia resgatando nesse dia).
+// cfg: CDI e IPCA projetados (% a.a.) e se o que vencer antes é reaplicado a 100% do CDI.
+export function projectOne(e: TituloRF, target: string, cfg: { cdi: number; ipca: number; reinvest: boolean }, rates: TaxasBCB, hoje: string): ProjecaoRF {
+  const c = rfCalc(e, rates, hoje);
+  const rCdi = Math.pow(1 + cfg.cdi / 100, 1 / 252) - 1;
+  let bruto: number, ir: number, liq: number, end: string;
+  if (e.venc && e.venc <= hoje) { // já venceu
+    end = e.venc; bruto = c.bruto; ir = c.ir; liq = c.liquido;
+  } else {
+    end = e.venc && e.venc < target ? e.venc : target;
+    const du = weekdays(hoje, end);
+    const f = e.idx === "cdi" ? Math.pow(1 + rCdi * e.taxa / 100, du)
+      : e.idx === "pre" ? Math.pow(1 + e.taxa / 100, du / 252)
+      : Math.pow((1 + cfg.ipca / 100) * (1 + e.taxa / 100), du / 252);
+    bruto = c.bruto * f;
+    ir = e.isento ? 0 : Math.max(0, bruto - e.aplicado) * aliqIR(daysBetween(e.data, end));
+    liq = bruto - ir;
+  }
+  const venceAntes = end < target;
+  if (venceAntes && cfg.reinvest) { // reaplica o líquido a 100% do CDI (tributável) até a data
+    const base = liq, b2 = base * Math.pow(1 + rCdi, weekdays(end, target));
+    const ir2 = Math.max(0, b2 - base) * aliqIR(daysBetween(end, target));
+    return { bruto: b2, ir: ir + ir2, liquido: b2 - ir2, venceAntes, end };
+  }
+  return { bruto, ir, liquido: liq, venceAntes, end };
+}

@@ -9,7 +9,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 // Mark-to-curve value of a fixed income title, net of income tax, using the real CDI and IPCA from the Central Bank.
-// Same rules as rfCalc in index.html.
+// Same rules as rfCalc in src/main/webui/src/motor/motor.ts (used by both frontends).
 public final class FixedIncomeCalculator {
 
     private FixedIncomeCalculator() {

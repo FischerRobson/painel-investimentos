@@ -630,54 +630,16 @@ async function loadExtras({ crypto = true } = {}) {
   await Promise.all(jobs);
 }
 
-// Valor estimado de um título de renda fixa "na curva", com CDI e IPCA reais do Banco Central
-function rfCalc(e) {
-  if (!rates) return null;
-  const today = todayISO();
-  const end = e.venc && e.venc < today ? e.venc : today;
-  const days = rates.cdi.filter(([d]) => d >= e.data && d < end); // dias úteis com CDI
-  const du = days.length;
-  let f;
-  if (e.idx === "cdi") f = days.reduce((acc, [, r]) => acc * (1 + (r / 100) * (e.taxa / 100)), 1);
-  else if (e.idx === "pre") f = Math.pow(1 + e.taxa / 100, du / 252);
-  else { // IPCA + taxa: IPCA dos meses completos após a aplicação
-    const m0 = e.data.slice(0, 7), m1 = end.slice(0, 7);
-    const ipca = rates.ipca.filter(([d]) => d.slice(0, 7) > m0 && d.slice(0, 7) < m1).reduce((acc, [, v]) => acc * (1 + v / 100), 1);
-    f = ipca * Math.pow(1 + e.taxa / 100, du / 252);
-  }
-  const bruto = e.aplicado * f, rend = bruto - e.aplicado;
-  const corridos = (new Date(end) - new Date(e.data)) / 864e5;
-  const aliq = corridos <= 180 ? 0.225 : corridos <= 360 ? 0.20 : corridos <= 720 ? 0.175 : 0.15;
-  const ir = e.isento ? 0 : Math.max(0, rend) * aliq;
-  return { bruto, rend, ir, aliq: e.isento ? 0 : aliq, liquido: bruto - ir, venceu: end !== today };
-}
+// Valor estimado de um título de renda fixa "na curva", com CDI e IPCA reais do Banco Central (conta no motor)
+const rfCalc = e => rates ? Motor.rfCalc(e, rates, todayISO()) : null;
 const rfTaxa = e => e.idx === "cdi" ? `${brl(e.taxa, e.taxa % 1 ? 1 : 0)}% do CDI` : e.idx === "pre" ? `${brl(e.taxa)}% a.a.` : `IPCA + ${brl(e.taxa)}%`;
 
 // ---------- Projeção da renda fixa ----------
-const addDays = (iso, n) => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + n); return d.toLocaleDateString("sv-SE"); };
-const addMonths = (iso, n) => { const d = new Date(iso + "T12:00:00"); d.setMonth(d.getMonth() + n); return d.toLocaleDateString("sv-SE"); };
-const daysBetween = (a, b) => Math.round((new Date(b + "T12:00:00") - new Date(a + "T12:00:00")) / 864e5);
-// Dias úteis (seg–sex) de a (inclusive) até b (exclusive). Não desconta feriados.
-function weekdays(a, b) {
-  const n = daysBetween(a, b);
-  if (n <= 0) return 0;
-  let count = Math.floor(n / 7) * 5;
-  const start = new Date(a + "T12:00:00");
-  for (let i = Math.floor(n / 7) * 7; i < n; i++) {
-    const wd = (start.getDay() + i) % 7;
-    if (wd !== 0 && wd !== 6) count++;
-  }
-  return count;
-}
+const { addDays, addMonths, daysBetween, weekdays } = Motor; // datas "YYYY-MM-DD"; dias úteis sem feriados
 const aliqIR = Motor.aliqIR;
 
 // Premissas atuais: CDI anualizado do último dia e IPCA acumulado em 12 meses
-function currentRates() {
-  if (!rates) return null;
-  const lastCdi = rates.cdi[rates.cdi.length - 1]?.[1] ?? 0;
-  const ipca12 = rates.ipca.slice(-12).reduce((a, [, v]) => a * (1 + v / 100), 1);
-  return { cdi: (Math.pow(1 + lastCdi / 100, 252) - 1) * 100, ipca: (ipca12 - 1) * 100 };
-}
+const currentRates = () => rates ? Motor.currentRates(rates) : null;
 function projCfgEff() {
   const cur = currentRates() || { cdi: 0, ipca: 0 };
   return {
@@ -687,33 +649,8 @@ function projCfgEff() {
   };
 }
 
-// Valor de um título numa data futura (líquido = o que você receberia resgatando nesse dia)
-function projectOne(e, target, cfg) {
-  const c = rfCalc(e);
-  if (!c) return null;
-  const today = todayISO();
-  const rCdi = Math.pow(1 + cfg.cdi / 100, 1 / 252) - 1;
-  let bruto, ir, liq, end;
-  if (e.venc && e.venc <= today) { // já venceu
-    end = e.venc; bruto = c.bruto; ir = c.ir; liq = c.liquido;
-  } else {
-    end = e.venc && e.venc < target ? e.venc : target;
-    const du = weekdays(today, end);
-    const f = e.idx === "cdi" ? Math.pow(1 + rCdi * e.taxa / 100, du)
-      : e.idx === "pre" ? Math.pow(1 + e.taxa / 100, du / 252)
-      : Math.pow((1 + cfg.ipca / 100) * (1 + e.taxa / 100), du / 252);
-    bruto = c.bruto * f;
-    ir = e.isento ? 0 : Math.max(0, bruto - e.aplicado) * aliqIR(daysBetween(e.data, end));
-    liq = bruto - ir;
-  }
-  const venceAntes = end < target;
-  if (venceAntes && cfg.reinvest) { // reaplica o líquido a 100% do CDI (tributável) até a data
-    const base = liq, b2 = base * Math.pow(1 + rCdi, weekdays(end, target));
-    const ir2 = Math.max(0, b2 - base) * aliqIR(daysBetween(end, target));
-    return { bruto: b2, ir: ir + ir2, liquido: b2 - ir2, venceAntes, end };
-  }
-  return { bruto, ir, liquido: liq, venceAntes, end };
-}
+// Valor de um título numa data futura (líquido = o que você receberia resgatando nesse dia); conta no motor
+const projectOne = (e, target, cfg) => rates ? Motor.projectOne(e, target, cfg, rates, todayISO()) : null;
 
 // ---------- Página: ferramentas ----------
 // Hub de cards em /ferramentas; cada ferramenta abre em /ferramentas#<id> (as contas ficam em motor.js).
