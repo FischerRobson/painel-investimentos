@@ -740,7 +740,7 @@ const TOOLS = [
   { id: "ipca-pre", nome: "IPCA+ × Prefixado", desc: "Qual inflação faz os dois títulos empatarem, e quem ganha com a inflação que você espera.", render: () => renderIpcaPre() },
   { id: "termometro", nome: "Termômetro econômico", desc: "IPCA, Selic, CDI e juros reais, com histórico e expectativas do mercado.", render: () => renderTermometro() },
   { id: "comparador", nome: "Comparador de renda fixa", desc: "CDB, LCI, LCA e Tesouro lado a lado, com IR e cenários de juros e inflação do Focus.", render: () => renderComparador() },
-  { id: "marcacao", nome: "Marcação a mercado", desc: "Quanto você recebe vendendo um título antes do vencimento, e se compensa.", soon: true },
+  { id: "marcacao", nome: "Marcação a mercado", desc: "Quanto você recebe vendendo um Tesouro antes do vencimento, e se compensa mais que manter.", render: () => renderMarcacao() },
 ];
 const toolBack = `<a class="tool-back" href="#">← Ferramentas</a>`;
 let projCharts = [];
@@ -1075,6 +1075,96 @@ function renderComparador() {
     ];
     saveCmp(); renderComparador();
   };
+}
+
+// ---------- Ferramenta: marcação a mercado (Tesouro Prefixado e IPCA+) ----------
+let mkCfg = (() => { try { return { tipo: "Tesouro IPCA+", qtd: 1, pu: 1000, taxa: 6, dataCompra: "2024-01-02", dataVenc: "2035-05-15", dataAnal: null, taxaMerc: null, reinv: 100, modo: "base", ...JSON.parse(store.get("marcacao", "{}")) }; } catch { return { tipo: "Tesouro IPCA+", qtd: 1, pu: 1000, taxa: 6, dataCompra: "2024-01-02", dataVenc: "2035-05-15", dataAnal: null, taxaMerc: null, reinv: 100, modo: "base" }; } })();
+const saveMk = () => store.set("marcacao", JSON.stringify(mkCfg));
+
+function renderMarcacao() {
+  const el = $("#ferramentas");
+  if (!termo && !termoErr) {
+    el.innerHTML = toolBack + `<div class="panel"><h2>Marcação a mercado</h2><div class="hint">Carregando as taxas do Banco Central…</div></div>`;
+    if (!termoCarregando) loadTermometro().then(() => { if (location.hash === "#marcacao") renderMarcacao(); });
+    return;
+  }
+  const hoje = todayISO();
+  const ipca = mkCfg.tipo === "Tesouro IPCA+";
+  const dataAnal = mkCfg.dataAnal && mkCfg.dataAnal > mkCfg.dataCompra ? mkCfg.dataAnal : hoje;
+  const anosRest = Math.max(1, Math.ceil(Motor.diasCorridos(hoje, mkCfg.dataVenc) / 365));
+  const cen = termo?.focus?.length
+    ? Motor.cenarioFocus(termo.focus, new Date().getFullYear(), anosRest, mkCfg.modo)
+    : { selic: termo?.selic?.at(-1)?.[1] ?? null, ipca: termo?.ipca ? Motor.acumulado12(termo.ipca.map(([date, value]) => ({ date, value }))).at(-1)?.value ?? null : null };
+  const semFocus = !termo?.focus?.length;
+  const mensal = (termo?.ipca || []).map(([date, value]) => ({ date, value }));
+  const accrHoje = ipca ? Motor.fatorIpcaPeriodo(mensal, mkCfg.dataCompra, dataAnal, cen.ipca ?? 0) : 1;
+  const accrVenc = ipca ? Motor.fatorIpcaPeriodo(mensal, mkCfg.dataCompra, mkCfg.dataVenc, cen.ipca ?? 0) : 1;
+  const taxaMerc = mkCfg.taxaMerc ?? mkCfg.taxa;
+  const calc = tm => (cen.selic == null || cen.ipca == null) ? null : Motor.marcacao({
+    qtd: mkCfg.qtd, puCompra: mkCfg.pu, taxaCont: mkCfg.taxa, taxaMerc: tm, dataCompra: mkCfg.dataCompra,
+    dataAnalise: dataAnal, dataVenc: mkCfg.dataVenc, accrHoje, accrVenc, cdiTaxa: cen.selic, reinvestPct: mkCfg.reinv });
+  const r = calc(taxaMerc);
+  const taxaTxt = t => ipca ? `IPCA + ${brl(t)}%` : `${brl(t)}% a.a.`;
+  const valido = r && mkCfg.qtd > 0 && mkCfg.pu > 0;
+  const melhor = r ? (r.diferenca > 0 ? "Vender e reaplicar" : "Manter até o vencimento") : "";
+
+  const sens = [-1, 0, 1, 2].map(d => { const t = mkCfg.taxa + d; const x = calc(t); return { t, x }; }).filter(o => o.x);
+  el.innerHTML = toolBack + `<div class="panel">
+    <h2>Marcação a mercado</h2>
+    <div class="hint">Quanto você receberia vendendo o título hoje, e se compensa mais que manter até o vencimento. A taxa de mercado é a que um título equivalente paga hoje; se ela subir, o preço do título cai.</div>
+    <form class="w-add proj-form" id="f-mk">
+      <label>Título<select name="tipo">${["Tesouro IPCA+", "Tesouro Prefixado"].map(t => `<option ${t === mkCfg.tipo ? "selected" : ""}>${t}</option>`).join("")}</select></label>
+      <label>Quantidade de títulos<input type="number" name="qtd" min="0" step="1" value="${mkCfg.qtd}"></label>
+      <label>Preço de compra por título (R$)<input type="number" name="pu" min="0" step="0.01" value="${mkCfg.pu}"></label>
+      <label>${ipca ? "Taxa contratada (IPCA + % a.a.)" : "Taxa contratada (% a.a.)"}<input type="number" name="taxa" step="0.01" value="${mkCfg.taxa}"></label>
+      <label>Data de compra<input type="date" name="dataCompra" value="${mkCfg.dataCompra}"></label>
+      <label>Vencimento<input type="date" name="dataVenc" min="${addDays(hoje, 1)}" value="${mkCfg.dataVenc}"></label>
+      <label>Data da análise<input type="date" name="dataAnal" min="${mkCfg.dataCompra}" max="${mkCfg.dataVenc}" value="${dataAnal}"></label>
+      <label>Taxa de mercado hoje${ipca ? " (IPCA + % a.a.)" : " (% a.a.)"}<input type="number" name="taxaMerc" step="0.01" value="${taxaMerc}"></label>
+      <label>Reaplicar a % do CDI<input type="number" name="reinv" min="0" step="1" value="${mkCfg.reinv}"></label>
+      <label>Cenário (Focus)<select name="modo">${Object.entries(CENARIOS_RF).map(([k, v]) => `<option value="${k}" ${k === mkCfg.modo ? "selected" : ""}>${v}</option>`).join("")}</select></label>
+      <div class="quick"><button type="button" id="mk-ex">Carregar exemplo</button>
+        <button type="button" id="mk-tm" title="Volta a taxa de mercado para a taxa contratada">Taxa de mercado = contratada</button></div>
+    </form>
+
+    ${valido ? `<div class="tiles" style="margin-top:14px">
+      <div class="tile"><div class="k">Valor na curva (teórico)</div><div class="v">${money(r.valorTeorico)}</div><div class="s">PU ${money(r.puTeorico)} à taxa contratada</div></div>
+      <div class="tile"><div class="k">Valor de mercado (bruto)</div><div class="v">${money(r.valorMercado)}</div><div class="s">PU ${money(r.puMercado)} com taxa de ${taxaTxt(taxaMerc)}</div></div>
+      <div class="tile"><div class="k">Lucro ou prejuízo bruto</div><div class="v ${r.lucroBruto >= 0 ? "up" : "down"}">${r.lucroBruto >= 0 ? "+" : ""}${money(r.lucroBruto)}</div><div class="s">em relação ao que você pagou (${money(mkCfg.qtd * mkCfg.pu)})</div></div>
+      <div class="tile"><div class="k">Líquido se vender hoje</div><div class="v">${money(r.liqVenda)}</div><div class="s">IR estimado ${money(r.irVenda)} · sem custódia</div></div>
+    </div>
+
+    <h3>Vender agora ou manter até o vencimento</h3>
+    <div class="table-wrap"><table class="w-table">
+      <thead><tr><th>Caminho</th><th>Líquido no vencimento (${isoBR(mkCfg.dataVenc)})</th></tr></thead>
+      <tbody>
+        <tr class="${r.diferenca > 0 ? "on-row" : ""}"><td><b>A.</b> Vender hoje e reaplicar a ${brl(mkCfg.reinv)}% do CDI</td><td>${money(r.vendaReaplicada)}</td></tr>
+        <tr class="${r.diferenca <= 0 ? "on-row" : ""}"><td><b>B.</b> Manter o título até o vencimento</td><td>${money(r.liqVenc)}</td></tr>
+      </tbody></table></div>
+    <div class="hint" style="margin-top:8px"><b>${melhor}</b> rende ${money(Math.abs(r.diferenca))} a mais neste cenário. Isso depende de a reaplicação render ${brl(r.taxaReinv)}% a.a. e de ${ipca ? "a inflação" : "os juros"} seguir o cenário escolhido.</div>
+
+    <h3>Se a taxa de mercado mudar</h3>
+    <div class="table-wrap"><table class="w-table">
+      <thead><tr><th>Taxa de mercado</th><th>Preço por título</th><th>Vender e reaplicar</th><th>Manter</th><th>Diferença</th></tr></thead>
+      <tbody>${sens.map(({ t, x }) => `<tr class="${Math.abs(t - taxaMerc) < 1e-9 ? "on-row" : ""}">
+        <td>${taxaTxt(t)}${t === mkCfg.taxa ? ' <span class="muted">contratada</span>' : ""}</td>
+        <td>${money(x.puMercado)} <span class="muted">${x.puMercado > x.puTeorico ? "sobe" : x.puMercado < x.puTeorico ? "cai" : "igual"}</span></td>
+        <td>${money(x.vendaReaplicada)}</td><td>${money(x.liqVenc)}</td>
+        <td class="${signCls(x.diferenca)}">${x.diferenca >= 0 ? "+" : "−"}${money(Math.abs(x.diferenca))}</td></tr>`).join("")}</tbody></table></div>` : `<div class="hint" style="margin-top:10px">${!mkCfg.qtd || !mkCfg.pu ? "Informe quantidade e preço de compra." : "Confira as datas: a análise tem que ficar entre a compra e o vencimento."}</div>`}
+
+    <div class="status">Estimativa, não é cotação do Tesouro Direto. ${semFocus ? "Sem as expectativas do Focus agora: cenário com o último dado realizado. " : ""}Não considera os cupons semestrais do IPCA+ (NTN-B) nem os do prefixado com juros (NTN-F); a custódia da B3 fica de fora; o IR segue a tabela regressiva pelo tempo de cada operação; o CDI é tratado como Selic meta; a correção do IPCA é mensal. Conheça o conceito em <a href="/glossario#marcacao-a-mercado">marcação a mercado</a>.</div>
+  </div>`;
+
+  const f = $("#f-mk");
+  f.onchange = e => {
+    const n = e.target.name;
+    if (n === "tipo" || n === "dataCompra" || n === "dataVenc" || n === "dataAnal" || n === "modo") mkCfg[n] = e.target.value;
+    else mkCfg[n] = e.target.value === "" ? null : Number(e.target.value);
+    if (n === "tipo") { mkCfg.taxa = mkCfg.tipo === "Tesouro Prefixado" ? 12 : 6; mkCfg.taxaMerc = null; } // taxa-padrão de cada título
+    saveMk(); renderMarcacao();
+  };
+  $("#mk-ex").onclick = () => { Object.assign(mkCfg, { tipo: "Tesouro IPCA+", qtd: 1, pu: 1000, taxa: 6, dataCompra: "2024-01-02", dataVenc: "2035-05-15", dataAnal: null, taxaMerc: null, reinv: 100 }); saveMk(); renderMarcacao(); };
+  $("#mk-tm").onclick = () => { mkCfg.taxaMerc = null; saveMk(); renderMarcacao(); };
 }
 
 // ---------- Ferramenta: projeção da renda fixa ----------

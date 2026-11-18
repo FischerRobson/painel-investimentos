@@ -143,3 +143,61 @@ test("cenário Focus: média do prazo e o último ano vale para os seguintes", (
   assert.equal(Motor.cenarioFocus(focus, 2026, 2, "juros-sobem").selic, 14.5);
   assert.equal(Motor.cenarioFocus(focus, 2026, 2, "inflacao-sobe").ipca, 6.5);
 });
+
+// ---------- Marcação a mercado ----------
+const base = { qtd: 1, dataCompra: "2025-01-02", dataAnalise: "2026-01-02", dataVenc: "2030-01-01", cdiTaxa: 12, reinvestPct: 100 };
+
+test("dias úteis e corridos", () => {
+  assert.equal(Motor.diasUteis("2026-11-13", "2026-11-20"), 5); // sex 13 (excl.) a sex 20
+  assert.equal(Motor.diasCorridos("2026-01-01", "2026-01-31"), 30);
+});
+
+test("prefixado: sem mudança de taxa, o preço de mercado é o valor na curva", () => {
+  const r = Motor.marcacao({ ...base, puCompra: 900, taxaCont: 12, taxaMerc: 12 });
+  perto(r.puMercado, r.puTeorico, 1e-9);
+  perto(r.puTeorico, 900 * 1.12 ** (Motor.diasUteis(base.dataCompra, base.dataAnalise) / 252), 1e-6);
+});
+
+test("prefixado: taxa de mercado sobe, preço cai; desce, preço sobe", () => {
+  const sobe = Motor.marcacao({ ...base, puCompra: 900, taxaCont: 12, taxaMerc: 13 });
+  const cai = Motor.marcacao({ ...base, puCompra: 900, taxaCont: 12, taxaMerc: 11 });
+  assert.ok(sobe.puMercado < sobe.puTeorico);
+  assert.ok(cai.puMercado > cai.puTeorico);
+});
+
+test("prefixado comprado a PU de vencimento: valor de vencimento é o face de 1.000", () => {
+  const du = Motor.diasUteis("2025-01-02", "2030-01-01");
+  const puCompra = 1000 / 1.12 ** (du / 252);
+  const r = Motor.marcacao({ ...base, dataVenc: "2030-01-01", puCompra, taxaCont: 12, taxaMerc: 12 });
+  perto(r.puVenc, 1000, 1e-6);
+});
+
+test("IPCA+: correção pelo IPCA entra no valor na curva e no vencimento", () => {
+  const r = Motor.marcacao({ ...base, puCompra: 1000, taxaCont: 6, taxaMerc: 6, accrHoje: 1.05, accrVenc: 1.20 });
+  perto(r.puTeorico, 1000 * 1.05 * 1.06 ** (Motor.diasUteis(base.dataCompra, base.dataAnalise) / 252), 1e-6);
+  perto(r.puVenc, 1000 * 1.06 ** (Motor.diasUteis(base.dataCompra, base.dataVenc) / 252) * 1.20, 1e-6);
+});
+
+test("IR da venda: lucro tributado pela alíquota do tempo de compra até hoje", () => {
+  const r = Motor.marcacao({ ...base, puCompra: 900, taxaCont: 12, taxaMerc: 12 });
+  const lucro = r.valorMercado - 900;
+  perto(r.irVenda, lucro * 0.175, 1e-6); // 365 dias corridos: faixa de 17,5% (361 a 720 dias)
+  perto(r.liqVenda, r.valorMercado - r.irVenda, 1e-9);
+});
+
+test("sem prejuízo fiscal: prejuízo na venda não gera IR", () => {
+  const r = Motor.marcacao({ ...base, puCompra: 900, taxaCont: 12, taxaMerc: 20 });
+  assert.equal(r.irVenda, 0);
+});
+
+test("data de análise depois do vencimento não é calculada", () => {
+  assert.equal(Motor.marcacao({ ...base, dataAnalise: "2031-01-01", puCompra: 900, taxaCont: 12, taxaMerc: 12 }), null);
+});
+
+test("fator de IPCA: meses realizados e projeção para os demais", () => {
+  const mensal = [{ date: "2025-01-01", value: 1 }, { date: "2025-02-01", value: 2 }];
+  const f = Motor.fatorIpcaPeriodo(mensal, "2025-01-15", "2025-04-01", 12);
+  // jan (1%) e fev (2%) realizados; mar projetado a 12% a.a. (≈ 0,949% no mês)
+  perto(f, 1.01 * 1.02 * 1.12 ** (1 / 12), 1e-9);
+  perto(Motor.fatorIpcaPeriodo([], "2025-01-01", "2026-01-01", 10), 1.10, 1e-9);
+});

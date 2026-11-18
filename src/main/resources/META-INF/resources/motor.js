@@ -97,6 +97,67 @@ const Motor = (() => {
     return { selic: media("Selic", selicCampo), ipca: media("IPCA", ipcaCampo) };
   }
 
-  return { aliqIR, simulate, ipcaEquilibrio, fatorPre, fatorIpca, ipcaVsPre, acumulado12, cdiAnual, juroReal, comparaRF, cenarioFocus };
+  // ---------- Marcação a mercado (Tesouro Prefixado e IPCA+) ----------
+  // Datas "YYYY-MM-DD". Dias úteis = seg a sex, sem feriados (aproximação da convenção de 252 dias úteis).
+  const DIA = 86400000;
+  const dataLocal = d => new Date(d + "T12:00:00").getTime();
+  const diasCorridos = (a, b) => Math.round((dataLocal(b) - dataLocal(a)) / DIA);
+  function diasUteis(a, b) {
+    let n = 0;
+    for (let t = dataLocal(a) + DIA; t <= dataLocal(b); t += DIA) {
+      const w = new Date(t).getDay();
+      if (w !== 0 && w !== 6) n++;
+    }
+    return n;
+  }
+  // Inflação acumulada de inicio até fim (mês a mês). Meses sem IPCA divulgado usam ipcaProj.
+  // mensal: [{date: "YYYY-MM-DD", value: %}]. O VNA do IPCA+ reflete o IPCA com defasagem; aqui usamos o mês da data.
+  function fatorIpcaPeriodo(mensal, inicio, fim, ipcaProj) {
+    const mapa = new Map(mensal.map(p => [p.date.slice(0, 7), p.value]));
+    let [y, m] = inicio.slice(0, 7).split("-").map(Number);
+    const [fy, fm] = fim.slice(0, 7).split("-").map(Number);
+    let f = 1;
+    while (y < fy || (y === fy && m < fm)) {
+      const k = `${y}-${String(m).padStart(2, "0")}`;
+      f *= mapa.has(k) ? 1 + mapa.get(k) / 100 : Math.pow(1 + ipcaProj / 100, 1 / 12);
+      if (++m > 12) { m = 1; y++; }
+    }
+    return f;
+  }
+  // Valor de um título comprado a PU puCompra e taxa contratada taxaCont (% a.a.; real no IPCA+).
+  // accrHoje/accrVenc: fator de correção pelo IPCA (1 no prefixado). Mercado: taxaMerc (mesma convenção).
+  // Vender agora: IR pelo tempo da compra até hoje. Manter: IR pelo prazo total. Reaplicar: taxa = reinvestPct% do CDI (cdiTaxa), IR pelo prazo restante.
+  function marcacao({ qtd, puCompra, taxaCont, taxaMerc, dataCompra, dataAnalise, dataVenc, accrHoje = 1, accrVenc = 1, cdiTaxa, reinvestPct = 100 }) {
+    if (dataAnalise >= dataVenc) return null;
+    const r = taxaCont / 100, rm = taxaMerc / 100;
+    const duDec = diasUteis(dataCompra, dataAnalise), duRem = diasUteis(dataAnalise, dataVenc), duTot = diasUteis(dataCompra, dataVenc);
+    const dcDec = diasCorridos(dataCompra, dataAnalise), dcRem = diasCorridos(dataAnalise, dataVenc), dcTot = diasCorridos(dataCompra, dataVenc);
+    const puTeorico = puCompra * accrHoje * Math.pow(1 + r, duDec / 252);          // valor na curva, à taxa contratada
+    const puMercado = puTeorico * Math.pow((1 + r) / (1 + rm), duRem / 252);       // preço se a taxa de mercado for taxaMerc
+    const puVenc = puCompra * Math.pow(1 + r, duTot / 252) * accrVenc;             // valor de vencimento (face)
+    const custo = qtd * puCompra;
+    const brutoVenda = qtd * puMercado;
+    const irVenda = Math.max(0, brutoVenda - custo) * aliqIR(dcDec);
+    const liqVenda = brutoVenda - irVenda;
+    const taxaReinv = cdiTaxa * reinvestPct / 100;
+    const reinvBruto = liqVenda * Math.pow(1 + taxaReinv / 100, duRem / 252);
+    const irReinv = Math.max(0, reinvBruto - liqVenda) * aliqIR(dcRem);
+    const liqReinv = reinvBruto - irReinv;
+    const brutoVenc = qtd * puVenc;
+    const irVenc = Math.max(0, brutoVenc - custo) * aliqIR(dcTot);
+    const liqVenc = brutoVenc - irVenc;
+    return {
+      puTeorico, puMercado, puVenc,
+      valorTeorico: qtd * puTeorico, valorMercado: brutoVenda,
+      lucroBruto: brutoVenda - custo, irVenda, liqVenda,
+      vendaReaplicada: liqReinv, taxaReinv,
+      brutoVenc, irVenc, liqVenc,
+      diferenca: liqReinv - liqVenc,
+      duRem, dcRem,
+    };
+  }
+
+  return { aliqIR, simulate, ipcaEquilibrio, fatorPre, fatorIpca, ipcaVsPre, acumulado12, cdiAnual, juroReal, comparaRF, cenarioFocus,
+    diasUteis, diasCorridos, fatorIpcaPeriodo, marcacao };
 })();
 if (typeof module !== "undefined") module.exports = Motor;
