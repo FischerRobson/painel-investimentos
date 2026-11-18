@@ -1,12 +1,12 @@
 // Service worker do painel: abre sem internet mostrando os últimos dados carregados.
-//  - Páginas e glossario.json: rede primeiro (mudanças aparecem na hora); ícones e Chart.js: cache primeiro (troque VERSION para renovar).
+//  - Páginas, glossario.json e motor.js: rede primeiro (mudanças aparecem na hora); ícones e Chart.js: cache primeiro (troque VERSION para renovar).
 //  - GET /api/*: rede primeiro; se falhar, devolve a última resposta salva com o header X-Painel-Offline.
 //  - PUT/POST nunca passam pelo cache.
-const VERSION = "painel-v5";
+const VERSION = "painel-v6";
 const DATA = "painel-dados";
 const SHELL = [
-  "/", "/carteira", "/orcamento", "/projecao", "/ativos", "/moedas", "/bens", "/custos", "/glossario", "/glossario.json",
-  "/manifest.json", "/icons/icon-192.png", "/icons/apple-touch-icon.png",
+  "/", "/carteira", "/orcamento", "/ferramentas", "/ativos", "/moedas", "/bens", "/custos", "/glossario", "/glossario.json",
+  "/motor.js", "/manifest.json", "/icons/icon-192.png", "/icons/apple-touch-icon.png",
   "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js",
 ];
 
@@ -32,7 +32,7 @@ self.addEventListener("fetch", e => {
 
   if (sameOrigin && url.pathname.startsWith("/api/")) {
     e.respondWith(dadosRedePrimeiro(req));
-  } else if (sameOrigin && url.pathname === "/glossario.json") {
+  } else if (sameOrigin && (url.pathname === "/glossario.json" || url.pathname === "/motor.js")) {
     e.respondWith(arquivoRedePrimeiro(req));
   } else if (sameOrigin && req.mode === "navigate") {
     e.respondWith(paginaRedePrimeiro(req));

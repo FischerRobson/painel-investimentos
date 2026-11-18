@@ -14,7 +14,7 @@ class PageControllerTest {
 
     @Test
     void pagesServeTheIndex() {
-        for (String p : new String[]{"/", "/carteira", "/orcamento", "/projecao", "/ativos", "/moedas", "/bens", "/custos", "/glossario"}) {
+        for (String p : new String[]{"/", "/carteira", "/orcamento", "/ferramentas", "/projecao", "/ativos", "/moedas", "/bens", "/custos", "/glossario"}) {
             given().when().get(p).then().statusCode(200).body(containsString("Meus Investimentos"));
         }
     }

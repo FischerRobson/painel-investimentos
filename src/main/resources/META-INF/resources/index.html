@@ -14,6 +14,7 @@
 <meta name="theme-color" content="#f4f4f2" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#111110" media="(prefers-color-scheme: dark)">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="/motor.js"></script>
 <style>
 :root {
   color-scheme: light;
@@ -220,6 +221,34 @@ details.acc[open] > summary::before { transform: rotate(90deg); }
 .fipe-save input { padding: 8px 10px; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; min-width: 220px; }
 .cmp-top { display: flex; justify-content: flex-end; margin: 4px 0 6px; }
 .proj-box { position: relative; height: 230px; margin: 4px 0 12px; }
+/* Ferramentas: hub de cards e cabeçalho de cada ferramenta */
+.tools { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.tool-card { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; color: inherit; text-decoration: none; transition: border-color .15s, transform .15s; }
+a.tool-card:hover, a.tool-card:focus-visible { border-color: var(--accent); transform: translateY(-2px); outline: none; }
+.tool-art { height: 112px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
+.tool-art svg { width: 100%; height: 100%; }
+.tool-body { padding: 12px 14px 14px; }
+.tool-body h3 { margin: 0 0 4px; font-size: 15px; color: var(--text); }
+.tool-body p { margin: 0; font-size: 13px; color: var(--text-2); }
+.tool-card.soon { opacity: .6; }
+.tool-tag { display: inline-block; margin-top: 8px; font-size: 11px; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--border); color: var(--text-3); }
+.tool-back { display: inline-flex; align-items: center; gap: 4px; margin-bottom: 10px; font-size: 13px; color: var(--accent); text-decoration: none; }
+.tool-back:hover { text-decoration: underline; }
+.ip-slider { grid-column: 1 / -1; }
+.ip-slider input[type=range] { width: 100%; padding: 0; border: 0; background: none; accent-color: var(--s2); }
+.ip-slider b { font-size: 16px; color: var(--text); }
+#ip-out .tile .v { white-space: nowrap; }
+@media (max-width: 480px) { #ip-out .tile .v { font-size: 16px; } }
+.focus-box { border: 1px dashed var(--border); border-radius: 12px; padding: 14px 16px; margin: 16px 0 0; }
+.focus-box h3 { margin-top: 0; }
+.focus-box table { table-layout: fixed; width: 100%; }
+.focus-box td, .focus-box th { white-space: normal; overflow-wrap: anywhere; }
+.focus-box td:first-child { width: 22%; }
+.focus-tag { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 99px; border: 1px solid var(--border); color: var(--text-3); margin-left: 6px; vertical-align: middle; }
+.tm-chart h3 { margin: 16px 0 4px; font-size: 13px; color: var(--text-2); }
+#cmp-prod input[type=text] { text-align: left; }
+#cmp-prod td { vertical-align: middle; }
+tr.on-row td { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .w-actions button:disabled { opacity: .45; cursor: default; }
 tr.editing td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
 .panel h3 { font-size: 13px; margin: 18px 0 6px; color: var(--text-2); }
@@ -373,7 +402,7 @@ body.busy #topbar { opacity: 1; }
   <nav class="nav" aria-label="Páginas">
     <a href="/carteira" data-page="carteira"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2z"/><circle cx="16" cy="14.5" r="1.3"/></svg>Carteira</a>
     <a href="/orcamento" data-page="budget"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>Orçamento</a>
-    <a href="/projecao" data-page="projecao"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20h18"/><path d="M5 16l5-5 4 3 6-7"/><path d="M15 7h5v5"/></svg>Projeção</a>
+    <a href="/ferramentas" data-page="ferramentas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8"/><path d="M8 11h.01M12 11h.01M16 11h.01M8 14.5h.01M12 14.5h.01M16 14.5h.01M8 18h.01M12 18h.01M16 18h.01"/></svg>Ferramentas</a>
     <a href="/ativos" data-page="ativos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Ativos</a>
     <a href="/moedas" data-page="moedas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="9" r="6"/><path d="M15.5 9.5a6 6 0 1 1-6 6"/></svg>Moedas</a>
     <a href="/bens" data-page="bens"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17h14M6 17l1.5-5h9L18 17"/><path d="M4 17v2h3v-2M17 17v2h3v-2"/><path d="M7.5 12 9 8h6l1.5 4"/></svg>Bens</a>
@@ -392,7 +421,7 @@ body.busy #topbar { opacity: 1; }
 
   <div id="wallet"></div>
   <div id="budget"></div>
-  <div id="projection"></div>
+  <div id="ferramentas"></div>
   <div id="moedas"></div>
   <div id="bens"></div>
   <div id="custos"></div>
@@ -450,10 +479,12 @@ function periodReturn(it) {
 
 // ---------- Carregamento ----------
 // ---------- Páginas ----------
-const PAGE = { "/orcamento": "budget", "/projecao": "projecao", "/ativos": "ativos", "/moedas": "moedas", "/bens": "bens", "/custos": "custos", "/glossario": "glossario" }[location.pathname.replace(/\/$/, "")] || "carteira";
-const renderPage = () => ({ carteira: renderWallet, budget: renderBudget, projecao: renderProjection, ativos: render, moedas: renderMoedas, bens: renderBens, custos: renderCustos, glossario: renderGlossario })[PAGE]();
+// /projecao virou a ferramenta "Projeção da renda fixa" dentro de /ferramentas
+if (location.pathname.replace(/\/$/, "") === "/projecao") history.replaceState(null, "", "/ferramentas#renda-fixa");
+const PAGE = { "/orcamento": "budget", "/ferramentas": "ferramentas", "/ativos": "ativos", "/moedas": "moedas", "/bens": "bens", "/custos": "custos", "/glossario": "glossario" }[location.pathname.replace(/\/$/, "")] || "carteira";
+const renderPage = () => ({ carteira: renderWallet, budget: renderBudget, ferramentas: renderTools, ativos: render, moedas: renderMoedas, bens: renderBens, custos: renderCustos, glossario: renderGlossario })[PAGE]();
 // id do elemento principal de cada página
-const MAIN_ID = { carteira: "wallet", budget: "budget", projecao: "projection", ativos: "app", moedas: "moedas", bens: "bens", custos: "custos", glossario: "glossario" };
+const MAIN_ID = { carteira: "wallet", budget: "budget", ferramentas: "ferramentas", ativos: "app", moedas: "moedas", bens: "bens", custos: "custos", glossario: "glossario" };
 
 // O consumo da brapi fica na página Custos (os headers das cotações só trazem o limite por minuto).
 function setStatus() {
@@ -477,8 +508,9 @@ function skeletonHtml(page) {
     carteira: panel(`${L("160px", "sk-title")}${L("40%")}${tiles(4)}
         <div class="dist"><span class="sk sk-circle"></span><div class="pie-legend">${[1, 2, 3].map(() => `<div class="pl-row">${L("12px")}${L("60%")}${L("90px")}${L("40px")}</div>`).join("")}</div></div>
         ${rows(nRows)}`),
-    projecao: panel(`${L("220px", "sk-title")}${L("40%")}${formRow(4)}${tiles(3)}<div class="proj-box"><span class="sk sk-block"></span></div>${rows(2)}`)
-      + panel(`${L("200px", "sk-title")}${formRow(6)}${tiles(3)}<div class="proj-box"><span class="sk sk-block"></span></div>`),
+    ferramentas: location.hash.length > 1
+      ? panel(`${L("220px", "sk-title")}${L("40%")}${formRow(4)}${tiles(3)}<div class="proj-box"><span class="sk sk-block"></span></div>${rows(2)}`)
+      : panel(`${L("140px", "sk-title")}${L("45%")}`) + `<div class="tools">${Array.from({ length: 3 }, () => `<div class="tool-card"><div class="tool-art"></div><div class="tool-body">${L("60%", "sk-title")}${L("95%")}${L("70%")}</div></div>`).join("")}</div>`,
     ativos: panel(`${L("220px", "sk-title")}${L("50%")}<div class="cmp-box"><span class="sk sk-block"></span></div>`)
       + panel(`${L("100px", "sk-title")}${rows(Math.min(8, nCards))}`) + `<div class="grid">${Array.from({ length: nCards }, card).join("")}</div>`,
     moedas: panel(`${L("120px", "sk-title")}${L("50%")}${tiles(1)}`) + `<div class="grid">${Array.from({ length: 5 }, card).join("")}</div>`,
@@ -544,7 +576,7 @@ async function load() {
       setStatus();
     } else {
       await loadExtras({ crypto: false });
-      renderProjection();
+      renderTools();
       setStatus();
     }
   } catch (e) {
@@ -630,7 +662,7 @@ function weekdays(a, b) {
   }
   return count;
 }
-const aliqIR = dias => dias <= 180 ? 0.225 : dias <= 360 ? 0.20 : dias <= 720 ? 0.175 : 0.15;
+const aliqIR = Motor.aliqIR;
 
 // Premissas atuais: CDI anualizado do último dia e IPCA acumulado em 12 meses
 function currentRates() {
@@ -676,10 +708,468 @@ function projectOne(e, target, cfg) {
   return { bruto, ir, liquido: liq, venceAntes, end };
 }
 
-// ---------- Página: projeção ----------
+// ---------- Página: ferramentas ----------
+// Hub de cards em /ferramentas; cada ferramenta abre em /ferramentas#<id> (as contas ficam em motor.js).
+const ART = (inner, label) => `<svg viewBox="0 0 260 112" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${label}">${inner}</svg>`;
+const TOOL_ART = {
+  "renda-fixa": ART(`<path d="M24 92 C84 86 144 72 204 44 L204 96 L24 96Z" style="fill:var(--s2);opacity:.16"/>
+    <path d="M24 92 C84 86 144 72 204 44" style="fill:none;stroke:var(--s2);stroke-width:3;stroke-linecap:round"/>
+    <path d="M204 18 V96" style="stroke:var(--text-3);stroke-width:1.5;stroke-dasharray:4 4"/>
+    <circle cx="24" cy="92" r="4" style="fill:var(--text-3)"/><circle cx="204" cy="44" r="6" style="fill:var(--s2)"/>
+    <rect x="132" y="12" width="62" height="22" rx="6" style="fill:var(--surface);stroke:var(--border)"/>
+    <path d="M142 23 h42" style="stroke:var(--text-2);stroke-width:3;stroke-linecap:round"/>`, "Curva da renda fixa subindo até uma data futura"),
+  aportes: ART(`${[0, 1, 2, 3, 4, 5, 6].map(i => `<rect x="${28 + i * 30}" y="${92 - 8 - i * 7}" width="16" height="${8 + i * 7}" rx="3" style="fill:var(--s2);opacity:.45"/>`).join("")}
+    <path d="M36 82 C100 76 160 56 222 20" style="fill:none;stroke:var(--s1);stroke-width:3;stroke-linecap:round"/>
+    <path d="M24 30 H236" style="stroke:var(--s3);stroke-width:1.5;stroke-dasharray:5 4"/>
+    <path d="M226 14 v18 M226 14 h14 l-4 5 4 5 h-14" style="fill:none;stroke:var(--s3);stroke-width:2;stroke-linejoin:round"/>
+    <path d="M24 96 H236" style="stroke:var(--border);stroke-width:1.5"/>`, "Aportes mensais crescendo até a meta"),
+  "ipca-pre": ART(`<path d="M24 80 Q132 62 236 16" style="fill:none;stroke:var(--s2);stroke-width:3;stroke-linecap:round"/>
+    <path d="M24 80 L236 38" style="fill:none;stroke:var(--s1);stroke-width:3;stroke-linecap:round"/>
+    <path d="M24 80 Q132 74 236 58" style="fill:none;stroke:var(--s2);stroke-width:2.5;stroke-dasharray:5 4;stroke-linecap:round"/>
+    <path d="M60 100 H200" style="stroke:var(--border);stroke-width:4;stroke-linecap:round"/>
+    <path d="M60 100 H150" style="stroke:var(--s2);stroke-width:4;stroke-linecap:round"/>
+    <circle cx="150" cy="100" r="6" style="fill:var(--surface);stroke:var(--s2);stroke-width:2.5"/>`, "Prefixado entre duas curvas de IPCA+ com inflações diferentes"),
+  termometro: ART(`<path d="M24 70 L60 58 L96 64 L132 40 L168 46 L204 30 L236 34" style="fill:none;stroke:var(--text-3);stroke-width:2.5;stroke-linejoin:round"/>
+    <path d="M24 88 L60 84 L96 78 L132 80 L168 70 L204 72 L236 66" style="fill:none;stroke:var(--text-3);stroke-width:2.5;stroke-dasharray:5 4"/>`, "Linhas de inflação e juros"),
+  comparador: ART([60, 120, 90, 160].map((w, i) => `<rect x="24" y="${18 + i * 22}" width="${w + 50}" height="14" rx="4" style="fill:var(--text-3);opacity:${0.35 + i * 0.12}"/>`).join(""), "Barras comparando investimentos"),
+  marcacao: ART(`<path d="M30 20 Q90 86 236 92" style="fill:none;stroke:var(--text-3);stroke-width:2.5"/><circle cx="96" cy="66" r="6" style="fill:var(--text-3)"/>`, "Preço do título caindo quando a taxa sobe"),
+};
+const TOOLS = [
+  { id: "renda-fixa", nome: "Projeção da renda fixa", desc: "Quanto os seus títulos de renda fixa vão valer numa data futura, já descontado o IR.", render: () => renderProjection() },
+  { id: "aportes", nome: "Simulador de aportes", desc: "Quanto você terá aportando todo mês, e quando chega na meta de patrimônio ou de renda.", render: () => renderSimulator() },
+  { id: "ipca-pre", nome: "IPCA+ × Prefixado", desc: "Qual inflação faz os dois títulos empatarem, e quem ganha com a inflação que você espera.", render: () => renderIpcaPre() },
+  { id: "termometro", nome: "Termômetro econômico", desc: "IPCA, Selic, CDI e juros reais, com histórico e expectativas do mercado.", render: () => renderTermometro() },
+  { id: "comparador", nome: "Comparador de renda fixa", desc: "CDB, LCI, LCA e Tesouro lado a lado, com IR e cenários de juros e inflação do Focus.", render: () => renderComparador() },
+  { id: "marcacao", nome: "Marcação a mercado", desc: "Quanto você recebe vendendo um Tesouro antes do vencimento, e se compensa mais que manter.", render: () => renderMarcacao() },
+];
+const toolBack = `<a class="tool-back" href="#">← Ferramentas</a>`;
 let projCharts = [];
+function renderTools() {
+  projCharts.forEach(c => c.destroy());
+  projCharts = [];
+  const tool = TOOLS.find(t => !t.soon && t.id === location.hash.slice(1));
+  document.title = (tool ? tool.nome : "Ferramentas") + " · Meus Investimentos";
+  if (tool) return tool.render();
+  const card = t => {
+    const inner = `<div class="tool-art">${TOOL_ART[t.id]}</div><div class="tool-body"><h3>${t.nome}</h3><p>${t.desc}</p>${t.soon ? '<span class="tool-tag">Em breve</span>' : ""}</div>`;
+    return t.soon ? `<div class="tool-card soon" aria-disabled="true">${inner}</div>` : `<a class="tool-card" href="#${t.id}">${inner}</a>`;
+  };
+  $("#ferramentas").innerHTML = `<div class="panel"><h2>Ferramentas</h2>
+    <div class="hint" style="margin:0">Simuladores e calculadoras para planejar seus investimentos. Os resultados são estimativas com as premissas que você escolher, não previsões.</div></div>
+    <div class="tools">${TOOLS.map(card).join("")}</div>`;
+}
+
+function renderSimulator() {
+  const sim = simulatorHtml();
+  $("#ferramentas").innerHTML = toolBack + sim.html;
+  const sc = lineChart($("#sim-chart"), sim.series, { fmtY: v => "R$ " + big(v), fmtTip: v => money(v), height: 230 });
+  if (sc) projCharts.push(sc);
+  bindSimulator(sim.def);
+}
+
+// ---------- Ferramenta: IPCA+ × Prefixado ----------
+let ipCfg = (() => { try { return JSON.parse(store.get("ipcaPre", "{}")) || {}; } catch { return {}; } })();
+const saveIp = () => store.set("ipcaPre", JSON.stringify(ipCfg));
+function ipCfgEff() {
+  const cur = currentRates();
+  const cfg = { valor: 10000, anos: 5, pre: 12, real: 6.5, ...ipCfg };
+  if (cfg.ipca == null) cfg.ipca = cur ? +cur.ipca.toFixed(2) : 4.5;
+  return { cfg, cur };
+}
+function renderIpcaPre() {
+  const { cfg, cur } = ipCfgEff();
+  $("#ferramentas").innerHTML = toolBack + `<div class="panel">
+    <h2>IPCA+ × Prefixado</h2>
+    <div class="hint">Um <a href="/glossario#tesouro-prefixado">Prefixado</a> paga uma taxa fixa; um <a href="/glossario#tesouro-ipca">IPCA+</a> paga a inflação mais um juro real.
+      Qual dos dois rende mais depende da inflação média até o vencimento. Arraste a inflação e veja quem ganha.</div>
+    <form class="w-add proj-form" id="f-ip">
+      <label>Valor investido (R$)<input type="number" name="valor" min="0" step="100" value="${cfg.valor}"></label>
+      <label>Prazo até o vencimento (anos)<input type="number" name="anos" min="0.5" max="40" step="0.5" value="${cfg.anos}"></label>
+      <label>Prefixado (% a.a.)<input type="number" name="pre" min="0" step="0.01" value="${cfg.pre}"></label>
+      <label>IPCA+: juro real (% a.a.)<input type="number" name="real" min="0" step="0.01" value="${cfg.real}"></label>
+      <label class="ip-slider">Inflação média que você espera (IPCA % a.a.): <b id="ip-v"></b><input type="range" name="ipca" min="0" max="15" step="0.01" value="${cfg.ipca}"></label>
+      <div class="quick">${[1, 2, 5, 10, 20].map(a => `<button type="button" data-anos="${a}">${a} ano${a > 1 ? "s" : ""}</button>`).join("")}
+        <button type="button" id="ip-eq">Inflação de equilíbrio</button>
+        ${cur ? `<button type="button" id="ip-cur" title="IPCA acumulado nos últimos 12 meses">IPCA atual (${brl(cur.ipca)}%)</button>` : ""}</div>
+    </form>
+    <div id="ip-out"></div>
+  </div>`;
+  const f = $("#f-ip");
+  const update = () => { $("#ip-v").textContent = brl(ipCfgEff().cfg.ipca) + "%"; ipcaPreOut(); };
+  const setIpca = v => { ipCfg.ipca = Math.round(v * 1e4) / 1e4; f.ipca.value = ipCfg.ipca; saveIp(); update(); };
+  f.oninput = e => {
+    const n = e.target.name; if (!n) return;
+    const v = e.target.value === "" ? null : Number(e.target.value);
+    if (v == null || !isFinite(v)) delete ipCfg[n]; else ipCfg[n] = v;
+    saveIp(); update();
+  };
+  f.onsubmit = e => e.preventDefault();
+  f.querySelectorAll("[data-anos]").forEach(b => b.onclick = () => { ipCfg.anos = +b.dataset.anos; f.anos.value = ipCfg.anos; saveIp(); update(); });
+  $("#ip-eq").onclick = () => { const { cfg } = ipCfgEff(); setIpca(Motor.ipcaEquilibrio(cfg.pre, cfg.real)); };
+  if (cur) $("#ip-cur").onclick = () => setIpca(cur.ipca);
+  update();
+}
+function ipcaPreOut() {
+  projCharts.forEach(c => c.destroy());
+  projCharts = [];
+  const out = $("#ip-out");
+  const { cfg } = ipCfgEff();
+  if (!(cfg.valor > 0) || !(cfg.anos > 0) || cfg.pre < 0 || cfg.real < 0) {
+    out.innerHTML = `<div class="hint" style="margin-top:10px">Preencha valor, prazo e as duas taxas para ver a comparação.</div>`;
+    return;
+  }
+  const r = Motor.ipcaVsPre(cfg);
+  const eq = r.equilibrio;
+  // a inflação vem arredondada (slider de 0,01): até meio centésimo do equilíbrio conta como empate
+  const perto = ipca => Math.abs(ipca - eq) < 0.006;
+  if (perto(cfg.ipca)) r.vencedor = "empate";
+  const nomePre = `Prefixado ${brl(cfg.pre)}%`, nomeIpca = `IPCA + ${brl(cfg.real)}%`;
+  const prazo = cfg.anos === 1 ? "1 ano" : brl(cfg.anos, cfg.anos % 1 ? 1 : 0) + " anos";
+  const ganha = { pre: "Prefixado", ipca: "IPCA+", empate: "Empate" }[r.vencedor];
+  const base = Math.min(r.pre.liquido, r.ipca.liquido);
+  // cenários de inflação: fixos + equilíbrio + o escolhido
+  // o equilíbrio entra com o valor exato (arredondado mostraria uma diferença de centavos num "empate")
+  const ipcas = [...new Set([3, 4, 6, 8, cfg.ipca].map(v => Math.round(v * 100) / 100))].filter(v => !perto(v)).concat(eq).sort((a, b) => a - b);
+  const linha = ipca => {
+    const x = Motor.ipcaVsPre({ ...cfg, ipca });
+    const isEq = perto(ipca), on = perto(cfg.ipca) ? isEq : ipca === Math.round(cfg.ipca * 100) / 100;
+    const quem = isEq ? "Empate" : x.vencedor === "ipca" ? "IPCA+" : "Prefixado";
+    return `<tr class="${on ? "on-row" : ""}"><td>${brl(ipca)}%${isEq ? ' <span class="muted">equilíbrio</span>' : ""}${on && !isEq ? ' <span class="muted">sua escolha</span>' : ""}</td>
+      <td>${money(x.pre.liquido)}</td><td>${money(x.ipca.liquido)}</td>
+      <td class="${isEq ? "muted" : signCls(x.dif)}">${isEq ? "—" : (x.dif > 0 ? "+" : "−") + money(Math.abs(x.dif))}</td>
+      <td><b>${quem}</b></td></tr>`;
+  };
+  out.innerHTML = `<div class="tiles">
+      <div class="tile"><div class="k">Inflação de equilíbrio</div><div class="v">${brl(eq)}% a.a.</div><div class="s">acima disso o IPCA+ ganha; abaixo, o Prefixado</div></div>
+      <div class="tile"><div class="k">${nomePre} em ${prazo}</div><div class="v">${money(r.pre.liquido)}</div><div class="s">líquido de IR · ${money(r.pre.real)} em reais de hoje</div></div>
+      <div class="tile"><div class="k">${nomeIpca} com IPCA de ${brl(cfg.ipca)}%</div><div class="v">${money(r.ipca.liquido)}</div><div class="s">líquido de IR · ${money(r.ipca.real)} em reais de hoje</div></div>
+      <div class="tile"><div class="k">Com IPCA de ${brl(cfg.ipca)}%, quem ganha</div><div class="v ${r.vencedor === "empate" ? "" : "up"}">${ganha}</div>
+        <div class="s">${r.vencedor === "empate" ? "os dois rendem o mesmo" : `+${money(Math.abs(r.dif))} líquido (${pct(Math.abs(r.dif) / base * 100)})`}</div></div>
+    </div>
+    ${legendHtml([[nomePre, css("--s1")], [`${nomeIpca} com IPCA de ${brl(cfg.ipca)}%`, css("--s2")], ["Valor investido", css("--text-3"), true]])}
+    <div class="proj-box"><canvas id="ip-chart" aria-label="Valor bruto acumulado do Prefixado e do IPCA+ até o vencimento"></canvas></div>
+    <h3>Cenários de inflação</h3>
+    <div class="table-wrap"><table class="w-table">
+      <thead><tr><th>IPCA médio (a.a.)</th><th>${nomePre}</th><th>${nomeIpca}</th><th>IPCA+ − Prefixado</th><th>Quem ganha</th></tr></thead>
+      <tbody>${ipcas.map(linha).join("")}</tbody>
+    </table></div>
+    <div class="status">Valores no vencimento, líquidos de IR (${brl(aliqIR(Math.round(cfg.anos * 365)) * 100, 1)}% para ${prazo}). O gráfico mostra o valor bruto.
+      Como os dois títulos pagam a mesma alíquota no mesmo prazo, o IR não muda a inflação de equilíbrio.
+      Conta simplificada: inflação constante (média geométrica), capitalização anual, sem a taxa de custódia da B3 e sem as convenções de dias úteis e de VNA do Tesouro.
+      Vender antes do vencimento muda tudo: o preço passa a depender da taxa de mercado do dia (<a href="/glossario#marcacao-a-mercado">marcação a mercado</a>).</div>`;
+  const meses = Math.max(1, Math.round(cfg.anos * 12));
+  const start = new Date(); start.setDate(1);
+  const tx = m => { const d = new Date(start); d.setMonth(d.getMonth() + m); return d.getTime(); };
+  const pts = f => Array.from({ length: meses + 1 }, (_, m) => ({ x: tx(m), y: cfg.valor * f(m / 12) }));
+  const ch = lineChart($("#ip-chart"), [
+    { label: nomePre, color: css("--s1"), data: pts(a => Motor.fatorPre(cfg.pre, a)) },
+    { label: `${nomeIpca} (IPCA ${brl(cfg.ipca)}%)`, color: css("--s2"), data: pts(a => Motor.fatorIpca(cfg.real, cfg.ipca, a)) },
+    { label: "Valor investido", color: css("--text-3"), dash: [5, 4], data: pts(() => 1) },
+  ], { fill: false, fmtY: v => "R$ " + big(v), fmtTip: v => money(v), height: 230 });
+  if (ch) projCharts.push(ch);
+}
+
+// ---------- Ferramenta: termômetro econômico ----------
+// Dados realizados do BCB (IPCA, Selic meta, CDI) vêm de /api/termometro; as expectativas do Focus ficam numa seção à parte.
+let termo = null, termoErr = null, termoCarregando = false;
+async function loadTermometro() {
+  termoCarregando = true;
+  try {
+    const j = await fetch("/api/termometro").then(r => r.json());
+    if (j.error) termoErr = j.error; else { termo = j; termoErr = null; }
+  } catch { termoErr = "Não consegui os dados do Banco Central agora."; }
+  finally { termoCarregando = false; }
+}
+function renderTermometro() {
+  const el = $("#ferramentas");
+  if (!termo && !termoErr) {
+    el.innerHTML = toolBack + `<div class="panel"><h2>Termômetro econômico</h2><div class="hint">Carregando as taxas do Banco Central…</div></div>`;
+    if (!termoCarregando) loadTermometro().then(() => { if (location.hash === "#termometro") renderTermometro(); });
+    return;
+  }
+  if (!termo || !termo.ipca?.length) {
+    el.innerHTML = toolBack + `<div class="panel err">${esc(termoErr || "Sem dados de inflação no Banco Central agora.")}</div>`;
+    return;
+  }
+  const xy = pares => pares.map(([d, v]) => ({ x: new Date(d + "T12:00:00").getTime(), y: v }));
+  const mesAnoIso = d => new Date(d + "T12:00:00").toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
+  const ipca = termo.ipca, selic = termo.selic || [], cdi = termo.cdi || [];
+  const ipca12 = Motor.acumulado12(ipca.map(([date, value]) => ({ date, value })));
+  const ult = ipca[ipca.length - 1], ult12 = ipca12[ipca12.length - 1];
+  const selicUlt = selic[selic.length - 1], cdiUlt = cdi[cdi.length - 1];
+  let i = selic.length - 1;
+  while (i > 0 && selic[i - 1][1] === selicUlt[1]) i--;
+  const selicDesde = selic[i][0];
+  const cdiAnualUlt = Motor.cdiAnual(cdiUlt[1]);
+  const juroReal = Motor.juroReal(selicUlt[1], ult12.value);
+
+  // CDI anualizado, média por mês (são ~2.500 pontos diários)
+  const porMes = new Map();
+  for (const [d, v] of cdi) { const k = d.slice(0, 7); const a = porMes.get(k) || { s: 0, n: 0, d }; a.s += Motor.cdiAnual(v); a.n++; porMes.set(k, a); }
+  const cdiMensal = [...porMes.values()].map(a => [a.d, a.s / a.n]);
+
+  const focus = termo.focus || [];
+  const anos = [...new Set(focus.map(f => f.ano))].sort();
+  const achado = (ind, ano) => focus.find(f => f.indicador === ind && f.ano === ano);
+  const faixa = f => f ? `<b>${brl(f.mediana)}%</b><br><span class="muted" style="font-size:12px">faixa ${brl(f.minimo)} a ${brl(f.maximo)}</span>` : '<span class="muted">—</span>';
+
+  el.innerHTML = toolBack + `<div class="panel">
+    <h2>Termômetro econômico</h2>
+    <div class="hint">Números realizados do Banco Central: o que já aconteceu. A seção de expectativas, mais abaixo, é outra coisa.</div>
+    <div class="tiles">
+      <div class="tile"><div class="k">IPCA em 12 meses</div><div class="v">${brl(ult12.value)}%</div><div class="s">até ${mesAnoIso(ult12.date)} · mês: ${brl(ult[1])}%</div></div>
+      <div class="tile"><div class="k">Selic meta</div><div class="v">${brl(selicUlt[1])}% a.a.</div><div class="s">desde ${isoBR(selicDesde)}</div></div>
+      <div class="tile"><div class="k">CDI anualizado</div><div class="v">${brl(cdiAnualUlt)}% a.a.</div><div class="s">último dia útil: ${isoBR(cdiUlt[0])}</div></div>
+      <div class="tile"><div class="k">Juro real</div><div class="v">${brl(juroReal)}% a.a.</div><div class="s">Selic contra IPCA de 12 meses · estimativa de referência</div></div>
+    </div>
+    <div class="status">Dados realizados: IPCA até ${mesAnoIso(ult[0])}; Selic e CDI até ${isoBR(cdiUlt[0])}. Fonte: Banco Central (SGS 433, 432 e 12).</div>
+
+    <div class="tm-chart"><h3>IPCA mensal</h3>
+      <div class="proj-box" style="height:200px"><canvas id="tm-ipca" aria-label="IPCA mensal"></canvas></div></div>
+    <div class="tm-chart"><h3>IPCA em 12 meses</h3>
+      <div class="proj-box" style="height:200px"><canvas id="tm-ipca12" aria-label="IPCA acumulado em 12 meses"></canvas></div></div>
+    <div class="tm-chart"><h3>Juros: Selic meta e CDI anualizado</h3>
+      ${legendHtml([["Selic meta", css("--s1")], ["CDI anualizado (média mensal)", css("--s3")]])}
+      <div class="proj-box" style="height:200px"><canvas id="tm-juros" aria-label="Selic meta e CDI anualizado"></canvas></div></div>
+    <div class="tm-chart"><h3>Juros × inflação</h3>
+      ${legendHtml([["Selic meta", css("--s1")], ["IPCA em 12 meses", css("--s2")]])}
+      <div class="proj-box" style="height:200px"><canvas id="tm-real" aria-label="Selic meta contra IPCA em 12 meses"></canvas></div></div>
+
+    <div class="focus-box">
+      <h3>Expectativas do mercado <span class="focus-tag">projeção</span></h3>
+      <div class="hint" style="margin-bottom:8px">Boletim Focus${termo.focusData ? " de " + isoBR(termo.focusData) : ""}: o que analistas esperam para o fim de cada ano. Não é o que aconteceu. Mostra a mediana e a faixa de respostas (mínima a máxima).</div>
+      ${termo.focusErro ? `<div class="err">${esc(termo.focusErro)}</div>`
+        : !anos.length ? `<div class="muted">Nenhuma expectativa publicada agora.</div>`
+        : `<div class="table-wrap"><table class="w-table">
+            <thead><tr><th>Ano</th><th>IPCA</th><th>Selic (fim do ano)</th></tr></thead>
+            <tbody>${anos.map(a => `<tr><td><b>${a}</b></td><td>${faixa(achado("IPCA", a))}</td><td>${faixa(achado("Selic", a))}</td></tr>`).join("")}</tbody>
+          </table></div>`}
+    </div>
+  </div>`;
+
+  const grafico = (id, datasets) => { const c = lineChart($("#" + id), datasets, { fill: false, fmtY: v => brl(v, 1) + "%", fmtTip: v => brl(v, 2) + "%", height: 200 }); if (c) projCharts.push(c); };
+  grafico("tm-ipca", [{ label: "IPCA mensal", color: css("--s2"), data: xy(ipca) }]);
+  grafico("tm-ipca12", [{ label: "IPCA em 12 meses", color: css("--s2"), data: xy(ipca12.map(p => [p.date, p.value])) }]);
+  grafico("tm-juros", [{ label: "Selic meta", color: css("--s1"), data: xy(selic) }, { label: "CDI anualizado", color: css("--s3"), data: xy(cdiMensal) }]);
+  grafico("tm-real", [{ label: "Selic meta", color: css("--s1"), data: xy(selic) }, { label: "IPCA em 12 meses", color: css("--s2"), data: xy(ipca12.map(p => [p.date, p.value])) }]);
+}
+
+// ---------- Ferramenta: comparador de renda fixa ----------
+// Tipos e a forma como cada um rende: cdi = % do CDI (CDI ≈ Selic meta), pre = % a.a., ipca = IPCA + % a.a.
+const TIPOS_RF = {
+  "CDB": { idx: "cdi", padrao: 110, isento: false },
+  "LCI": { idx: "cdi", padrao: 90, isento: true },
+  "LCA": { idx: "cdi", padrao: 90, isento: true },
+  "Tesouro Selic": { idx: "cdi", padrao: 100, isento: false },
+  "Tesouro Prefixado": { idx: "pre", padrao: 12, isento: false },
+  "Tesouro IPCA+": { idx: "ipca", padrao: 6, isento: false },
+  "Prefixado (outro)": { idx: "pre", padrao: 13, isento: false },
+  "IPCA+ (outro)": { idx: "ipca", padrao: 7, isento: false },
+};
+const CENARIOS_RF = {
+  base: "Focus: medianas",
+  "juros-caem": "Focus: juros caem (Selic no mínimo)",
+  "juros-sobem": "Focus: juros sobem (Selic no máximo)",
+  "inflacao-sobe": "Focus: inflação sobe (IPCA no máximo)",
+};
+const TAXA_TXT = p => p.idx === "cdi" ? `${brl(p.taxa)}% do CDI` : p.idx === "pre" ? `${brl(p.taxa)}% a.a.` : `IPCA + ${brl(p.taxa)}%`;
+let cmpCfg = (() => { try { return { valor: 10000, anos: 5, modo: "base", ordem: "liquido", produtos: [], ...JSON.parse(store.get("comparador", "{}")) }; } catch { return { valor: 10000, anos: 5, modo: "base", ordem: "liquido", produtos: [] }; } })();
+const saveCmp = () => store.set("comparador", JSON.stringify(cmpCfg));
+let cmpId = 1;
+
+function renderComparador() {
+  const el = $("#ferramentas");
+  if (!termo && !termoErr) {
+    el.innerHTML = toolBack + `<div class="panel"><h2>Comparador de renda fixa</h2><div class="hint">Carregando as expectativas do Banco Central…</div></div>`;
+    if (!termoCarregando) loadTermometro().then(() => { if (location.hash === "#comparador") renderComparador(); });
+    return;
+  }
+  // Cenário: Focus quando disponível; senão, o último dado realizado (com aviso)
+  const anoIni = new Date().getFullYear();
+  const cen = termo?.focus?.length
+    ? Motor.cenarioFocus(termo.focus, anoIni, cmpCfg.anos, cmpCfg.modo)
+    : { selic: termo?.selic?.at(-1)?.[1] ?? null, ipca: termo?.ipca ? Motor.acumulado12(termo.ipca.map(([date, value]) => ({ date, value }))).at(-1)?.value ?? null : null };
+  const semFocus = !termo?.focus?.length;
+
+  const produtos = cmpCfg.produtos.map(p => {
+    const t = TIPOS_RF[p.tipo] || TIPOS_RF["CDB"];
+    return { id: p.id, nome: p.nome || p.tipo, tipo: p.tipo, idx: t.idx, taxa: Number(p.taxa) || 0, isento: t.isento, anosVenc: Number(p.anosVenc) || 0 };
+  }).filter(p => p.anosVenc > 0 && p.taxa >= 0);
+  const valido = cmpCfg.valor > 0 && cmpCfg.anos > 0 && cen.selic != null && cen.ipca != null;
+  const res = valido && produtos.length ? Motor.comparaRF({ valor: cmpCfg.valor, anos: cmpCfg.anos, selic: cen.selic, ipca: cen.ipca, produtos }) : [];
+  const ok = res.filter(r => r.status !== "depois");
+  const ordenados = [...ok].sort((a, b) => cmpCfg.ordem === "real" ? b.real - a.real : b.liquido - a.liquido);
+  const depois = res.filter(r => r.status === "depois");
+  const melhor = ordenados[0];
+  const linha = r => `<tr>
+    <td><b>${esc(r.nome)}</b>${r.nome !== r.tipo ? ` <span class="muted">${esc(r.tipo)}</span>` : ""}</td>
+    <td>${TAXA_TXT(r)}</td><td>${r.anosVenc} ano${r.anosVenc > 1 ? "s" : ""}</td>
+    <td>${money(r.bruto)}</td><td>${r.isento ? '<span class="muted">isento</span>' : money(r.ir)}</td>
+    <td><b>${money(r.liquido)}</b></td><td>${money(r.real)}</td>
+    <td class="muted">${r.status === "antes" ? `vence antes: reaplicado no CDI até ${cmpCfg.anos} anos` : ""}</td></tr>`;
+  const linhaDepois = r => `<tr><td><b>${esc(r.nome)}</b> <span class="muted">${esc(r.tipo)}</span></td><td>${TAXA_TXT(r)}</td><td>${r.anosVenc} anos</td>
+    <td colspan="5" class="muted">vence depois do prazo: seria preciso vender antes do vencimento (marcação a mercado, ainda não disponível aqui)</td></tr>`;
+
+  el.innerHTML = toolBack + `<div class="panel">
+    <h2>Comparador de renda fixa</h2>
+    <div class="hint">Mesmo valor, mesmo prazo, produtos diferentes. Cada um rende de um jeito: % do CDI, prefixado ou IPCA+. Cadastre os produtos com a taxa da oferta que você tem em mãos.</div>
+    <form class="w-add proj-form" id="f-cmp">
+      <label>Valor investido (R$)<input type="number" name="valor" min="0" step="100" value="${cmpCfg.valor}"></label>
+      <label>Prazo (anos)<input type="number" name="anos" min="1" max="40" step="1" value="${cmpCfg.anos}"></label>
+      <label>Cenário de juros e inflação<select name="modo">${Object.entries(CENARIOS_RF).map(([k, v]) => `<option value="${k}" ${k === cmpCfg.modo ? "selected" : ""}>${v}</option>`).join("")}</select></label>
+      <label>Ordenar por<select name="ordem"><option value="liquido" ${cmpCfg.ordem !== "real" ? "selected" : ""}>Maior patrimônio líquido</option><option value="real" ${cmpCfg.ordem === "real" ? "selected" : ""}>Maior rentabilidade real</option></select></label>
+    </form>
+    <h3>Produtos</h3>
+    <div class="table-wrap"><table class="w-table" id="cmp-prod">
+      <thead><tr><th>Produto</th><th>Tipo</th><th>Taxa</th><th>Vencimento (anos)</th><th></th></tr></thead>
+      <tbody>${cmpCfg.produtos.map(p => {
+        const t = TIPOS_RF[p.tipo] || TIPOS_RF["CDB"];
+        return `<tr data-id="${p.id}">
+          <td><input type="text" data-k="nome" value="${esc(p.nome)}" placeholder="${esc(p.tipo)}" style="width:150px"></td>
+          <td><select data-k="tipo">${Object.keys(TIPOS_RF).map(k => `<option ${k === p.tipo ? "selected" : ""}>${k}</option>`).join("")}</select></td>
+          <td><input type="number" data-k="taxa" step="0.01" min="0" value="${p.taxa ?? t.padrao}" style="width:90px"> <span class="muted">${t.idx === "cdi" ? "% CDI" : t.idx === "pre" ? "% a.a." : "IPCA +"}</span></td>
+          <td><input type="number" data-k="anosVenc" step="0.5" min="0.5" max="40" value="${p.anosVenc ?? cmpCfg.anos}" style="width:80px"></td>
+          <td><button type="button" data-del="${p.id}">remover</button></td></tr>`;
+      }).join("")}</tbody></table></div>
+    <div class="quick" style="margin-top:8px"><button type="button" id="cmp-add">+ Adicionar produto</button>
+      <button type="button" id="cmp-ex">Carregar exemplo</button></div>
+
+    <div class="tiles" style="margin-top:14px">
+      <div class="tile"><div class="k">Cenário: CDI médio (Selic)</div><div class="v">${cen.selic != null ? brl(cen.selic) + "%" : "—"}</div><div class="s">IPCA médio ${cen.ipca != null ? brl(cen.ipca) + "%" : "—"} a.a.</div></div>
+      <div class="tile"><div class="k">Melhor no cenário</div><div class="v ${melhor ? "up" : ""}">${melhor ? esc(melhor.nome) : "—"}</div><div class="s">${melhor ? `líquido ${money(melhor.liquido)} · real ${money(melhor.real)}` : "adicione produtos com vencimento"}</div></div>
+      <div class="tile"><div class="k">Valor investido</div><div class="v">${money(cmpCfg.valor)}</div><div class="s">${cmpCfg.anos} ano${cmpCfg.anos > 1 ? "s" : ""} · ${CENARIOS_RF[cmpCfg.modo]}</div></div>
+    </div>
+    ${produtos.length && valido ? `<h3>Resultado no vencimento</h3>
+    <div class="table-wrap"><table class="w-table">
+      <thead><tr><th>Produto</th><th>Taxa</th><th>Vencimento</th><th>Bruto</th><th>IR</th><th>Líquido</th><th>Real</th><th>Observação</th></tr></thead>
+      <tbody>${[...ordenados.map(linha), ...depois.map(linhaDepois)].join("")}</tbody></table></div>` : `<div class="hint" style="margin-top:10px">${produtos.length ? "" : "Adicione produtos para comparar."}</div>`}
+    <div class="status">${semFocus ? "Sem as expectativas do Focus agora: usando o último dado realizado do Banco Central. " : ""}Estimativa: CDI tratado como Selic meta, taxas médias constantes no prazo, capitalização anual, IR pela tabela regressiva com o prazo total (inclusive para o que é reaplicado), sem custódia da B3 nem taxas de corretora. "Real" = líquido corrigido pelo IPCA do cenário. Liquidez e risco de crédito ainda não entram na ordenação.</div>
+  </div>`;
+
+  const f = $("#f-cmp");
+  f.onchange = e => {
+    const n = e.target.name;
+    if (n === "modo" || n === "ordem") cmpCfg[n] = e.target.value;
+    else cmpCfg[n] = e.target.value === "" ? null : Number(e.target.value);
+    saveCmp(); renderComparador();
+  };
+  $("#cmp-prod").onchange = e => {
+    const tr = e.target.closest("tr"); const p = cmpCfg.produtos.find(x => x.id === Number(tr.dataset.id)); if (!p) return;
+    const k = e.target.dataset.k;
+    if (k === "tipo") { p.tipo = e.target.value; p.taxa = TIPOS_RF[p.tipo].padrao; }
+    else if (k === "nome") p.nome = e.target.value;
+    else p[k] = e.target.value === "" ? null : Number(e.target.value);
+    saveCmp(); renderComparador();
+  };
+  $("#cmp-prod").onclick = e => {
+    const b = e.target.closest("[data-del]"); if (!b) return;
+    cmpCfg.produtos = cmpCfg.produtos.filter(x => x.id !== Number(b.dataset.del)); saveCmp(); renderComparador();
+  };
+  $("#cmp-add").onclick = () => { cmpCfg.produtos.push({ id: Date.now() + cmpId++, nome: "", tipo: "CDB", taxa: TIPOS_RF.CDB.padrao, anosVenc: cmpCfg.anos }); saveCmp(); renderComparador(); };
+  $("#cmp-ex").onclick = () => {
+    cmpCfg.produtos = [
+      { id: Date.now() + 1, nome: "", tipo: "Tesouro Prefixado", taxa: 12, anosVenc: 5 },
+      { id: Date.now() + 2, nome: "", tipo: "Tesouro IPCA+", taxa: 6, anosVenc: 5 },
+      { id: Date.now() + 3, nome: "", tipo: "CDB", taxa: 110, anosVenc: 5 },
+      { id: Date.now() + 4, nome: "", tipo: "Tesouro Selic", taxa: 100, anosVenc: 5 },
+    ];
+    saveCmp(); renderComparador();
+  };
+}
+
+// ---------- Ferramenta: marcação a mercado (Tesouro Prefixado e IPCA+) ----------
+let mkCfg = (() => { try { return { tipo: "Tesouro IPCA+", qtd: 1, pu: 1000, taxa: 6, dataCompra: "2024-01-02", dataVenc: "2035-05-15", dataAnal: null, taxaMerc: null, reinv: 100, modo: "base", ...JSON.parse(store.get("marcacao", "{}")) }; } catch { return { tipo: "Tesouro IPCA+", qtd: 1, pu: 1000, taxa: 6, dataCompra: "2024-01-02", dataVenc: "2035-05-15", dataAnal: null, taxaMerc: null, reinv: 100, modo: "base" }; } })();
+const saveMk = () => store.set("marcacao", JSON.stringify(mkCfg));
+
+function renderMarcacao() {
+  const el = $("#ferramentas");
+  if (!termo && !termoErr) {
+    el.innerHTML = toolBack + `<div class="panel"><h2>Marcação a mercado</h2><div class="hint">Carregando as taxas do Banco Central…</div></div>`;
+    if (!termoCarregando) loadTermometro().then(() => { if (location.hash === "#marcacao") renderMarcacao(); });
+    return;
+  }
+  const hoje = todayISO();
+  const ipca = mkCfg.tipo === "Tesouro IPCA+";
+  const dataAnal = mkCfg.dataAnal && mkCfg.dataAnal > mkCfg.dataCompra ? mkCfg.dataAnal : hoje;
+  const anosRest = Math.max(1, Math.ceil(Motor.diasCorridos(hoje, mkCfg.dataVenc) / 365));
+  const cen = termo?.focus?.length
+    ? Motor.cenarioFocus(termo.focus, new Date().getFullYear(), anosRest, mkCfg.modo)
+    : { selic: termo?.selic?.at(-1)?.[1] ?? null, ipca: termo?.ipca ? Motor.acumulado12(termo.ipca.map(([date, value]) => ({ date, value }))).at(-1)?.value ?? null : null };
+  const semFocus = !termo?.focus?.length;
+  const mensal = (termo?.ipca || []).map(([date, value]) => ({ date, value }));
+  const accrHoje = ipca ? Motor.fatorIpcaPeriodo(mensal, mkCfg.dataCompra, dataAnal, cen.ipca ?? 0) : 1;
+  const accrVenc = ipca ? Motor.fatorIpcaPeriodo(mensal, mkCfg.dataCompra, mkCfg.dataVenc, cen.ipca ?? 0) : 1;
+  const taxaMerc = mkCfg.taxaMerc ?? mkCfg.taxa;
+  const calc = tm => (cen.selic == null || cen.ipca == null) ? null : Motor.marcacao({
+    qtd: mkCfg.qtd, puCompra: mkCfg.pu, taxaCont: mkCfg.taxa, taxaMerc: tm, dataCompra: mkCfg.dataCompra,
+    dataAnalise: dataAnal, dataVenc: mkCfg.dataVenc, accrHoje, accrVenc, cdiTaxa: cen.selic, reinvestPct: mkCfg.reinv });
+  const r = calc(taxaMerc);
+  const taxaTxt = t => ipca ? `IPCA + ${brl(t)}%` : `${brl(t)}% a.a.`;
+  const valido = r && mkCfg.qtd > 0 && mkCfg.pu > 0;
+  const melhor = r ? (r.diferenca > 0 ? "Vender e reaplicar" : "Manter até o vencimento") : "";
+
+  const sens = [-1, 0, 1, 2].map(d => { const t = mkCfg.taxa + d; const x = calc(t); return { t, x }; }).filter(o => o.x);
+  el.innerHTML = toolBack + `<div class="panel">
+    <h2>Marcação a mercado</h2>
+    <div class="hint">Quanto você receberia vendendo o título hoje, e se compensa mais que manter até o vencimento. A taxa de mercado é a que um título equivalente paga hoje; se ela subir, o preço do título cai.</div>
+    <form class="w-add proj-form" id="f-mk">
+      <label>Título<select name="tipo">${["Tesouro IPCA+", "Tesouro Prefixado"].map(t => `<option ${t === mkCfg.tipo ? "selected" : ""}>${t}</option>`).join("")}</select></label>
+      <label>Quantidade de títulos<input type="number" name="qtd" min="0" step="1" value="${mkCfg.qtd}"></label>
+      <label>Preço de compra por título (R$)<input type="number" name="pu" min="0" step="0.01" value="${mkCfg.pu}"></label>
+      <label>${ipca ? "Taxa contratada (IPCA + % a.a.)" : "Taxa contratada (% a.a.)"}<input type="number" name="taxa" step="0.01" value="${mkCfg.taxa}"></label>
+      <label>Data de compra<input type="date" name="dataCompra" value="${mkCfg.dataCompra}"></label>
+      <label>Vencimento<input type="date" name="dataVenc" min="${addDays(hoje, 1)}" value="${mkCfg.dataVenc}"></label>
+      <label>Data da análise<input type="date" name="dataAnal" min="${mkCfg.dataCompra}" max="${mkCfg.dataVenc}" value="${dataAnal}"></label>
+      <label>Taxa de mercado hoje${ipca ? " (IPCA + % a.a.)" : " (% a.a.)"}<input type="number" name="taxaMerc" step="0.01" value="${taxaMerc}"></label>
+      <label>Reaplicar a % do CDI<input type="number" name="reinv" min="0" step="1" value="${mkCfg.reinv}"></label>
+      <label>Cenário (Focus)<select name="modo">${Object.entries(CENARIOS_RF).map(([k, v]) => `<option value="${k}" ${k === mkCfg.modo ? "selected" : ""}>${v}</option>`).join("")}</select></label>
+      <div class="quick"><button type="button" id="mk-ex">Carregar exemplo</button>
+        <button type="button" id="mk-tm" title="Volta a taxa de mercado para a taxa contratada">Taxa de mercado = contratada</button></div>
+    </form>
+
+    ${valido ? `<div class="tiles" style="margin-top:14px">
+      <div class="tile"><div class="k">Valor na curva (teórico)</div><div class="v">${money(r.valorTeorico)}</div><div class="s">PU ${money(r.puTeorico)} à taxa contratada</div></div>
+      <div class="tile"><div class="k">Valor de mercado (bruto)</div><div class="v">${money(r.valorMercado)}</div><div class="s">PU ${money(r.puMercado)} com taxa de ${taxaTxt(taxaMerc)}</div></div>
+      <div class="tile"><div class="k">Lucro ou prejuízo bruto</div><div class="v ${r.lucroBruto >= 0 ? "up" : "down"}">${r.lucroBruto >= 0 ? "+" : ""}${money(r.lucroBruto)}</div><div class="s">em relação ao que você pagou (${money(mkCfg.qtd * mkCfg.pu)})</div></div>
+      <div class="tile"><div class="k">Líquido se vender hoje</div><div class="v">${money(r.liqVenda)}</div><div class="s">IR estimado ${money(r.irVenda)} · sem custódia</div></div>
+    </div>
+
+    <h3>Vender agora ou manter até o vencimento</h3>
+    <div class="table-wrap"><table class="w-table">
+      <thead><tr><th>Caminho</th><th>Líquido no vencimento (${isoBR(mkCfg.dataVenc)})</th></tr></thead>
+      <tbody>
+        <tr class="${r.diferenca > 0 ? "on-row" : ""}"><td><b>A.</b> Vender hoje e reaplicar a ${brl(mkCfg.reinv)}% do CDI</td><td>${money(r.vendaReaplicada)}</td></tr>
+        <tr class="${r.diferenca <= 0 ? "on-row" : ""}"><td><b>B.</b> Manter o título até o vencimento</td><td>${money(r.liqVenc)}</td></tr>
+      </tbody></table></div>
+    <div class="hint" style="margin-top:8px"><b>${melhor}</b> rende ${money(Math.abs(r.diferenca))} a mais neste cenário. Isso depende de a reaplicação render ${brl(r.taxaReinv)}% a.a. e de ${ipca ? "a inflação" : "os juros"} seguir o cenário escolhido.</div>
+
+    <h3>Se a taxa de mercado mudar</h3>
+    <div class="table-wrap"><table class="w-table">
+      <thead><tr><th>Taxa de mercado</th><th>Preço por título</th><th>Vender e reaplicar</th><th>Manter</th><th>Diferença</th></tr></thead>
+      <tbody>${sens.map(({ t, x }) => `<tr class="${Math.abs(t - taxaMerc) < 1e-9 ? "on-row" : ""}">
+        <td>${taxaTxt(t)}${t === mkCfg.taxa ? ' <span class="muted">contratada</span>' : ""}</td>
+        <td>${money(x.puMercado)} <span class="muted">${x.puMercado > x.puTeorico ? "sobe" : x.puMercado < x.puTeorico ? "cai" : "igual"}</span></td>
+        <td>${money(x.vendaReaplicada)}</td><td>${money(x.liqVenc)}</td>
+        <td class="${signCls(x.diferenca)}">${x.diferenca >= 0 ? "+" : "−"}${money(Math.abs(x.diferenca))}</td></tr>`).join("")}</tbody></table></div>` : `<div class="hint" style="margin-top:10px">${!mkCfg.qtd || !mkCfg.pu ? "Informe quantidade e preço de compra." : "Confira as datas: a análise tem que ficar entre a compra e o vencimento."}</div>`}
+
+    <div class="status">Estimativa, não é cotação do Tesouro Direto. ${semFocus ? "Sem as expectativas do Focus agora: cenário com o último dado realizado. " : ""}Não considera os cupons semestrais do IPCA+ (NTN-B) nem os do prefixado com juros (NTN-F); a custódia da B3 fica de fora; o IR segue a tabela regressiva pelo tempo de cada operação; o CDI é tratado como Selic meta; a correção do IPCA é mensal. Conheça o conceito em <a href="/glossario#marcacao-a-mercado">marcação a mercado</a>.</div>
+  </div>`;
+
+  const f = $("#f-mk");
+  f.onchange = e => {
+    const n = e.target.name;
+    if (n === "tipo" || n === "dataCompra" || n === "dataVenc" || n === "dataAnal" || n === "modo") mkCfg[n] = e.target.value;
+    else mkCfg[n] = e.target.value === "" ? null : Number(e.target.value);
+    if (n === "tipo") { mkCfg.taxa = mkCfg.tipo === "Tesouro Prefixado" ? 12 : 6; mkCfg.taxaMerc = null; } // taxa-padrão de cada título
+    saveMk(); renderMarcacao();
+  };
+  $("#mk-ex").onclick = () => { Object.assign(mkCfg, { tipo: "Tesouro IPCA+", qtd: 1, pu: 1000, taxa: 6, dataCompra: "2024-01-02", dataVenc: "2035-05-15", dataAnal: null, taxaMerc: null, reinv: 100 }); saveMk(); renderMarcacao(); };
+  $("#mk-tm").onclick = () => { mkCfg.taxaMerc = null; saveMk(); renderMarcacao(); };
+}
+
+// ---------- Ferramenta: projeção da renda fixa ----------
 function renderProjection() {
-  const el = $("#projection");
+  const el = $("#ferramentas");
   const rf = rfW.map(e => ({ ...e, calc: rfCalc(e) }));
   const vRf = rf.reduce((a, r) => a + (r.calc?.liquido || 0), 0);
   // Projeção
@@ -739,13 +1229,7 @@ function renderProjection() {
   else if (!rates) projHtml = `<div class="panel"><h2>Projeção da renda fixa</h2>
     <div class="${ratesErr ? "err" : "hint"}" style="margin-top:8px">${esc(ratesErr || "Carregando as taxas do Banco Central…")}</div></div>`;
   else if (ratesErr) projHtml = `<div class="panel err">${esc(ratesErr)}</div>` + projHtml;
-  const sim = simulatorHtml();
-  el.innerHTML = projHtml + sim.html;
-  projCharts.forEach(c => c.destroy());
-  projCharts = [];
-  const sc = lineChart($("#sim-chart"), sim.series, { fmtY: v => "R$ " + big(v), fmtTip: v => money(v), height: 230 });
-  if (sc) projCharts.push(sc);
-  bindSimulator(sim.def);
+  el.innerHTML = toolBack + projHtml;
   if (projSeries) drawProjection(projSeries);
   const fP = $("#f-proj");
   if (fP) {
@@ -754,10 +1238,10 @@ function renderProjection() {
       if (e.target.name === "cdi") projCfg.cdi = fP.cdi.value === "" ? null : Number(fP.cdi.value);
       if (e.target.name === "ipca") projCfg.ipca = fP.ipca.value === "" ? null : Number(fP.ipca.value);
       if (e.target.name === "reinvest") projCfg.reinvest = fP.reinvest.checked;
-      saveProj(); renderProjection();
+      saveProj(); renderTools();
     };
-    fP.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { projCfg.target = addMonths(todayISO(), +b.dataset.m); saveProj(); renderProjection(); });
-    $("#proj-reset").onclick = () => { projCfg.cdi = null; projCfg.ipca = null; saveProj(); renderProjection(); };
+    fP.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { projCfg.target = addMonths(todayISO(), +b.dataset.m); saveProj(); renderTools(); });
+    $("#proj-reset").onclick = () => { projCfg.cdi = null; projCfg.ipca = null; saveProj(); renderTools(); };
   }
 }
 
@@ -1035,21 +1519,7 @@ function renderBens() {
   });
 }
 
-// ---------- Projeção: simulador de aportes ----------
-function simulate(cfg) {
-  const nominal = Math.pow(1 + cfg.taxa / 100, 1 / 12) - 1;
-  const r = cfg.real ? Math.pow((1 + cfg.taxa / 100) / (1 + cfg.inflacao / 100), 1 / 12) - 1 : nominal;
-  let saldo = cfg.inicial, aportado = cfg.inicial, mMeta = null, mRenda = null;
-  const rows = [{ m: 0, saldo, aportado }];
-  for (let m = 1; m <= 600; m++) {
-    saldo = saldo * (1 + r) + cfg.aporte;
-    aportado += cfg.aporte;
-    rows.push({ m, saldo, aportado });
-    if (mMeta == null && cfg.meta && saldo >= cfg.meta) mMeta = m;
-    if (mRenda == null && cfg.renda && saldo * r >= cfg.renda) mRenda = m;
-  }
-  return { rows, r, mMeta, mRenda };
-}
+// ---------- Ferramenta: simulador de aportes (conta em Motor.simulate) ----------
 const fmtPrazo = m => { const a = Math.floor(m / 12), mm = m % 12; return [a ? `${a} ano${a > 1 ? "s" : ""}` : "", mm ? `${mm} ${mm > 1 ? "meses" : "mês"}` : ""].filter(Boolean).join(" e ") || "agora"; };
 const mesAno = m => { const d = new Date(); d.setMonth(d.getMonth() + m); return d.toLocaleDateString("pt-BR", { month: "short", year: "numeric" }); };
 
@@ -1059,7 +1529,7 @@ function simulatorHtml() {
   const def = { inicial: lastSnap ? Math.round(histW[lastSnap].i) : 0, taxa: cur ? +projCfgEff().cdi.toFixed(2) : 12, inflacao: cur ? +cur.ipca.toFixed(2) : 4.5 };
   const cfg = { aporte: 1000, meta: 1000000, renda: 5000, real: true, ...simCfg };
   for (const k of ["inicial", "taxa", "inflacao"]) if (cfg[k] == null) cfg[k] = def[k];
-  const sim = simulate(cfg);
+  const sim = Motor.simulate(cfg);
   const horizon = Math.min(600, Math.max(120, Math.max(sim.mMeta || 0, sim.mRenda || 0) + 24));
   const rows = sim.rows.slice(0, horizon + 1);
   const unit = cfg.real ? " (em reais de hoje)" : "";
@@ -1104,9 +1574,9 @@ function bindSimulator(def) {
   f.onchange = e => {
     const n = e.target.name; if (!n) return;
     simCfg[n] = n === "real" ? e.target.checked : (e.target.value === "" ? null : Number(e.target.value));
-    saveSim(); renderProjection();
+    saveSim(); renderTools();
   };
-  $("#sim-reset").onclick = () => { simCfg.inicial = null; simCfg.taxa = null; simCfg.inflacao = null; saveSim(); renderProjection(); };
+  $("#sim-reset").onclick = () => { simCfg.inicial = null; simCfg.taxa = null; simCfg.inflacao = null; saveSim(); renderTools(); };
 }
 
 // ---------- Carteira: evolução do patrimônio ----------
@@ -3106,8 +3576,9 @@ setAuto();
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderPage);
 // mostra só o que é da página atual
 document.querySelectorAll(".nav a").forEach(a => a.classList.toggle("on", a.dataset.page === PAGE));
-document.title = { carteira: "Carteira", budget: "Orçamento", projecao: "Projeção", ativos: "Ativos", moedas: "Moedas", bens: "Bens", custos: "Custos", glossario: "Glossário" }[PAGE] + " · Meus Investimentos";
-const pageEls = { carteira: ["#wallet"], budget: ["#budget"], projecao: ["#projection"], ativos: ["#ativos-controls", "#app"], moedas: ["#moedas"], bens: ["#bens"], custos: ["#custos"], glossario: ["#glossario"] };
+document.title = { carteira: "Carteira", budget: "Orçamento", ferramentas: "Ferramentas", ativos: "Ativos", moedas: "Moedas", bens: "Bens", custos: "Custos", glossario: "Glossário" }[PAGE] + " · Meus Investimentos";
+const pageEls = { carteira: ["#wallet"], budget: ["#budget"], ferramentas: ["#ferramentas"], ativos: ["#ativos-controls", "#app"], moedas: ["#moedas"], bens: ["#bens"], custos: ["#custos"], glossario: ["#glossario"] };
+if (PAGE === "ferramentas") addEventListener("hashchange", () => { renderTools(); scrollTo(0, 0); });
 for (const [pg, sels] of Object.entries(pageEls)) sels.forEach(sel => $(sel).hidden = pg !== PAGE);
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 $("#demo-bar").hidden = !DEMO;

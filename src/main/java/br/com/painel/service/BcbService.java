@@ -19,6 +19,7 @@ public class BcbService {
 
     public static final int CDI = 12;
     public static final int IPCA = 433;
+    public static final int SELIC_META = 432;
 
     private static final DateTimeFormatter BR = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 

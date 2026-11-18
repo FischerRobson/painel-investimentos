@@ -74,4 +74,6 @@ jobs:
         with:
           node-version: "22"
       - run: node --check src/main/resources/META-INF/resources/sw.js
+      - run: node --check src/main/resources/META-INF/resources/motor.js
       - run: node .github/scripts/check-frontend.mjs
+      - run: node --test .github/scripts/motor.test.mjs
