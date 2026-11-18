@@ -14,6 +14,7 @@
 <meta name="theme-color" content="#f4f4f2" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#111110" media="(prefers-color-scheme: dark)">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="/motor.js"></script>
 <style>
 :root {
   color-scheme: light;
@@ -220,6 +221,25 @@ details.acc[open] > summary::before { transform: rotate(90deg); }
 .fipe-save input { padding: 8px 10px; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; min-width: 220px; }
 .cmp-top { display: flex; justify-content: flex-end; margin: 4px 0 6px; }
 .proj-box { position: relative; height: 230px; margin: 4px 0 12px; }
+/* Ferramentas: hub de cards e cabeçalho de cada ferramenta */
+.tools { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.tool-card { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; color: inherit; text-decoration: none; transition: border-color .15s, transform .15s; }
+a.tool-card:hover, a.tool-card:focus-visible { border-color: var(--accent); transform: translateY(-2px); outline: none; }
+.tool-art { height: 112px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
+.tool-art svg { width: 100%; height: 100%; }
+.tool-body { padding: 12px 14px 14px; }
+.tool-body h3 { margin: 0 0 4px; font-size: 15px; color: var(--text); }
+.tool-body p { margin: 0; font-size: 13px; color: var(--text-2); }
+.tool-card.soon { opacity: .6; }
+.tool-tag { display: inline-block; margin-top: 8px; font-size: 11px; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--border); color: var(--text-3); }
+.tool-back { display: inline-flex; align-items: center; gap: 4px; margin-bottom: 10px; font-size: 13px; color: var(--accent); text-decoration: none; }
+.tool-back:hover { text-decoration: underline; }
+.ip-slider { grid-column: 1 / -1; }
+.ip-slider input[type=range] { width: 100%; padding: 0; border: 0; background: none; accent-color: var(--s2); }
+.ip-slider b { font-size: 16px; color: var(--text); }
+#ip-out .tile .v { white-space: nowrap; }
+@media (max-width: 480px) { #ip-out .tile .v { font-size: 16px; } }
+tr.on-row td { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .w-actions button:disabled { opacity: .45; cursor: default; }
 tr.editing td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
 .panel h3 { font-size: 13px; margin: 18px 0 6px; color: var(--text-2); }
@@ -373,7 +393,7 @@ body.busy #topbar { opacity: 1; }
   <nav class="nav" aria-label="Páginas">
     <a href="/carteira" data-page="carteira"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2z"/><circle cx="16" cy="14.5" r="1.3"/></svg>Carteira</a>
     <a href="/orcamento" data-page="budget"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>Orçamento</a>
-    <a href="/projecao" data-page="projecao"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20h18"/><path d="M5 16l5-5 4 3 6-7"/><path d="M15 7h5v5"/></svg>Projeção</a>
+    <a href="/ferramentas" data-page="ferramentas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8"/><path d="M8 11h.01M12 11h.01M16 11h.01M8 14.5h.01M12 14.5h.01M16 14.5h.01M8 18h.01M12 18h.01M16 18h.01"/></svg>Ferramentas</a>
     <a href="/ativos" data-page="ativos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Ativos</a>
     <a href="/moedas" data-page="moedas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="9" r="6"/><path d="M15.5 9.5a6 6 0 1 1-6 6"/></svg>Moedas</a>
     <a href="/bens" data-page="bens"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17h14M6 17l1.5-5h9L18 17"/><path d="M4 17v2h3v-2M17 17v2h3v-2"/><path d="M7.5 12 9 8h6l1.5 4"/></svg>Bens</a>
@@ -392,7 +412,7 @@ body.busy #topbar { opacity: 1; }
 
   <div id="wallet"></div>
   <div id="budget"></div>
-  <div id="projection"></div>
+  <div id="ferramentas"></div>
   <div id="moedas"></div>
   <div id="bens"></div>
   <div id="custos"></div>
@@ -450,10 +470,12 @@ function periodReturn(it) {
 
 // ---------- Carregamento ----------
 // ---------- Páginas ----------
-const PAGE = { "/orcamento": "budget", "/projecao": "projecao", "/ativos": "ativos", "/moedas": "moedas", "/bens": "bens", "/custos": "custos", "/glossario": "glossario" }[location.pathname.replace(/\/$/, "")] || "carteira";
-const renderPage = () => ({ carteira: renderWallet, budget: renderBudget, projecao: renderProjection, ativos: render, moedas: renderMoedas, bens: renderBens, custos: renderCustos, glossario: renderGlossario })[PAGE]();
+// /projecao virou a ferramenta "Projeção da renda fixa" dentro de /ferramentas
+if (location.pathname.replace(/\/$/, "") === "/projecao") history.replaceState(null, "", "/ferramentas#renda-fixa");
+const PAGE = { "/orcamento": "budget", "/ferramentas": "ferramentas", "/ativos": "ativos", "/moedas": "moedas", "/bens": "bens", "/custos": "custos", "/glossario": "glossario" }[location.pathname.replace(/\/$/, "")] || "carteira";
+const renderPage = () => ({ carteira: renderWallet, budget: renderBudget, ferramentas: renderTools, ativos: render, moedas: renderMoedas, bens: renderBens, custos: renderCustos, glossario: renderGlossario })[PAGE]();
 // id do elemento principal de cada página
-const MAIN_ID = { carteira: "wallet", budget: "budget", projecao: "projection", ativos: "app", moedas: "moedas", bens: "bens", custos: "custos", glossario: "glossario" };
+const MAIN_ID = { carteira: "wallet", budget: "budget", ferramentas: "ferramentas", ativos: "app", moedas: "moedas", bens: "bens", custos: "custos", glossario: "glossario" };
 
 // O consumo da brapi fica na página Custos (os headers das cotações só trazem o limite por minuto).
 function setStatus() {
@@ -477,8 +499,9 @@ function skeletonHtml(page) {
     carteira: panel(`${L("160px", "sk-title")}${L("40%")}${tiles(4)}
         <div class="dist"><span class="sk sk-circle"></span><div class="pie-legend">${[1, 2, 3].map(() => `<div class="pl-row">${L("12px")}${L("60%")}${L("90px")}${L("40px")}</div>`).join("")}</div></div>
         ${rows(nRows)}`),
-    projecao: panel(`${L("220px", "sk-title")}${L("40%")}${formRow(4)}${tiles(3)}<div class="proj-box"><span class="sk sk-block"></span></div>${rows(2)}`)
-      + panel(`${L("200px", "sk-title")}${formRow(6)}${tiles(3)}<div class="proj-box"><span class="sk sk-block"></span></div>`),
+    ferramentas: location.hash.length > 1
+      ? panel(`${L("220px", "sk-title")}${L("40%")}${formRow(4)}${tiles(3)}<div class="proj-box"><span class="sk sk-block"></span></div>${rows(2)}`)
+      : panel(`${L("140px", "sk-title")}${L("45%")}`) + `<div class="tools">${Array.from({ length: 3 }, () => `<div class="tool-card"><div class="tool-art"></div><div class="tool-body">${L("60%", "sk-title")}${L("95%")}${L("70%")}</div></div>`).join("")}</div>`,
     ativos: panel(`${L("220px", "sk-title")}${L("50%")}<div class="cmp-box"><span class="sk sk-block"></span></div>`)
       + panel(`${L("100px", "sk-title")}${rows(Math.min(8, nCards))}`) + `<div class="grid">${Array.from({ length: nCards }, card).join("")}</div>`,
     moedas: panel(`${L("120px", "sk-title")}${L("50%")}${tiles(1)}`) + `<div class="grid">${Array.from({ length: 5 }, card).join("")}</div>`,
@@ -544,7 +567,7 @@ async function load() {
       setStatus();
     } else {
       await loadExtras({ crypto: false });
-      renderProjection();
+      renderTools();
       setStatus();
     }
   } catch (e) {
@@ -630,7 +653,7 @@ function weekdays(a, b) {
   }
   return count;
 }
-const aliqIR = dias => dias <= 180 ? 0.225 : dias <= 360 ? 0.20 : dias <= 720 ? 0.175 : 0.15;
+const aliqIR = Motor.aliqIR;
 
 // Premissas atuais: CDI anualizado do último dia e IPCA acumulado em 12 meses
 function currentRates() {
@@ -676,10 +699,170 @@ function projectOne(e, target, cfg) {
   return { bruto, ir, liquido: liq, venceAntes, end };
 }
 
-// ---------- Página: projeção ----------
+// ---------- Página: ferramentas ----------
+// Hub de cards em /ferramentas; cada ferramenta abre em /ferramentas#<id> (as contas ficam em motor.js).
+const ART = (inner, label) => `<svg viewBox="0 0 260 112" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${label}">${inner}</svg>`;
+const TOOL_ART = {
+  "renda-fixa": ART(`<path d="M24 92 C84 86 144 72 204 44 L204 96 L24 96Z" style="fill:var(--s2);opacity:.16"/>
+    <path d="M24 92 C84 86 144 72 204 44" style="fill:none;stroke:var(--s2);stroke-width:3;stroke-linecap:round"/>
+    <path d="M204 18 V96" style="stroke:var(--text-3);stroke-width:1.5;stroke-dasharray:4 4"/>
+    <circle cx="24" cy="92" r="4" style="fill:var(--text-3)"/><circle cx="204" cy="44" r="6" style="fill:var(--s2)"/>
+    <rect x="132" y="12" width="62" height="22" rx="6" style="fill:var(--surface);stroke:var(--border)"/>
+    <path d="M142 23 h42" style="stroke:var(--text-2);stroke-width:3;stroke-linecap:round"/>`, "Curva da renda fixa subindo até uma data futura"),
+  aportes: ART(`${[0, 1, 2, 3, 4, 5, 6].map(i => `<rect x="${28 + i * 30}" y="${92 - 8 - i * 7}" width="16" height="${8 + i * 7}" rx="3" style="fill:var(--s2);opacity:.45"/>`).join("")}
+    <path d="M36 82 C100 76 160 56 222 20" style="fill:none;stroke:var(--s1);stroke-width:3;stroke-linecap:round"/>
+    <path d="M24 30 H236" style="stroke:var(--s3);stroke-width:1.5;stroke-dasharray:5 4"/>
+    <path d="M226 14 v18 M226 14 h14 l-4 5 4 5 h-14" style="fill:none;stroke:var(--s3);stroke-width:2;stroke-linejoin:round"/>
+    <path d="M24 96 H236" style="stroke:var(--border);stroke-width:1.5"/>`, "Aportes mensais crescendo até a meta"),
+  "ipca-pre": ART(`<path d="M24 80 Q132 62 236 16" style="fill:none;stroke:var(--s2);stroke-width:3;stroke-linecap:round"/>
+    <path d="M24 80 L236 38" style="fill:none;stroke:var(--s1);stroke-width:3;stroke-linecap:round"/>
+    <path d="M24 80 Q132 74 236 58" style="fill:none;stroke:var(--s2);stroke-width:2.5;stroke-dasharray:5 4;stroke-linecap:round"/>
+    <path d="M60 100 H200" style="stroke:var(--border);stroke-width:4;stroke-linecap:round"/>
+    <path d="M60 100 H150" style="stroke:var(--s2);stroke-width:4;stroke-linecap:round"/>
+    <circle cx="150" cy="100" r="6" style="fill:var(--surface);stroke:var(--s2);stroke-width:2.5"/>`, "Prefixado entre duas curvas de IPCA+ com inflações diferentes"),
+  termometro: ART(`<path d="M24 70 L60 58 L96 64 L132 40 L168 46 L204 30 L236 34" style="fill:none;stroke:var(--text-3);stroke-width:2.5;stroke-linejoin:round"/>
+    <path d="M24 88 L60 84 L96 78 L132 80 L168 70 L204 72 L236 66" style="fill:none;stroke:var(--text-3);stroke-width:2.5;stroke-dasharray:5 4"/>`, "Linhas de inflação e juros"),
+  comparador: ART([60, 120, 90, 160].map((w, i) => `<rect x="24" y="${18 + i * 22}" width="${w + 50}" height="14" rx="4" style="fill:var(--text-3);opacity:${0.35 + i * 0.12}"/>`).join(""), "Barras comparando investimentos"),
+  marcacao: ART(`<path d="M30 20 Q90 86 236 92" style="fill:none;stroke:var(--text-3);stroke-width:2.5"/><circle cx="96" cy="66" r="6" style="fill:var(--text-3)"/>`, "Preço do título caindo quando a taxa sobe"),
+};
+const TOOLS = [
+  { id: "renda-fixa", nome: "Projeção da renda fixa", desc: "Quanto os seus títulos de renda fixa vão valer numa data futura, já descontado o IR.", render: () => renderProjection() },
+  { id: "aportes", nome: "Simulador de aportes", desc: "Quanto você terá aportando todo mês, e quando chega na meta de patrimônio ou de renda.", render: () => renderSimulator() },
+  { id: "ipca-pre", nome: "IPCA+ × Prefixado", desc: "Qual inflação faz os dois títulos empatarem, e quem ganha com a inflação que você espera.", render: () => renderIpcaPre() },
+  { id: "termometro", nome: "Termômetro econômico", desc: "IPCA, Selic, CDI e juros reais, com histórico e expectativas do mercado.", soon: true },
+  { id: "comparador", nome: "Comparador de investimentos", desc: "CDB, LCI, LCA e Tesouro lado a lado, com IR, custos e cenários de juros.", soon: true },
+  { id: "marcacao", nome: "Marcação a mercado", desc: "Quanto você recebe vendendo um título antes do vencimento, e se compensa.", soon: true },
+];
+const toolBack = `<a class="tool-back" href="#">← Ferramentas</a>`;
 let projCharts = [];
+function renderTools() {
+  projCharts.forEach(c => c.destroy());
+  projCharts = [];
+  const tool = TOOLS.find(t => !t.soon && t.id === location.hash.slice(1));
+  document.title = (tool ? tool.nome : "Ferramentas") + " · Meus Investimentos";
+  if (tool) return tool.render();
+  const card = t => {
+    const inner = `<div class="tool-art">${TOOL_ART[t.id]}</div><div class="tool-body"><h3>${t.nome}</h3><p>${t.desc}</p>${t.soon ? '<span class="tool-tag">Em breve</span>' : ""}</div>`;
+    return t.soon ? `<div class="tool-card soon" aria-disabled="true">${inner}</div>` : `<a class="tool-card" href="#${t.id}">${inner}</a>`;
+  };
+  $("#ferramentas").innerHTML = `<div class="panel"><h2>Ferramentas</h2>
+    <div class="hint" style="margin:0">Simuladores e calculadoras para planejar seus investimentos. Os resultados são estimativas com as premissas que você escolher, não previsões.</div></div>
+    <div class="tools">${TOOLS.map(card).join("")}</div>`;
+}
+
+function renderSimulator() {
+  const sim = simulatorHtml();
+  $("#ferramentas").innerHTML = toolBack + sim.html;
+  const sc = lineChart($("#sim-chart"), sim.series, { fmtY: v => "R$ " + big(v), fmtTip: v => money(v), height: 230 });
+  if (sc) projCharts.push(sc);
+  bindSimulator(sim.def);
+}
+
+// ---------- Ferramenta: IPCA+ × Prefixado ----------
+let ipCfg = (() => { try { return JSON.parse(store.get("ipcaPre", "{}")) || {}; } catch { return {}; } })();
+const saveIp = () => store.set("ipcaPre", JSON.stringify(ipCfg));
+function ipCfgEff() {
+  const cur = currentRates();
+  const cfg = { valor: 10000, anos: 5, pre: 12, real: 6.5, ...ipCfg };
+  if (cfg.ipca == null) cfg.ipca = cur ? +cur.ipca.toFixed(2) : 4.5;
+  return { cfg, cur };
+}
+function renderIpcaPre() {
+  const { cfg, cur } = ipCfgEff();
+  $("#ferramentas").innerHTML = toolBack + `<div class="panel">
+    <h2>IPCA+ × Prefixado</h2>
+    <div class="hint">Um <a href="/glossario#tesouro-prefixado">Prefixado</a> paga uma taxa fixa; um <a href="/glossario#tesouro-ipca">IPCA+</a> paga a inflação mais um juro real.
+      Qual dos dois rende mais depende da inflação média até o vencimento. Arraste a inflação e veja quem ganha.</div>
+    <form class="w-add proj-form" id="f-ip">
+      <label>Valor investido (R$)<input type="number" name="valor" min="0" step="100" value="${cfg.valor}"></label>
+      <label>Prazo até o vencimento (anos)<input type="number" name="anos" min="0.5" max="40" step="0.5" value="${cfg.anos}"></label>
+      <label>Prefixado (% a.a.)<input type="number" name="pre" min="0" step="0.01" value="${cfg.pre}"></label>
+      <label>IPCA+: juro real (% a.a.)<input type="number" name="real" min="0" step="0.01" value="${cfg.real}"></label>
+      <label class="ip-slider">Inflação média que você espera (IPCA % a.a.): <b id="ip-v"></b><input type="range" name="ipca" min="0" max="15" step="0.01" value="${cfg.ipca}"></label>
+      <div class="quick">${[1, 2, 5, 10, 20].map(a => `<button type="button" data-anos="${a}">${a} ano${a > 1 ? "s" : ""}</button>`).join("")}
+        <button type="button" id="ip-eq">Inflação de equilíbrio</button>
+        ${cur ? `<button type="button" id="ip-cur" title="IPCA acumulado nos últimos 12 meses">IPCA atual (${brl(cur.ipca)}%)</button>` : ""}</div>
+    </form>
+    <div id="ip-out"></div>
+  </div>`;
+  const f = $("#f-ip");
+  const update = () => { $("#ip-v").textContent = brl(ipCfgEff().cfg.ipca) + "%"; ipcaPreOut(); };
+  const setIpca = v => { ipCfg.ipca = Math.round(v * 1e4) / 1e4; f.ipca.value = ipCfg.ipca; saveIp(); update(); };
+  f.oninput = e => {
+    const n = e.target.name; if (!n) return;
+    const v = e.target.value === "" ? null : Number(e.target.value);
+    if (v == null || !isFinite(v)) delete ipCfg[n]; else ipCfg[n] = v;
+    saveIp(); update();
+  };
+  f.onsubmit = e => e.preventDefault();
+  f.querySelectorAll("[data-anos]").forEach(b => b.onclick = () => { ipCfg.anos = +b.dataset.anos; f.anos.value = ipCfg.anos; saveIp(); update(); });
+  $("#ip-eq").onclick = () => { const { cfg } = ipCfgEff(); setIpca(Motor.ipcaEquilibrio(cfg.pre, cfg.real)); };
+  if (cur) $("#ip-cur").onclick = () => setIpca(cur.ipca);
+  update();
+}
+function ipcaPreOut() {
+  projCharts.forEach(c => c.destroy());
+  projCharts = [];
+  const out = $("#ip-out");
+  const { cfg } = ipCfgEff();
+  if (!(cfg.valor > 0) || !(cfg.anos > 0) || cfg.pre < 0 || cfg.real < 0) {
+    out.innerHTML = `<div class="hint" style="margin-top:10px">Preencha valor, prazo e as duas taxas para ver a comparação.</div>`;
+    return;
+  }
+  const r = Motor.ipcaVsPre(cfg);
+  const eq = r.equilibrio;
+  // a inflação vem arredondada (slider de 0,01): até meio centésimo do equilíbrio conta como empate
+  const perto = ipca => Math.abs(ipca - eq) < 0.006;
+  if (perto(cfg.ipca)) r.vencedor = "empate";
+  const nomePre = `Prefixado ${brl(cfg.pre)}%`, nomeIpca = `IPCA + ${brl(cfg.real)}%`;
+  const prazo = cfg.anos === 1 ? "1 ano" : brl(cfg.anos, cfg.anos % 1 ? 1 : 0) + " anos";
+  const ganha = { pre: "Prefixado", ipca: "IPCA+", empate: "Empate" }[r.vencedor];
+  const base = Math.min(r.pre.liquido, r.ipca.liquido);
+  // cenários de inflação: fixos + equilíbrio + o escolhido
+  // o equilíbrio entra com o valor exato (arredondado mostraria uma diferença de centavos num "empate")
+  const ipcas = [...new Set([3, 4, 6, 8, cfg.ipca].map(v => Math.round(v * 100) / 100))].filter(v => !perto(v)).concat(eq).sort((a, b) => a - b);
+  const linha = ipca => {
+    const x = Motor.ipcaVsPre({ ...cfg, ipca });
+    const isEq = perto(ipca), on = perto(cfg.ipca) ? isEq : ipca === Math.round(cfg.ipca * 100) / 100;
+    const quem = isEq ? "Empate" : x.vencedor === "ipca" ? "IPCA+" : "Prefixado";
+    return `<tr class="${on ? "on-row" : ""}"><td>${brl(ipca)}%${isEq ? ' <span class="muted">equilíbrio</span>' : ""}${on && !isEq ? ' <span class="muted">sua escolha</span>' : ""}</td>
+      <td>${money(x.pre.liquido)}</td><td>${money(x.ipca.liquido)}</td>
+      <td class="${isEq ? "muted" : signCls(x.dif)}">${isEq ? "—" : (x.dif > 0 ? "+" : "−") + money(Math.abs(x.dif))}</td>
+      <td><b>${quem}</b></td></tr>`;
+  };
+  out.innerHTML = `<div class="tiles">
+      <div class="tile"><div class="k">Inflação de equilíbrio</div><div class="v">${brl(eq)}% a.a.</div><div class="s">acima disso o IPCA+ ganha; abaixo, o Prefixado</div></div>
+      <div class="tile"><div class="k">${nomePre} em ${prazo}</div><div class="v">${money(r.pre.liquido)}</div><div class="s">líquido de IR · ${money(r.pre.real)} em reais de hoje</div></div>
+      <div class="tile"><div class="k">${nomeIpca} com IPCA de ${brl(cfg.ipca)}%</div><div class="v">${money(r.ipca.liquido)}</div><div class="s">líquido de IR · ${money(r.ipca.real)} em reais de hoje</div></div>
+      <div class="tile"><div class="k">Com IPCA de ${brl(cfg.ipca)}%, quem ganha</div><div class="v ${r.vencedor === "empate" ? "" : "up"}">${ganha}</div>
+        <div class="s">${r.vencedor === "empate" ? "os dois rendem o mesmo" : `+${money(Math.abs(r.dif))} líquido (${pct(Math.abs(r.dif) / base * 100)})`}</div></div>
+    </div>
+    ${legendHtml([[nomePre, css("--s1")], [`${nomeIpca} com IPCA de ${brl(cfg.ipca)}%`, css("--s2")], ["Valor investido", css("--text-3"), true]])}
+    <div class="proj-box"><canvas id="ip-chart" aria-label="Valor bruto acumulado do Prefixado e do IPCA+ até o vencimento"></canvas></div>
+    <h3>Cenários de inflação</h3>
+    <div class="table-wrap"><table class="w-table">
+      <thead><tr><th>IPCA médio (a.a.)</th><th>${nomePre}</th><th>${nomeIpca}</th><th>IPCA+ − Prefixado</th><th>Quem ganha</th></tr></thead>
+      <tbody>${ipcas.map(linha).join("")}</tbody>
+    </table></div>
+    <div class="status">Valores no vencimento, líquidos de IR (${brl(aliqIR(Math.round(cfg.anos * 365)) * 100, 1)}% para ${prazo}). O gráfico mostra o valor bruto.
+      Como os dois títulos pagam a mesma alíquota no mesmo prazo, o IR não muda a inflação de equilíbrio.
+      Conta simplificada: inflação constante (média geométrica), capitalização anual, sem a taxa de custódia da B3 e sem as convenções de dias úteis e de VNA do Tesouro.
+      Vender antes do vencimento muda tudo: o preço passa a depender da taxa de mercado do dia (<a href="/glossario#marcacao-a-mercado">marcação a mercado</a>).</div>`;
+  const meses = Math.max(1, Math.round(cfg.anos * 12));
+  const start = new Date(); start.setDate(1);
+  const tx = m => { const d = new Date(start); d.setMonth(d.getMonth() + m); return d.getTime(); };
+  const pts = f => Array.from({ length: meses + 1 }, (_, m) => ({ x: tx(m), y: cfg.valor * f(m / 12) }));
+  const ch = lineChart($("#ip-chart"), [
+    { label: nomePre, color: css("--s1"), data: pts(a => Motor.fatorPre(cfg.pre, a)) },
+    { label: `${nomeIpca} (IPCA ${brl(cfg.ipca)}%)`, color: css("--s2"), data: pts(a => Motor.fatorIpca(cfg.real, cfg.ipca, a)) },
+    { label: "Valor investido", color: css("--text-3"), dash: [5, 4], data: pts(() => 1) },
+  ], { fill: false, fmtY: v => "R$ " + big(v), fmtTip: v => money(v), height: 230 });
+  if (ch) projCharts.push(ch);
+}
+
+// ---------- Ferramenta: projeção da renda fixa ----------
 function renderProjection() {
-  const el = $("#projection");
+  const el = $("#ferramentas");
   const rf = rfW.map(e => ({ ...e, calc: rfCalc(e) }));
   const vRf = rf.reduce((a, r) => a + (r.calc?.liquido || 0), 0);
   // Projeção
@@ -739,13 +922,7 @@ function renderProjection() {
   else if (!rates) projHtml = `<div class="panel"><h2>Projeção da renda fixa</h2>
     <div class="${ratesErr ? "err" : "hint"}" style="margin-top:8px">${esc(ratesErr || "Carregando as taxas do Banco Central…")}</div></div>`;
   else if (ratesErr) projHtml = `<div class="panel err">${esc(ratesErr)}</div>` + projHtml;
-  const sim = simulatorHtml();
-  el.innerHTML = projHtml + sim.html;
-  projCharts.forEach(c => c.destroy());
-  projCharts = [];
-  const sc = lineChart($("#sim-chart"), sim.series, { fmtY: v => "R$ " + big(v), fmtTip: v => money(v), height: 230 });
-  if (sc) projCharts.push(sc);
-  bindSimulator(sim.def);
+  el.innerHTML = toolBack + projHtml;
   if (projSeries) drawProjection(projSeries);
   const fP = $("#f-proj");
   if (fP) {
@@ -754,10 +931,10 @@ function renderProjection() {
       if (e.target.name === "cdi") projCfg.cdi = fP.cdi.value === "" ? null : Number(fP.cdi.value);
       if (e.target.name === "ipca") projCfg.ipca = fP.ipca.value === "" ? null : Number(fP.ipca.value);
       if (e.target.name === "reinvest") projCfg.reinvest = fP.reinvest.checked;
-      saveProj(); renderProjection();
+      saveProj(); renderTools();
     };
-    fP.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { projCfg.target = addMonths(todayISO(), +b.dataset.m); saveProj(); renderProjection(); });
-    $("#proj-reset").onclick = () => { projCfg.cdi = null; projCfg.ipca = null; saveProj(); renderProjection(); };
+    fP.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { projCfg.target = addMonths(todayISO(), +b.dataset.m); saveProj(); renderTools(); });
+    $("#proj-reset").onclick = () => { projCfg.cdi = null; projCfg.ipca = null; saveProj(); renderTools(); };
   }
 }
 
@@ -1035,21 +1212,7 @@ function renderBens() {
   });
 }
 
-// ---------- Projeção: simulador de aportes ----------
-function simulate(cfg) {
-  const nominal = Math.pow(1 + cfg.taxa / 100, 1 / 12) - 1;
-  const r = cfg.real ? Math.pow((1 + cfg.taxa / 100) / (1 + cfg.inflacao / 100), 1 / 12) - 1 : nominal;
-  let saldo = cfg.inicial, aportado = cfg.inicial, mMeta = null, mRenda = null;
-  const rows = [{ m: 0, saldo, aportado }];
-  for (let m = 1; m <= 600; m++) {
-    saldo = saldo * (1 + r) + cfg.aporte;
-    aportado += cfg.aporte;
-    rows.push({ m, saldo, aportado });
-    if (mMeta == null && cfg.meta && saldo >= cfg.meta) mMeta = m;
-    if (mRenda == null && cfg.renda && saldo * r >= cfg.renda) mRenda = m;
-  }
-  return { rows, r, mMeta, mRenda };
-}
+// ---------- Ferramenta: simulador de aportes (conta em Motor.simulate) ----------
 const fmtPrazo = m => { const a = Math.floor(m / 12), mm = m % 12; return [a ? `${a} ano${a > 1 ? "s" : ""}` : "", mm ? `${mm} ${mm > 1 ? "meses" : "mês"}` : ""].filter(Boolean).join(" e ") || "agora"; };
 const mesAno = m => { const d = new Date(); d.setMonth(d.getMonth() + m); return d.toLocaleDateString("pt-BR", { month: "short", year: "numeric" }); };
 
@@ -1059,7 +1222,7 @@ function simulatorHtml() {
   const def = { inicial: lastSnap ? Math.round(histW[lastSnap].i) : 0, taxa: cur ? +projCfgEff().cdi.toFixed(2) : 12, inflacao: cur ? +cur.ipca.toFixed(2) : 4.5 };
   const cfg = { aporte: 1000, meta: 1000000, renda: 5000, real: true, ...simCfg };
   for (const k of ["inicial", "taxa", "inflacao"]) if (cfg[k] == null) cfg[k] = def[k];
-  const sim = simulate(cfg);
+  const sim = Motor.simulate(cfg);
   const horizon = Math.min(600, Math.max(120, Math.max(sim.mMeta || 0, sim.mRenda || 0) + 24));
   const rows = sim.rows.slice(0, horizon + 1);
   const unit = cfg.real ? " (em reais de hoje)" : "";
@@ -1104,9 +1267,9 @@ function bindSimulator(def) {
   f.onchange = e => {
     const n = e.target.name; if (!n) return;
     simCfg[n] = n === "real" ? e.target.checked : (e.target.value === "" ? null : Number(e.target.value));
-    saveSim(); renderProjection();
+    saveSim(); renderTools();
   };
-  $("#sim-reset").onclick = () => { simCfg.inicial = null; simCfg.taxa = null; simCfg.inflacao = null; saveSim(); renderProjection(); };
+  $("#sim-reset").onclick = () => { simCfg.inicial = null; simCfg.taxa = null; simCfg.inflacao = null; saveSim(); renderTools(); };
 }
 
 // ---------- Carteira: evolução do patrimônio ----------
@@ -3106,8 +3269,9 @@ setAuto();
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderPage);
 // mostra só o que é da página atual
 document.querySelectorAll(".nav a").forEach(a => a.classList.toggle("on", a.dataset.page === PAGE));
-document.title = { carteira: "Carteira", budget: "Orçamento", projecao: "Projeção", ativos: "Ativos", moedas: "Moedas", bens: "Bens", custos: "Custos", glossario: "Glossário" }[PAGE] + " · Meus Investimentos";
-const pageEls = { carteira: ["#wallet"], budget: ["#budget"], projecao: ["#projection"], ativos: ["#ativos-controls", "#app"], moedas: ["#moedas"], bens: ["#bens"], custos: ["#custos"], glossario: ["#glossario"] };
+document.title = { carteira: "Carteira", budget: "Orçamento", ferramentas: "Ferramentas", ativos: "Ativos", moedas: "Moedas", bens: "Bens", custos: "Custos", glossario: "Glossário" }[PAGE] + " · Meus Investimentos";
+const pageEls = { carteira: ["#wallet"], budget: ["#budget"], ferramentas: ["#ferramentas"], ativos: ["#ativos-controls", "#app"], moedas: ["#moedas"], bens: ["#bens"], custos: ["#custos"], glossario: ["#glossario"] };
+if (PAGE === "ferramentas") addEventListener("hashchange", () => { renderTools(); scrollTo(0, 0); });
 for (const [pg, sels] of Object.entries(pageEls)) sels.forEach(sel => $(sel).hidden = pg !== PAGE);
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 $("#demo-bar").hidden = !DEMO;
