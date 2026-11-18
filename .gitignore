@@ -53,3 +53,6 @@ deploy.env
 
 # Backups exportados da carteira (dados pessoais)
 carteira-backup-*.json
+
+# Node baixado pelo Quinoa
+.quinoa/
