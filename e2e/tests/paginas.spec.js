@@ -2,6 +2,7 @@ import { test, expect, ir } from "./base.js";
 
 const PAGINAS = [
   { caminho: "/carteira", titulo: "Carteira", heading: "Minha carteira" },
+  { caminho: "/operacoes", titulo: "Operações", heading: "Operações" },
   { caminho: "/orcamento", titulo: "Orçamento", heading: "Meta × realizado" },
   { caminho: "/ferramentas", titulo: "Ferramentas", heading: "Ferramentas" },
   { caminho: "/ativos", titulo: "Ativos", heading: "Comparativo de desempenho" },

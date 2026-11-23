@@ -71,7 +71,7 @@ export function Carteira() {
     && !(rf.titulos.length && !rf.rates && !rf.ratesErr) && !(precisaFx && cambio.isPending);
 
   return <>
-    <Painel c={c} erros={[cryptoErr, rf.ratesErr]} semTaxas={!!rf.titulos.length && !rf.rates} ratesErr={rf.ratesErr}
+    <Painel c={c} comOps={new Set((doc.operacoes ?? []).map(o => o.ativo))} erros={[cryptoErr, rf.ratesErr]} semTaxas={!!rf.titulos.length && !rf.rates} ratesErr={rf.ratesErr}
       historico={historico.data ?? {}} />
     {!c.vazia && <Comparativo c={c} pronta={pronta} />}
     {/* sem /api/historico (erro), o painel trata como histórico vazio */}
@@ -79,8 +79,8 @@ export function Carteira() {
   </>;
 }
 
-function Painel({ c, erros, semTaxas, ratesErr, historico }: {
-  c: Composicao; erros: (string | null)[]; semTaxas: boolean; ratesErr: string | null; historico: Record<string, unknown>;
+function Painel({ c, comOps, erros, semTaxas, ratesErr, historico }: {
+  c: Composicao; comOps: Set<string>; erros: (string | null)[]; semTaxas: boolean; ratesErr: string | null; historico: Record<string, unknown>;
 }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -167,7 +167,9 @@ function Painel({ c, erros, semTaxas, ratesErr, historico }: {
             <tbody>{rvRows.map(r => (
               <tr key={r.kind + r.t}>
                 <td><span className="tk">{r.t}</span> <span className="muted">{r.type}</span></td>
-                <td><CampoQtd r={r} onQtd={v => mudarQtd(r, v)} /></td>
+                <td>{comOps.has(r.t)
+                  ? <Link to="/operacoes" title="A quantidade vem das operações">{brl(r.q, r.q % 1 ? 4 : 0)}</Link>
+                  : <CampoQtd r={r} onQtd={v => mudarQtd(r, v)} />}</td>
                 <td>{r.price != null ? moneyC(r.price, r.cur || "BRL") : <span className="muted">{r.err ? "não encontrado" : "carregando…"}</span>}</td>
                 <td>{money(r.value)}</td>
                 <td><Alloc v={r.value} /></td>
@@ -175,7 +177,7 @@ function Painel({ c, erros, semTaxas, ratesErr, historico }: {
                   {signedMoney(r.dayChg)}{r.kind === "cr" && r.dayChg != null && <> <span className="muted">24h</span></>}</td>
                 <td>{r.div12 ? money(r.div12) : "—"}</td>
                 <td>{r.div12 ? money(r.div12 / 12) : "—"}</td>
-                <td><button className="x" title="Remover" aria-label={`Remover ${r.t}`} onClick={() => remover(r)}>×</button></td>
+                <td>{!comOps.has(r.t) && <button className="x" title="Remover" aria-label={`Remover ${r.t}`} onClick={() => remover(r)}>×</button>}</td>
               </tr>
             ))}</tbody>
           </table></div>

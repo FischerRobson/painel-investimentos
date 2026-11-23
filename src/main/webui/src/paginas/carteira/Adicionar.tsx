@@ -1,13 +1,15 @@
 // "Adicionar" da Carteira: abas Ação / FII, Cripto e Renda fixa (a aba fica guardada em addTab). O formulário de renda fixa
 // também edita um título existente (rfEditId). Se o ativo já estiver na carteira, a quantidade é substituída.
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
+import { comOperacoes, novoIdOp } from "../../lib/operacoes";
+import { COINS } from "../operacoes/FormOperacao";
 import { carteiraStore } from "../../lib/carteira";
 import { store } from "../../lib/store";
 import { hojeISO } from "../../lib/dados";
 import type { Posicao } from "../../lib/composicao";
-import type { Indexador, TituloRF } from "../../motor";
+import { NOME_CLASSE, type Classe, type Indexador, type Operacao, type TituloRF } from "../../motor";
 
-const COINS = ["BTC", "ETH", "SOL", "USDT", "USDC", "XRP", "BNB", "ADA", "DOGE", "LINK"];
 const RF_TIPOS = ["CDB", "LCI", "LCA", "CRI", "CRA", "Tesouro Selic", "Tesouro Prefixado", "Tesouro IPCA+", "Debênture", "Poupança/Outro"];
 const RF_ISENTOS = ["LCI", "LCA", "CRI", "CRA"];
 type Aba = "rv" | "cr" | "rf";
@@ -20,10 +22,6 @@ export function useAberto(chave: string, padrao: "1" | "0"): [boolean, (v: boole
   const [v, setV] = useState(() => store.get(chave, padrao) === "1");
   return [v, novo => { setV(novo); store.set(chave, novo ? "1" : "0"); }];
 }
-
-// Troca a quantidade se o ativo já existe; senão acrescenta
-const comPosicao = (lista: Posicao[], t: string, q: number) =>
-  lista.some(x => x.t === t) ? lista.map(x => x.t === t ? { ...x, q } : x) : [...lista, { t, q }];
 
 export function Adicionar({ rf, rfEditId, setRfEditId }: { rf: TituloRF[]; rfEditId: string | null; setRfEditId: (id: string | null) => void }) {
   const [aba, setAbaState] = useState<Aba>(() => (["rv", "cr", "rf"].includes(store.get("addTab", "rv")) ? store.get("addTab", "rv") : "rv") as Aba);
@@ -45,41 +43,65 @@ export function Adicionar({ rf, rfEditId, setRfEditId }: { rf: TituloRF[]; rfEdi
   </>;
 }
 
+// Ação/FII/exterior e cripto entram como uma compra (vai para Operações, e a quantidade da carteira vem dela)
 function FormAcao() {
-  const [t, setT] = useState(""), [q, setQ] = useState("");
+  const [t, setT] = useState(""), [q, setQ] = useState(""), [preco, setPreco] = useState(""), [data, setData] = useState(hojeISO());
+  const [classe, setClasse] = useState<Classe>("acao");
   return (
     <form className="w-add" onSubmit={e => {
       e.preventDefault();
-      const tk = parseTickers(t)[0], n = Number(q);
-      if (!tk || !(n >= 0)) return;
-      carteiraStore.atualizar(d => ({ ...d, acoesFiis: comPosicao((d.acoesFiis ?? []) as Posicao[], tk, n) }));
-      setT(""); setQ("");
+      const tk = parseTickers(t)[0], n = Number(q), p = Number(preco);
+      if (!tk || !(n > 0) || !(p >= 0)) return;
+      comprar({ classe, ativo: tk, qtd: n, preco: p, data });
+      setT(""); setQ(""); setPreco("");
     }}>
       <input name="t" placeholder="Ticker (ex.: BBDC4, AAPL)" autoComplete="off" spellCheck={false} required
         value={t} onChange={e => setT(e.target.value)} />
-      <input name="q" type="number" min="0" step="1" placeholder="Quantidade" required value={q} onChange={e => setQ(e.target.value)} />
+      <select aria-label="Classe" value={classe} onChange={e => setClasse(e.target.value as Classe)}>
+        {(["acao", "fii", "etf", "bdr", "exterior"] as Classe[]).map(c => <option key={c} value={c}>{NOME_CLASSE[c]}</option>)}
+      </select>
+      <input name="q" type="number" min="0" step="any" placeholder="Quantidade" required value={q} onChange={e => setQ(e.target.value)} />
+      <input name="preco" type="number" min="0" step="any" placeholder={classe === "exterior" ? "Preço (R$ por ação)" : "Preço (R$)"} aria-label="Preço" required value={preco} onChange={e => setPreco(e.target.value)} />
+      <input name="data" type="date" aria-label="Data da compra" max={hojeISO()} required value={data} onChange={e => setData(e.target.value)} />
       <button className="primary" type="submit">Adicionar</button>
-      <span className="status">Ações americanas (ex.: AAPL, MSFT) entram convertidas pelo dólar do dia. Se já estiver na carteira, a quantidade é substituída.</span>
+      <span className="status">Entra como uma compra em <Link to="/operacoes">Operações</Link>, que calcula o preço médio e o imposto. Ações americanas (ex.: AAPL) entram convertidas pelo dólar do dia; para o câmbio exato, lance em Operações.</span>
     </form>
   );
 }
 
 function FormCripto() {
-  const [t, setT] = useState(COINS[0]), [q, setQ] = useState("");
+  const [t, setT] = useState(COINS[0]), [q, setQ] = useState(""), [preco, setPreco] = useState(""), [data, setData] = useState(hojeISO());
   return (
     <form className="w-add" onSubmit={e => {
       e.preventDefault();
-      const n = Number(q);
-      if (!(n >= 0)) return;
-      carteiraStore.atualizar(d => ({ ...d, cripto: comPosicao((d.cripto ?? []) as Posicao[], t, n) }));
-      setT(COINS[0]); setQ("");
+      const n = Number(q), p = Number(preco);
+      if (!(n > 0) || !(p >= 0)) return;
+      comprar({ classe: "cripto", ativo: t, qtd: n, preco: p, data });
+      setT(COINS[0]); setQ(""); setPreco("");
     }}>
       <select name="t" value={t} onChange={e => setT(e.target.value)} aria-label="Moeda">{COINS.map(c => <option key={c}>{c}</option>)}</select>
       <input name="q" type="number" min="0" step="any" placeholder="Quantidade (ex.: 0,015)" required value={q} onChange={e => setQ(e.target.value)} />
+      <input name="preco" type="number" min="0" step="any" placeholder="Preço (R$)" aria-label="Preço" required value={preco} onChange={e => setPreco(e.target.value)} />
+      <input name="data" type="date" aria-label="Data da compra" max={hojeISO()} required value={data} onChange={e => setData(e.target.value)} />
       <button className="primary" type="submit">Adicionar</button>
-      <span className="status">Preço em reais pelo CoinGecko. Se já estiver na carteira, a quantidade é substituída.</span>
+      <span className="status">Preço em reais pelo CoinGecko. Entra como uma compra em <Link to="/operacoes">Operações</Link>.</span>
     </form>
   );
+}
+
+// Ativo que estava na carteira sem histórico ganha antes um saldo inicial com o preço da compra nova (dá para corrigir em Operações)
+function comprar({ classe, ativo, qtd, preco, data }: { classe: Classe; ativo: string; qtd: number; preco: number; data: string }) {
+  carteiraStore.atualizar(d => {
+    const ops = d.operacoes ?? [];
+    const lista = ((classe === "cripto" ? d.cripto : d.acoesFiis) ?? []) as Posicao[];
+    const antes = lista.find(p => p.t === ativo);
+    const novas: Operacao[] = [];
+    if (antes && antes.q > 0 && !ops.some(o => o.ativo === ativo)) {
+      novas.push({ id: novoIdOp(), data, tipo: "compra", classe, ativo, qtd: antes.q, preco, inicial: true, obs: "saldo que já estava na carteira" });
+    }
+    novas.push({ id: novoIdOp(), data, tipo: "compra", classe, ativo, qtd, preco });
+    return comOperacoes(d, [...ops, ...novas]);
+  });
 }
 
 type CamposRF = { nome: string; tipo: string; idx: Indexador; taxa: string; aplicado: string; data: string; venc: string; isento: boolean };

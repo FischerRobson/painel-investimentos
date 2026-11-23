@@ -24,5 +24,13 @@ public record Backup(
         @JsonProperty("historico") Map<@Pattern(regexp = Formats.ISO_DATE) String, @Valid Snapshot> history,
         @JsonProperty("listaPainel") String watchlist,
         @JsonProperty("preferencias") Map<String, Object> preferences,
-        @Valid BudgetBackup budget) {
+        @Valid BudgetBackup budget,
+        @JsonProperty("operacoes") @Size(max = 20000) List<@Valid Operation> operations,
+        @JsonProperty("proventos") @Size(max = 20000) List<@Valid Distribution> distributions) {
+
+    public Backup(String app, Integer version, String exportedAt, List<Position> stocks, List<Position> crypto,
+                  List<FixedIncome> fixedIncome, List<CurrencyHolding> currencies, List<Vehicle> vehicles,
+                  Map<String, Snapshot> history, String watchlist, Map<String, Object> preferences, BudgetBackup budget) {
+        this(app, version, exportedAt, stocks, crypto, fixedIncome, currencies, vehicles, history, watchlist, preferences, budget, null, null);
+    }
 }

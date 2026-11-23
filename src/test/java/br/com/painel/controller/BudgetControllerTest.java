@@ -106,6 +106,34 @@ class BudgetControllerTest {
     }
 
     @Test
+    void benefitCardsAreSavedWithOptimisticLockingAndGoToTheBackup() {
+        given().when().get("/api/budget/vr").then().statusCode(200).body("contas.size()", equalTo(0)).header("ETag", nullValue());
+        String vr = """
+                {"contas":[{"id":"vr","nome":"VR","creditoMensal":1100,"diaCredito":1,"saldoInicial":250.5,"dataInicio":"2026-10-31"}],
+                 "movimentos":[{"id":"m1","conta":"vr","data":"2026-11-01","tipo":"credito","valor":1100},
+                               {"id":"m2","conta":"vr","data":"2026-11-03","tipo":"gasto","descricao":"Restaurante","valor":42.9,"categoria":"Restaurante"},
+                               {"id":"m3","conta":"vr","data":"2026-11-04","tipo":"ajuste","valor":-0.4}]}""";
+        String v1 = given().contentType(ContentType.JSON).header("If-None-Match", "*").body(vr)
+                .when().put("/api/budget/vr").then().statusCode(200).extract().path("etag");
+        given().when().get("/api/budget/vr").then().statusCode(200)
+                .body("contas[0].saldoInicial", equalTo(250.5f)).body("movimentos[1].categoria", equalTo("Restaurante"))
+                .body("movimentos[2].valor", equalTo(-0.4f));
+        given().contentType(ContentType.JSON).header("If-None-Match", "*").body(vr).when().put("/api/budget/vr").then().statusCode(412);
+        given().contentType(ContentType.JSON).header("If-Match", "\"" + v1 + "\"").body(vr).when().put("/api/budget/vr").then().statusCode(200);
+        given().when().get("/api/backup").then().statusCode(200).body("budget.vr.movimentos.size()", equalTo(3));
+    }
+
+    @Test
+    void rejectsInvalidBenefitCards() {
+        given().contentType(ContentType.JSON).header("If-None-Match", "*")
+                .body("{\"contas\":[],\"movimentos\":[{\"id\":\"m\",\"conta\":\"nada\",\"data\":\"2026-11-01\",\"tipo\":\"gasto\",\"valor\":10}]}")
+                .when().put("/api/budget/vr").then().statusCode(400).body("error", containsString("conta que não existe"));
+        given().contentType(ContentType.JSON).header("If-None-Match", "*")
+                .body("{\"contas\":[{\"id\":\"vr\",\"nome\":\"VR\",\"saldoInicial\":0,\"dataInicio\":\"2026-11-01\"}],\"movimentos\":[{\"id\":\"m\",\"conta\":\"vr\",\"data\":\"2026-11-01\",\"tipo\":\"gasto\",\"valor\":-10}]}")
+                .when().put("/api/budget/vr").then().statusCode(400).body("error", containsString("maior que zero"));
+    }
+
+    @Test
     void rejectsInvalidMonths() {
         given().when().get("/api/budget/months/2026-13").then().statusCode(400);
         given().when().get("/api/budget/months/..%2F..%2Fcarteira").then().statusCode(anyOf(equalTo(400), equalTo(404)));

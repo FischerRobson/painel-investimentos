@@ -6,17 +6,20 @@ import br.com.painel.dto.Point;
 import br.com.painel.dto.RatePoint;
 import br.com.painel.dto.StockItem;
 import br.com.painel.dto.BudgetMonthSummary;
+import br.com.painel.model.Benefits;
 import br.com.painel.model.BudgetArea;
 import br.com.painel.model.BudgetMonth;
 import br.com.painel.model.BudgetRules;
 import br.com.painel.model.DescriptionRule;
 import br.com.painel.model.BudgetSettings;
 import br.com.painel.model.CurrencyHolding;
+import br.com.painel.model.Distribution;
 import br.com.painel.model.Expense;
 import br.com.painel.model.Formats;
 import br.com.painel.model.Income;
 import br.com.painel.model.LastImport;
 import br.com.painel.model.FixedIncome;
+import br.com.painel.model.Operation;
 import br.com.painel.model.Position;
 import br.com.painel.model.PositionsDay;
 import br.com.painel.model.Vehicle;
@@ -107,6 +110,7 @@ public class DemoDataService {
             case "/api/budget/import/last" -> new Reply(200, Map.of("last", new LastImport(
                     LocalDate.now().minusDays(3).atTime(13, 15).toInstant(ZoneOffset.UTC).toString(), "Fatura do cartão Nubank",
                     "fatura-nubank.pdf", 18, 0, List.of(YearMonth.now().toString()))), null);
+            case "/api/budget/vr" -> get ? new Reply(200, benefits(), "demo") : new Reply(200, Map.of("etag", "demo"), "demo");
             case "/api/budget/summary" -> new Reply(200, budgetSummary(q.getFirst("to"), param(q, "months", "12")), null);
             default -> {
                 if (path.startsWith(POSITIONS)) {
@@ -146,7 +150,40 @@ public class DemoDataService {
                 List.of(new Vehicle("demo-carro", "cars", "1", "1003", "2022-1", "Carro de exemplo",
                         new Vehicle.Info("Montadora Demo", "SUV Fictício 1.5 Turbo", 2022, "Gasolina", "000000-0"),
                         new Vehicle.LastPrice(latest, hist.get(latest)), hist)),
-                Map.of("listaPainel", "ITSA4, WEGE3, TAEE11, HGLG11, XPLG11, AAPL"));
+                Map.of("listaPainel", "ITSA4, WEGE3, TAEE11, HGLG11, XPLG11, AAPL"), DEMO_OPERATIONS, DEMO_DISTRIBUTIONS);
+    }
+
+    // Operações que fecham com as quantidades da carteira fictícia, com uma venda de ação com lucro, uma venda de FII
+    // (imposto abaixo de R$ 10, que acumula) e um day trade.
+    private static final List<Operation> DEMO_OPERATIONS = List.of(
+            demoOp("d1", "2025-01-20", "compra", "cripto", "BTC", 0.02, 520_000.0, null, null),
+            demoOp("d2", "2025-02-03", "compra", "acao", "TAEE11", 100.0, 34.5, 2.0, null),
+            demoOp("d3", "2025-03-10", "compra", "acao", "ITSA4", 300.0, 9.2, 1.5, null),
+            demoOp("d4", "2025-04-01", "compra", "fii", "HGLG11", 40.0, 160.0, 1.0, null),
+            demoOp("d5", "2025-05-05", "compra", "acao", "WEGE3", 50.0, 36.8, 1.0, null),
+            demoOp("d6", "2025-06-02", "compra", "exterior", "AAPL", 5.0, 195.0, null, 5.55),
+            demoOp("d7", "2025-07-10", "compra", "fii", "XPLG11", 40.0, 95.0, 1.0, null),
+            demoOp("d8", "2025-08-11", "compra", "cripto", "ETH", 0.5, 14_000.0, null, null),
+            demoOp("d9", "2025-09-15", "compra", "acao", "ITSA4", 200.0, 10.1, 1.0, null),
+            demoOp("d10", "2026-03-04", "compra", "acao", "PETR4", 200.0, 37.1, 1.0, null),
+            demoOp("d11", "2026-03-04", "venda", "acao", "PETR4", 200.0, 37.6, 1.0, null),
+            demoOp("d12", "2026-04-08", "compra", "acao", "TAEE11", 20.0, 35.9, 1.0, null),
+            demoOp("d13", "2026-06-12", "venda", "acao", "ITSA4", 100.0, 11.4, 1.0, null),
+            demoOp("d14", "2026-08-20", "venda", "fii", "HGLG11", 10.0, 165.0, 1.0, null));
+
+    private static final List<Distribution> DEMO_DISTRIBUTIONS = List.of(
+            new Distribution("p1", "2025-11-14", "TAEE11", "dividendo", 82.0, null),
+            new Distribution("p2", "2025-12-15", "HGLG11", "rendimento", 44.0, null),
+            new Distribution("p3", "2026-04-01", "ITSA4", "dividendo", 48.0, null),
+            new Distribution("p4", "2026-05-15", "TAEE11", "dividendo", 96.0, null),
+            new Distribution("p5", "2026-06-15", "HGLG11", "rendimento", 44.0, null),
+            new Distribution("p6", "2026-07-15", "XPLG11", "rendimento", 30.4, null),
+            new Distribution("p7", "2026-08-20", "ITSA4", "jcp", 25.5, 4.5),
+            new Distribution("p8", "2026-10-15", "HGLG11", "rendimento", 33.0, null));
+
+    private static Operation demoOp(String id, String date, String type, String assetClass, String ticker, Double qty, Double price,
+                                    Double fees, Double fx) {
+        return new Operation(id, date, type, assetClass, ticker, qty, price, fees, fx, null, null, null);
     }
 
     Map<String, Object> history() {
@@ -225,6 +262,32 @@ public class DemoDataService {
             weight.forEach((key, wgt) -> out.put(key, total * wgt / sum));
         }
         return out;
+    }
+
+    // VR fictício: R$ 1.100 todo dia 1 desde junho, gastos de restaurante, mercado e delivery um pouco abaixo disso (o saldo cresce)
+    Benefits benefits() {
+        YearMonth first = YearMonth.now().minusMonths(5);
+        List<Benefits.Movement> movements = new ArrayList<>();
+        String[][] places = {{"Restaurante Sabor Caseiro", "Restaurante"}, {"Padaria Pão Quente", "Padaria"}, {"Mercado do Bairro", "Mercado"},
+                {"iFood", "Delivery"}, {"Bistrô Central", "Restaurante"}, {"Lanchonete da Esquina", "Restaurante"}};
+        int n = 0;
+        for (YearMonth m = first; !m.isAfter(YearMonth.now()); m = m.plusMonths(1)) {
+            movements.add(new Benefits.Movement("vr-c" + m, "demo-vr", m.atDay(1).toString(), "credito", "Crédito do benefício", 1100.0, null));
+            Random r = new Random(m.hashCode() * 31L);
+            int last = m.equals(YearMonth.now()) ? LocalDate.now().getDayOfMonth() : m.lengthOfMonth();
+            for (int day = 2; day <= last; day++) {
+                LocalDate d = m.atDay(day);
+                if (!isBusinessDay(d) || r.nextInt(10) < 3) { // nem todo dia útil tem gasto
+                    continue;
+                }
+                String[] place = places[r.nextInt(places.length)];
+                double amount = Math.round((place[1].equals("Mercado") ? 60 + r.nextInt(90) : 28 + r.nextInt(30)) * 100 + r.nextInt(100)) / 100.0;
+                movements.add(new Benefits.Movement("vr-g" + (n++), "demo-vr", d.toString(), "gasto", place[0], amount, place[1]));
+            }
+        }
+        LocalDate refundDay = first.plusMonths(2).atDay(10);
+        movements.add(new Benefits.Movement("vr-e1", "demo-vr", refundDay.toString(), "estorno", "Estorno iFood (pedido cancelado)", 42.9, "Delivery"));
+        return new Benefits(List.of(new Benefits.Account("demo-vr", "VR", 1100.0, 1, 380.0, first.atDay(1).minusDays(1).toString())), movements);
     }
 
     BudgetMonth budgetMonth(YearMonth month) {

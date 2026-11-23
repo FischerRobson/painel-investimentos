@@ -7,7 +7,9 @@ import { Custos } from "./paginas/Custos";
 import { Ferramentas } from "./paginas/ferramentas/Ferramentas";
 import { Carteira } from "./paginas/carteira/Carteira";
 import { Ativos } from "./paginas/Ativos";
+import { Operacoes } from "./paginas/operacoes/Operacoes";
 import { Orcamento } from "./paginas/orcamento/Orcamento";
+import { VR } from "./paginas/orcamento/VR";
 import { PAGINAS } from "./rotas";
 import type { ReactElement } from "react";
 import type { Sessao } from "./lib/api";
@@ -15,6 +17,7 @@ import type { Sessao } from "./lib/api";
 // Elemento de cada página do menu (rotas.ts)
 const PAGINA: Record<string, ReactElement> = {
   carteira: <Carteira />,
+  operacoes: <Operacoes />,
   ativos: <Ativos />,
   budget: <Orcamento />,
   ferramentas: <Ferramentas />,
@@ -33,6 +36,7 @@ export function App({ sessao }: { sessao: Sessao }) {
           <Route key={p.id} path={p.caminho} element={PAGINA[p.id]} />
         ))}
         {/* /projecao virou a ferramenta "Projeção da renda fixa" dentro de /ferramentas */}
+        <Route path="/orcamento/vr" element={<VR />} />
         <Route path="/projecao" element={<Navigate to="/ferramentas#renda-fixa" replace />} />
         <Route path="*" element={<Navigate to="/carteira" replace />} />
       </Route>

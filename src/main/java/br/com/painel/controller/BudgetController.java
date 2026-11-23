@@ -1,6 +1,7 @@
 package br.com.painel.controller;
 
 import br.com.painel.dto.BudgetMonthSummary;
+import br.com.painel.model.Benefits;
 import br.com.painel.model.BudgetMonth;
 import br.com.painel.model.BudgetRules;
 import br.com.painel.model.BudgetSettings;
@@ -69,6 +70,23 @@ public class BudgetController {
                               @HeaderParam("If-Match") String ifMatch,
                               @HeaderParam("If-None-Match") String ifNoneMatch) {
         return saved(service.saveRules(rules, Preconditions.from(ifMatch, ifNoneMatch)));
+    }
+
+    @GET
+    @Path("/vr")
+    @RunOnVirtualThread
+    public Response benefits() {
+        var v = service.benefits();
+        return withEtag(Response.ok(v.value()), v.etag());
+    }
+
+    @PUT
+    @Path("/vr")
+    @RunOnVirtualThread
+    public Response saveBenefits(@Valid @NotNull Benefits benefits,
+                                 @HeaderParam("If-Match") String ifMatch,
+                                 @HeaderParam("If-None-Match") String ifNoneMatch) {
+        return saved(service.saveBenefits(benefits, Preconditions.from(ifMatch, ifNoneMatch)));
     }
 
     @GET

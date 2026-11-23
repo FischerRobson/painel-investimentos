@@ -9,6 +9,7 @@ import { useEffect, useSyncExternalStore } from "react";
 import { apiFetch, textoDoErro } from "./api";
 import { salvarStore, textoSalvar, type EstadoSalvar } from "./salvar";
 import { store } from "./store";
+import type { Operacao, Provento } from "../motor";
 
 export { textoSalvar, type EstadoSalvar };
 
@@ -23,6 +24,7 @@ export type DocCarteira = {
   acoesFiis?: unknown[]; cripto?: unknown[]; rendaFixa?: unknown[];
   moedas?: Moeda[]; bens?: Bem[];
   preferencias?: Record<string, unknown>;
+  operacoes?: Operacao[]; proventos?: Provento[];
   [outro: string]: unknown;
 };
 

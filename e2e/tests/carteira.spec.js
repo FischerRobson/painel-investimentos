@@ -35,24 +35,23 @@ test.describe("app", () => {
     await expect(tip).toBeHidden();
   });
 
-  test("Carteira: adicionar, mudar quantidade e remover ação", async ({ page }) => {
+  test("Carteira: adicionar ação vira uma compra em Operações", async ({ page }) => {
     await ir(page, "/carteira");
     await expect(linha(page, "ITSA4")).toBeVisible();
+    // a quantidade de quem tem operações vem de lá: não é editável nem removível aqui
+    await expect(linha(page, "ITSA4").getByRole("link", { name: "400" })).toHaveAttribute("href", "/operacoes");
+    await expect(linha(page, "ITSA4").getByRole("button", { name: /Remover/ })).toHaveCount(0);
+
     await page.getByPlaceholder("Ticker (ex.: BBDC4, AAPL)").fill("bbas3");
     await page.getByPlaceholder("Quantidade", { exact: true }).fill("10");
+    await page.getByLabel("Preço", { exact: true }).fill("25");
     await page.getByRole("button", { name: "Adicionar", exact: true }).click();
     await expect(page.getByText("Salvo ✓")).toBeVisible();
     await expect(linha(page, "BBAS3")).toContainText(/R\$ [\d.]+,\d\d/);
     await expect(tabela(page, "Ações, FIIs e cripto")).toContainText("9 ativos");
 
-    const qtd = linha(page, "ITSA4").getByRole("spinbutton");
-    await qtd.fill("1");
-    await qtd.press("Tab");
-    await expect(linha(page, "ITSA4").getByRole("spinbutton")).toHaveValue("1");
-
-    await linha(page, "BBAS3").getByRole("button", { name: /Remover|×/ }).click();
-    await expect(linha(page, "BBAS3")).toHaveCount(0);
-    await expect(tabela(page, "Ações, FIIs e cripto")).toContainText("8 ativos");
+    await page.getByRole("navigation", { name: "Páginas" }).getByRole("link", { name: "Operações" }).click();
+    await expect(page.getByRole("row").filter({ hasText: "BBAS3" }).first()).toContainText("R$ 25,00");
   });
 
   test("Carteira: título de renda fixa novo e edição", async ({ page }) => {

@@ -2,6 +2,7 @@ package br.com.painel.service;
 
 import br.com.painel.config.AppConfig;
 import br.com.painel.dto.BudgetMonthSummary;
+import br.com.painel.model.Benefits;
 import br.com.painel.model.BudgetArea;
 import br.com.painel.model.BudgetBackup;
 import br.com.painel.model.BudgetMonth;
@@ -64,6 +65,32 @@ public class BudgetService {
         return repository.saveBudgetRules(user.id(), rules, condition);
     }
 
+    public Versioned<Benefits> benefits() {
+        return repository.benefits(user.id()).orElseGet(() -> new Versioned<>(Benefits.EMPTY, null));
+    }
+
+    public String saveBenefits(Benefits benefits, Condition condition) {
+        validate(benefits);
+        return repository.saveBenefits(user.id(), benefits, condition);
+    }
+
+    private static void validate(Benefits b) {
+        Set<String> ids = new HashSet<>();
+        for (Benefits.Account a : b.accounts()) {
+            if (!ids.add(a.id())) {
+                throw new InvalidDataException("conta repetida: " + a.name());
+            }
+        }
+        for (Benefits.Movement m : b.movements()) {
+            if (!ids.contains(m.account())) {
+                throw new InvalidDataException("lançamento de uma conta que não existe: " + m.description());
+            }
+            if (!"ajuste".equals(m.type()) && !(m.amount() > 0)) {
+                throw new InvalidDataException("o valor precisa ser maior que zero: " + m.description());
+            }
+        }
+    }
+
     public Optional<Versioned<BudgetMonth>> month(YearMonth month) {
         return repository.budgetMonth(user.id(), month);
     }
@@ -96,7 +123,8 @@ public class BudgetService {
         }
         BudgetSettings settings = repository.budgetSettings(owner).map(Versioned::value).orElse(null);
         BudgetRules rules = repository.budgetRules(owner).map(Versioned::value).orElse(null);
-        return new BudgetBackup(settings, months, rules);
+        Benefits benefits = repository.benefits(owner).map(Versioned::value).orElse(null);
+        return new BudgetBackup(settings, months, rules, benefits);
     }
 
     public void importBackup(BudgetBackup backup) {
@@ -110,6 +138,9 @@ public class BudgetService {
         if (backup.rules() != null) {
             validate(backup.rules());
         }
+        if (backup.benefits() != null) {
+            validate(backup.benefits());
+        }
         String owner = user.id();
         if (backup.settings() != null) {
             repository.saveBudgetSettings(owner, backup.settings(), Condition.any());
@@ -117,6 +148,9 @@ public class BudgetService {
         backup.months().forEach((m, data) -> repository.saveBudgetMonth(owner, YearMonth.parse(m), data, Condition.any()));
         if (backup.rules() != null) {
             repository.saveBudgetRules(owner, backup.rules(), Condition.any());
+        }
+        if (backup.benefits() != null) {
+            repository.saveBenefits(owner, backup.benefits(), Condition.any());
         }
     }
 
