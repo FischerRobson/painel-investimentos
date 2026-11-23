@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Chart, type ChartConfiguration } from "chart.js";
 
-type Config = ChartConfiguration<"line"> | ChartConfiguration<"bar"> | ChartConfiguration<"doughnut">;
+type Config = ChartConfiguration<"line"> | ChartConfiguration<"bar"> | ChartConfiguration<"doughnut"> | ChartConfiguration<"radar">;
 
 export function Grafico({ config, deps, rotulo, aoCriar, onMouseLeave }: {
   config: (canvas: HTMLCanvasElement) => Config | null;

@@ -4,9 +4,7 @@ import { apiFetch, textoDoErro } from "../../lib/api";
 import { carteiraStore } from "../../lib/carteira";
 import { DEMO } from "../../lib/store";
 import { hojeISO } from "../../lib/dados";
-
-// Lista padrão da página Ativos, quando o usuário ainda não escolheu a dele (DEFAULT do app atual)
-const LISTA_PADRAO = "BBDC4, EGIE3, ALUP11, SBSP3, VIVT3, KNRI11, VISC11, XPML11";
+import { LISTA_PADRAO } from "../Ativos";
 
 export async function exportarBackup(historico: Record<string, unknown>): Promise<void> {
   const doc = carteiraStore.get().doc;

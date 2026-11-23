@@ -2,12 +2,12 @@
 // barChart do index.html). Só os módulos usados são registrados, para o bundle ficar menor.
 import {
   ArcElement, BarController, BarElement, CategoryScale, Chart, DoughnutController, Filler, LinearScale, LineController, LineElement,
-  PointElement, Tooltip, type ChartConfiguration, type Plugin, type ScriptableContext, type TooltipModel,
+  PointElement, RadarController, RadialLinearScale, Tooltip, type ChartConfiguration, type Plugin, type ScriptableContext, type TooltipModel,
 } from "chart.js";
 import { brl } from "./formato";
 
-Chart.register(LineController, LineElement, PointElement, BarController, BarElement, DoughnutController, ArcElement, LinearScale,
-  CategoryScale, Filler, Tooltip);
+Chart.register(LineController, LineElement, PointElement, BarController, BarElement, DoughnutController, ArcElement, RadarController,
+  RadialLinearScale, LinearScale, CategoryScale, Filler, Tooltip);
 
 // Cor de um token CSS (--s1, --grid...), lida na hora: muda com o tema claro/escuro
 export const css = (v: string): string => getComputedStyle(document.documentElement).getPropertyValue(v).trim();

@@ -7,6 +7,9 @@
 // campos que ainda não conhece (o app atual monta o documento a partir das variáveis de todas as páginas).
 import { useEffect, useSyncExternalStore } from "react";
 import { apiFetch, textoDoErro } from "./api";
+import { salvarStore, textoSalvar, type EstadoSalvar } from "./salvar";
+
+export { textoSalvar, type EstadoSalvar };
 
 export type Moeda = { c: string; q: number };
 export type Bem = {
@@ -22,7 +25,6 @@ export type DocCarteira = {
   [outro: string]: unknown;
 };
 
-export type EstadoSalvar = { estado: "" | "pendente" | "ok" | "erro"; msg?: string };
 type Estado = { doc: DocCarteira | null; erro: string | null; salvar: EstadoSalvar };
 
 const DEBOUNCE_MS = 400;
@@ -44,6 +46,7 @@ export const efeitos = {
 
 function mudar(parcial: Partial<Estado>): void {
   estado = { ...estado, ...parcial };
+  if (parcial.salvar) salvarStore.definir(parcial.salvar); // indicador do cabeçalho
   ouvintes.forEach(fn => fn());
 }
 const etagDe = (r: Response) => (r.headers.get("ETag") || "").replace(/"/g, "") || null;
@@ -118,10 +121,3 @@ export function useCarteira(): Estado {
   useEffect(() => { void carteiraStore.carregar(); }, []);
   return useSyncExternalStore(carteiraStore.subscribe, carteiraStore.get);
 }
-
-export function useEstadoSalvar(): EstadoSalvar {
-  return useSyncExternalStore(carteiraStore.subscribe, () => estado.salvar);
-}
-
-export const textoSalvar = (s: EstadoSalvar): string =>
-  ({ pendente: "Salvando…", ok: "Salvo ✓", erro: "Erro ao salvar: " + (s.msg ?? ""), "": "" })[s.estado];

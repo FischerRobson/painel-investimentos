@@ -1,7 +1,7 @@
 // Carteira: ações, FIIs, cripto, renda fixa, moedas e bens, com os totais, a divisão por classe, o comparativo com o mercado e a
 // evolução do patrimônio. Mesma tela e mesmas contas do renderWallet do app atual (contas em lib/composicao.ts e no motor).
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTitulo } from "../../lib/useTitulo";
 import { apiFetch, getJson } from "../../lib/api";
@@ -83,6 +83,7 @@ function Painel({ c, erros, semTaxas, ratesErr, historico }: {
   c: Composicao; erros: (string | null)[]; semTaxas: boolean; ratesErr: string | null; historico: Record<string, unknown>;
 }) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const arquivo = useRef<HTMLInputElement>(null);
   const [rfEditId, setRfEditId] = useState<string | null>(null);
   const share = (v: number | null) => c.total && v ? v / c.total * 100 : 0;
@@ -134,8 +135,7 @@ function Painel({ c, erros, semTaxas, ratesErr, historico }: {
         <div><h2>Minha carteira</h2><div className="hint" style={{ margin: 0 }}>Salva no servidor: disponível em qualquer dispositivo. Proventos estimados com base no que foi pago nos últimos 12 meses.</div></div>
         <div className="w-actions">
           {c.rv.length > 0 && (
-            // Ativos ainda está no app atual; depois do corte, esta mesma URL abre a página do React
-            <button onClick={() => { location.href = "/ativos#" + encodeURIComponent(c.rv.map(w => w.t).join(",")); }}>Ver ações e FIIs em Ativos</button>
+            <button onClick={() => navigate("/ativos#" + encodeURIComponent(c.rv.map(w => w.t).join(",")))}>Ver ações e FIIs em Ativos</button>
           )}
           <button disabled={c.vazia} onClick={() => void exportarBackup(historico)}>Exportar backup</button>
           <button onClick={() => arquivo.current?.click()}>Importar backup</button>

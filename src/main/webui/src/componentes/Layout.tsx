@@ -7,7 +7,8 @@ import { PAGINAS } from "../rotas";
 import { ICONES } from "./icones";
 import { DEMO, alternarDemo, store } from "../lib/store";
 import { logout, offlineStore, type Sessao } from "../lib/api";
-import { carteiraStore, textoSalvar, useEstadoSalvar } from "../lib/carteira";
+import { carteiraStore } from "../lib/carteira";
+import { textoSalvar, useEstadoSalvar } from "../lib/salvar";
 
 const FONTES = "Cotação: brapi.dev · Indicadores: Fundamentus · Histórico e proventos: Yahoo Finance · Cripto: CoinGecko · Taxas: Banco Central";
 const QUINZE_MIN = 15 * 60 * 1000;

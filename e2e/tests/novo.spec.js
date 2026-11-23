@@ -1,5 +1,4 @@
-// App React em /novo, enquanto convive com o app atual. As páginas ainda não migradas apontam para a versão atual.
-// Quando uma página for migrada, ela passa a rodar também com E2E_BASE=/novo nos testes de paginas.spec.js e ferramentas.spec.js.
+// App React em /novo, enquanto convive com o app atual (todas as páginas já migradas).
 import { test, expect } from "./base.js";
 
 test("/novo abre a carteira com o menu, a versão e o aviso de demonstração", async ({ page }) => {
@@ -23,11 +22,11 @@ test("/novo: o menu troca de página sem recarregar", async ({ page }) => {
   expect(await page.evaluate(() => window.__semRecarregar)).toBe(true);
 });
 
-test("/novo: página não migrada leva à versão atual", async ({ page }) => {
+test("/novo: todas as páginas do menu abrem no React", async ({ page }) => {
   await page.goto("/novo/orcamento#2026-01");
-  await page.getByRole("link", { name: "Abrir Orçamento na versão atual" }).click();
-  await expect(page).toHaveURL(/\/orcamento#2026-01$/);
   await expect(page.getByRole("heading", { name: "Meta × realizado" })).toBeVisible();
+  await expect(page.locator(".b-month strong")).toHaveText("Janeiro de 2026");
+  await expect(page.getByText("ainda não foi migrada")).toBeHidden();
 });
 
 test("/novo: rota direta e /projecao funcionam ao recarregar", async ({ page }) => {
