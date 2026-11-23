@@ -7,6 +7,7 @@ export type Pagina = {
 
 export const PAGINAS: Pagina[] = [
   { id: "carteira", caminho: "/carteira", titulo: "Carteira" },
+  { id: "operacoes", caminho: "/operacoes", titulo: "Operações" },
   { id: "budget", caminho: "/orcamento", titulo: "Orçamento" },
   { id: "ferramentas", caminho: "/ferramentas", titulo: "Ferramentas" },
   { id: "ativos", caminho: "/ativos", titulo: "Ativos" },

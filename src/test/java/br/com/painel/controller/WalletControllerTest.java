@@ -80,6 +80,37 @@ class WalletControllerTest {
     }
 
     @Test
+    void keepsOperationsAndDistributionsInTheWalletAndTheBackup() {
+        String wallet = """
+                {"acoesFiis":[{"t":"ITSA4","q":60}],
+                 "operacoes":[{"id":"o1","data":"2026-01-05","tipo":"compra","classe":"acao","ativo":"ITSA4","qtd":100,"preco":10,"taxas":1.5},
+                              {"id":"o2","data":"2026-02-05","tipo":"venda","classe":"acao","ativo":"ITSA4","qtd":40,"preco":12},
+                              {"id":"o3","data":"2026-03-05","tipo":"desdobramento","classe":"acao","ativo":"ITSA4","fator":2}],
+                 "proventos":[{"id":"p1","data":"2026-04-01","ativo":"ITSA4","tipo":"jcp","valor":8.5,"irRetido":1.5}]}""";
+        given().contentType(ContentType.JSON).header("If-None-Match", "*").body(wallet).when().put("/api/carteira").then().statusCode(200);
+        given().when().get("/api/carteira").then().statusCode(200)
+                .body("operacoes.size()", equalTo(3))
+                .body("operacoes[0].taxas", equalTo(1.5f))
+                .body("operacoes[2].fator", equalTo(2.0f))
+                .body("proventos[0].irRetido", equalTo(1.5f));
+        given().when().get("/api/backup").then().statusCode(200)
+                .body("operacoes.size()", equalTo(3)).body("proventos[0].tipo", equalTo("jcp"));
+    }
+
+    @Test
+    void validatesOperations() {
+        given().contentType(ContentType.JSON).header("If-None-Match", "*")
+                .body("{\"operacoes\":[{\"id\":\"o\",\"data\":\"2026-01-05\",\"tipo\":\"compra\",\"classe\":\"cripto\",\"ativo\":\"FAKECOIN\",\"qtd\":1,\"preco\":1}]}")
+                .when().put("/api/carteira").then().statusCode(400).body("error", containsString("FAKECOIN"));
+        given().contentType(ContentType.JSON).header("If-None-Match", "*")
+                .body("{\"operacoes\":[{\"id\":\"o\",\"data\":\"2026-01-05\",\"tipo\":\"aluguel\",\"classe\":\"acao\",\"ativo\":\"ITSA4\",\"qtd\":1,\"preco\":1}]}")
+                .when().put("/api/carteira").then().statusCode(400);
+        given().contentType(ContentType.JSON).header("If-None-Match", "*")
+                .body("{\"operacoes\":[{\"id\":\"o\",\"data\":\"2026-01-05\",\"tipo\":\"desdobramento\",\"classe\":\"acao\",\"ativo\":\"ITSA4\"}]}")
+                .when().put("/api/carteira").then().statusCode(400).body("error", containsString("fator"));
+    }
+
+    @Test
     void historyIsReadOnlyForTheBrowser() {
         given().contentType(ContentType.JSON).body("{\"t\":1000}").when().put("/api/historico/2026-10-26").then().statusCode(org.hamcrest.Matchers.anyOf(equalTo(404), equalTo(405)));
         given().when().get("/api/historico").then().statusCode(200);

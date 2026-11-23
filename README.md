@@ -100,6 +100,23 @@ sem mexer no resto. O `StatementImportService` aplica regras (desmarcar, área, 
 
 Próximas etapas: aportes automáticos vindos da Carteira (com correção do valor) e lançamentos recorrentes.
 
+### Operações e imposto de renda
+
+A página **Operações** guarda compras, vendas, desdobramentos, grupamentos e bonificações de ações, FIIs, ETFs, BDRs,
+ações do exterior e cripto, além dos proventos recebidos. Tudo fica no próprio `carteira.json` (`operacoes` e
+`proventos`). A cada mudança, a página recalcula a quantidade dos ativos com operações na mesma gravação, então a foto
+diária e a Carteira continuam lendo `acoesFiis` e `cripto`. Ativos que já estavam na carteira pedem um saldo inicial
+(data e preço médio).
+
+As contas ficam em `src/main/webui/src/motor/operacoes.ts`, com testes no Vitest:
+- **Preço médio**: inclui as taxas; venda não muda o preço médio. Day trade (compra e venda no mesmo dia) é apurado à parte.
+- **IR mensal**: ações com isenção até R$ 20 mil de vendas no mês e 15%; ETF e BDR com 15% sem isenção; day trade 20%;
+  FII 20%; prejuízo compensado por categoria; IRRF abatido. Cripto com isenção até R$ 35 mil e 15%. DARF 6015 e 4600
+  no último dia útil do mês seguinte (abaixo de R$ 10, acumula).
+- **Exterior**: 15% sobre o ganho anual em reais (Lei 14.754/2023), com o câmbio de cada operação.
+- **Declaração**: bens e direitos em 31/12 pelo custo e rendimentos isentos e de tributação exclusiva.
+- **Rentabilidade sem aportes** (TWR) no painel de evolução da Carteira, comparada com o CDI do período.
+
 ### Modo demonstração
 
 O botão **"Modo demonstração"** (topo da página) faz o app mostrar dados fictícios, para testar ou apresentar

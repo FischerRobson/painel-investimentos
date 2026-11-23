@@ -14,9 +14,16 @@ public record Wallet(
         @JsonProperty("rendaFixa") @Size(max = 500) List<@Valid FixedIncome> fixedIncome,
         @JsonProperty("moedas") @Size(max = 10) List<@Valid CurrencyHolding> currencies,
         @JsonProperty("bens") @Size(max = 50) List<@Valid Vehicle> vehicles,
-        @JsonProperty("preferencias") Map<String, Object> preferences) {
+        @JsonProperty("preferencias") Map<String, Object> preferences,
+        @JsonProperty("operacoes") @Size(max = 20000) List<@Valid Operation> operations,
+        @JsonProperty("proventos") @Size(max = 20000) List<@Valid Distribution> distributions) {
 
     public static final Wallet EMPTY = new Wallet(null, null, null, null, null, null);
+
+    public Wallet(List<Position> stocks, List<Position> crypto, List<FixedIncome> fixedIncome, List<CurrencyHolding> currencies,
+                  List<Vehicle> vehicles, Map<String, Object> preferences) {
+        this(stocks, crypto, fixedIncome, currencies, vehicles, preferences, null, null);
+    }
 
     public Wallet {
         stocks = stocks == null ? List.of() : List.copyOf(stocks);
@@ -25,6 +32,8 @@ public record Wallet(
         currencies = currencies == null ? List.of() : List.copyOf(currencies);
         vehicles = vehicles == null ? List.of() : List.copyOf(vehicles);
         preferences = preferences == null ? Map.of() : preferences;
+        operations = operations == null ? List.of() : List.copyOf(operations);
+        distributions = distributions == null ? List.of() : List.copyOf(distributions);
     }
 
     @JsonIgnore

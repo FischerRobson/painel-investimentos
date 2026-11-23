@@ -20,7 +20,7 @@ export async function exportarBackup(historico: Record<string, unknown>): Promis
   const payload = {
     app: "painel-acoes", versao: 1, exportadoEm: new Date().toISOString(),
     acoesFiis: doc.acoesFiis ?? [], cripto: doc.cripto ?? [], rendaFixa: doc.rendaFixa ?? [], moedas: doc.moedas ?? [], bens: doc.bens ?? [],
-    historico, listaPainel,
+    historico, listaPainel, operacoes: doc.operacoes ?? [], proventos: doc.proventos ?? [],
     // todas as preferências guardadas na carteira
     preferencias: { ...prefs, listaPainel }, budget,
   };
@@ -41,7 +41,7 @@ export async function importarBackup(file: File): Promise<boolean> {
   try { d = JSON.parse(await file.text()); } catch { alert("Esse arquivo não é um backup válido (JSON inválido)."); return false; }
   if (!d || d.app !== "painel-acoes") { alert("Esse arquivo não parece ser um backup deste painel."); return false; }
   const n = (k: string) => Array.isArray(d[k]) ? (d[k] as unknown[]).length : 0;
-  const resumo = `${n("acoesFiis")} ações/FIIs, ${n("cripto")} cripto, ${n("rendaFixa")} títulos de renda fixa, ${n("moedas")} moedas, ${n("bens")} bens e ${Object.keys(d.historico || {}).length} dias de histórico`;
+  const resumo = `${n("acoesFiis")} ações/FIIs, ${n("cripto")} cripto, ${n("rendaFixa")} títulos de renda fixa, ${n("moedas")} moedas, ${n("bens")} bens, ${n("operacoes")} operações, ${n("proventos")} proventos e ${Object.keys(d.historico || {}).length} dias de histórico`;
   if (!confirm(`Importar backup com ${resumo}?\n\nIsso SUBSTITUI todos os seus dados salvos no servidor.`)) return false;
   try {
     const r = await apiFetch("/api/backup/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(d) });

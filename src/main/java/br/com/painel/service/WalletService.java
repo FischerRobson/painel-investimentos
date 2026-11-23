@@ -1,6 +1,7 @@
 package br.com.painel.service;
 
 import br.com.painel.model.Backup;
+import br.com.painel.model.Operation;
 import br.com.painel.model.Position;
 import br.com.painel.model.PositionsDay;
 import br.com.painel.model.Snapshot;
@@ -58,7 +59,7 @@ public class WalletService {
         Object watchlist = w.preferences().get(WATCHLIST);
         return new Backup("painel-acoes", 2, Instant.now().toString(), w.stocks(), w.crypto(), w.fixedIncome(),
                 w.currencies(), w.vehicles(), history(), watchlist instanceof String s ? s : null, w.preferences(),
-                budget.exportBackup());
+                budget.exportBackup(), w.operations(), w.distributions());
     }
 
     public void importBackup(Backup b) {
@@ -66,7 +67,8 @@ public class WalletService {
         if (b.watchlist() != null && !b.watchlist().isBlank()) {
             prefs.put(WATCHLIST, b.watchlist());
         }
-        Wallet wallet = new Wallet(b.stocks(), b.crypto(), b.fixedIncome(), b.currencies(), b.vehicles(), prefs);
+        Wallet wallet = new Wallet(b.stocks(), b.crypto(), b.fixedIncome(), b.currencies(), b.vehicles(), prefs,
+                b.operations(), b.distributions());
         validate(wallet);
         String owner = user.id();
         budget.importBackup(b.budget());
@@ -78,6 +80,18 @@ public class WalletService {
         for (Position p : w.crypto()) {
             if (!CryptoService.COINS.containsKey(p.ticker())) {
                 throw new InvalidDataException("cripto não suportada: " + p.ticker());
+            }
+        }
+        for (Operation o : w.operations()) {
+            if ("cripto".equals(o.assetClass()) && !CryptoService.COINS.containsKey(o.ticker())) {
+                throw new InvalidDataException("cripto não suportada: " + o.ticker());
+            }
+            boolean trade = "compra".equals(o.type()) || "venda".equals(o.type()) || "bonificacao".equals(o.type());
+            if (trade && (o.quantity() == null || o.quantity() <= 0 || o.price() == null)) {
+                throw new InvalidDataException("operação sem quantidade ou preço: " + o.ticker() + " em " + o.date());
+            }
+            if (!trade && (o.factor() == null || o.factor() <= 0)) {
+                throw new InvalidDataException("informe o fator do " + o.type() + " de " + o.ticker());
             }
         }
     }

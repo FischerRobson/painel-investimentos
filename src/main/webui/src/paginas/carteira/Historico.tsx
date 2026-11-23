@@ -2,7 +2,10 @@
 // Clicar num ponto do gráfico (ou escolher o dia na lista) mostra as posições daquele dia (/api/positions/AAAA-MM-DD).
 // Dias em que uma cotação falhou usam o último valor conhecido e ficam marcados no gráfico.
 import { useState } from "react";
-import { addDays } from "../../motor";
+import { useQuery } from "@tanstack/react-query";
+import { addDays, fluxosDasOperacoes, rentabilidade, type TituloRF } from "../../motor";
+import { apiFetch } from "../../lib/api";
+import { useCarteira } from "../../lib/carteira";
 import { hojeISO, isoBR, useDatasPosicoes, usePosicoes, type DiaPosicoes, type LinhaPosicao } from "../../lib/dados";
 import { big, brl, money, pct, signCls } from "../../lib/formato";
 import { FX_SYM } from "../../lib/cambio";
@@ -32,6 +35,16 @@ export function Historico({ hist: bruto }: { hist: Record<string, unknown> }) {
   const hist = bruto as Record<string, Foto>;
   const days = Object.keys(hist).sort();
   const [dia, setDia] = useState<string | null>(null);
+  const { doc } = useCarteira();
+  const temOperacoes = !!doc?.operacoes?.length;
+  // CDI acumulado no mesmo período, para comparar
+  const cdi = useQuery({
+    queryKey: ["cdi-periodo", days[0], days.at(-1)], enabled: temOperacoes && days.length > 1, retry: false, staleTime: Infinity,
+    queryFn: async () => {
+      const j = await (await apiFetch(`/api/rates?from=${days[0]}`)).json() as { cdi?: [string, number][] };
+      return ((j.cdi ?? []).filter(([d]) => d > days[0] && d <= days.at(-1)!).reduce((f, [, v]) => f * (1 + v / 100), 1) - 1) * 100;
+    },
+  });
   const datas = useDatasPosicoes();
   const intro = "O painel tira uma foto dos seus investimentos às 18h (horário de Brasília) nos dias de pregão da B3, mesmo sem você abrir a página.";
   if (days.length < 2) return (
@@ -46,6 +59,7 @@ export function Historico({ hist: bruto }: { hist: Record<string, unknown> }) {
   const x = (d: string) => new Date(d + "T12:00:00").getTime();
   const marked = new Set(days.flatMap((d, i) => notaDaFoto(hist[d]) ? [i] : []));
   const comPosicoes = [...(datas.data ?? [])].reverse();
+  const twr = rentabilidadeSemAportes(days.map(d => ({ data: d, valor: hist[d].i })), doc);
 
   return (
     <div className="panel"><h2>Evolução do patrimônio</h2>
@@ -53,6 +67,8 @@ export function Historico({ hist: bruto }: { hist: Record<string, unknown> }) {
       <div className="tiles">
         <div className="tile"><div className="k">Desde {isoBR(days[0])}</div><div className="v" style={{ fontSize: 16 }}><Delta a={first.i} b={last.i} /></div><div className="s">investimentos</div></div>
         {d30 && <div className="tile"><div className="k">Últimos 30 dias</div><div className="v" style={{ fontSize: 16 }}><Delta a={hist[d30].i} b={last.i} /></div><div className="s">investimentos</div></div>}
+        {twr.total != null && <div className="tile"><div className="k">Rentabilidade sem aportes</div><div className={"v " + signCls(twr.total)} style={{ fontSize: 16 }}>{pct(twr.total)}</div>
+          <div className="s">desde {isoBR(days[0])}{cdi.data != null ? ` · CDI ${pct(cdi.data)}${cdi.data > 0 ? ` (${brl(twr.total / cdi.data * 100, 0)}% do CDI)` : ""}` : ""}</div></div>}
         <div className="tile"><div className="k">Última foto</div><div className="v" style={{ fontSize: 16 }}>{isoBR(days[days.length - 1])}</div><div className="s">{days.length} dias salvos</div></div>
       </div>
       <Legenda itens={[["Investimentos", css("--s1")], ...(flagged.length ? [["Usou valor anterior", css("--s4")] as [string, string]] : [])]} />
@@ -82,6 +98,14 @@ export function Historico({ hist: bruto }: { hist: Record<string, unknown> }) {
       {dia && <Posicoes dia={dia} primeiraComPosicoes={datas.data?.[0]} onFechar={() => setDia(null)} />}
     </div>
   );
+}
+
+// Retorno da carteira sem contar o dinheiro que entrou ou saiu (compras, vendas, proventos e aplicações em renda fixa).
+// Só faz sentido com as operações lançadas: sem elas, cada compra pareceria rendimento.
+function rentabilidadeSemAportes(pontos: { data: string; valor: number }[], doc: ReturnType<typeof useCarteira>["doc"]) {
+  if (!doc?.operacoes?.length) return { total: null };
+  const rf = ((doc.rendaFixa ?? []) as TituloRF[]).map(t => ({ data: t.data, aplicado: t.aplicado }));
+  return rentabilidade(pontos, fluxosDasOperacoes(doc.operacoes, doc.proventos ?? [], rf));
 }
 
 const TIPO: Record<string, string> = { stock: "", crypto: "Cripto", fx: "Moeda", fixedIncome: "Renda fixa" };
