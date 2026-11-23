@@ -100,6 +100,14 @@ sem mexer no resto. O `StatementImportService` aplica regras (desmarcar, área, 
 
 Próximas etapas: aportes automáticos vindos da Carteira (com correção do valor) e lançamentos recorrentes.
 
+### VR (cartões de benefício)
+
+Aba do Orçamento (`/orcamento/vr`) que controla o vale-refeição, o vale-alimentação ou outro cartão de benefício como
+conta: saldo inicial, crédito de cada mês, gastos, estornos e ajustes (para bater com o app do cartão). Mostra o saldo
+acumulado, o extrato do mês com o saldo depois de cada lançamento, quanto do crédito do mês ainda dá para gastar por
+dia até o próximo crédito e o histórico mês a mês. Fica em `users/{sub}/budget/vr.json` (`GET`/`PUT /api/budget/vr`,
+com ETag) e entra no backup. Contas em `src/main/webui/src/motor/vr.ts`.
+
 ### Modo demonstração
 
 O botão **"Modo demonstração"** (topo da página) faz o app mostrar dados fictícios, para testar ou apresentar

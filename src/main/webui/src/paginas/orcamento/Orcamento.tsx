@@ -15,6 +15,7 @@ import {
 import { Lancamentos } from "./Lancamentos";
 import { Importacao, BotaoImportar, LinhaUltimaImportacao, StatusImportacao, type EstadoImportacao } from "./Importacao";
 import { MetasPorArea, Regras, type RascunhoRegra } from "./Configuracoes";
+import { AbasOrcamento } from "./Abas";
 
 type Vista = { mes: string; dados: Mes; resumo: ResumoMes[] };
 export type Edicao = { kind: Tipo; id: string } | null;
@@ -65,8 +66,8 @@ export function Orcamento() {
   // O Planejador (Ferramentas) usa o resumo do orçamento: ao sair daqui ele busca de novo
   useEffect(() => () => { void gravacaoMes.descarregar(); void qc.invalidateQueries({ queryKey: ["planejador-orcamento"] }); }, []);
 
-  if (erro) return <div className="panel err">{erro}</div>;
-  if (!vista || !metas) return <div className="panel muted">Carregando o orçamento…</div>;
+  if (erro) return <><AbasOrcamento /><div className="panel err">{erro}</div></>;
+  if (!vista || !metas) return <><AbasOrcamento /><div className="panel muted">Carregando o orçamento…</div></>;
   const { dados } = vista;
 
   const mudarDados = (novo: Mes) => {
@@ -127,6 +128,7 @@ export function Orcamento() {
   const temHistorico = serie.some(s => s.income || s.expenses);
 
   return <>
+    <AbasOrcamento />
     <div className="panel">
       <div className="w-head">
         <div><h2>Orçamento</h2><div className="hint" style={{ margin: 0 }}>Entradas e saídas do mês. Gastos do cartão entram no mês da fatura; a data mostrada é a da compra.</div></div>

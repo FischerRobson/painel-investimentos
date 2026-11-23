@@ -6,6 +6,7 @@ import br.com.painel.dto.Point;
 import br.com.painel.dto.RatePoint;
 import br.com.painel.dto.StockItem;
 import br.com.painel.dto.BudgetMonthSummary;
+import br.com.painel.model.Benefits;
 import br.com.painel.model.BudgetArea;
 import br.com.painel.model.BudgetMonth;
 import br.com.painel.model.BudgetRules;
@@ -107,6 +108,7 @@ public class DemoDataService {
             case "/api/budget/import/last" -> new Reply(200, Map.of("last", new LastImport(
                     LocalDate.now().minusDays(3).atTime(13, 15).toInstant(ZoneOffset.UTC).toString(), "Fatura do cartão Nubank",
                     "fatura-nubank.pdf", 18, 0, List.of(YearMonth.now().toString()))), null);
+            case "/api/budget/vr" -> get ? new Reply(200, benefits(), "demo") : new Reply(200, Map.of("etag", "demo"), "demo");
             case "/api/budget/summary" -> new Reply(200, budgetSummary(q.getFirst("to"), param(q, "months", "12")), null);
             default -> {
                 if (path.startsWith(POSITIONS)) {
@@ -225,6 +227,32 @@ public class DemoDataService {
             weight.forEach((key, wgt) -> out.put(key, total * wgt / sum));
         }
         return out;
+    }
+
+    // VR fictício: R$ 1.100 todo dia 1 desde junho, gastos de restaurante, mercado e delivery um pouco abaixo disso (o saldo cresce)
+    Benefits benefits() {
+        YearMonth first = YearMonth.now().minusMonths(5);
+        List<Benefits.Movement> movements = new ArrayList<>();
+        String[][] places = {{"Restaurante Sabor Caseiro", "Restaurante"}, {"Padaria Pão Quente", "Padaria"}, {"Mercado do Bairro", "Mercado"},
+                {"iFood", "Delivery"}, {"Bistrô Central", "Restaurante"}, {"Lanchonete da Esquina", "Restaurante"}};
+        int n = 0;
+        for (YearMonth m = first; !m.isAfter(YearMonth.now()); m = m.plusMonths(1)) {
+            movements.add(new Benefits.Movement("vr-c" + m, "demo-vr", m.atDay(1).toString(), "credito", "Crédito do benefício", 1100.0, null));
+            Random r = new Random(m.hashCode() * 31L);
+            int last = m.equals(YearMonth.now()) ? LocalDate.now().getDayOfMonth() : m.lengthOfMonth();
+            for (int day = 2; day <= last; day++) {
+                LocalDate d = m.atDay(day);
+                if (!isBusinessDay(d) || r.nextInt(10) < 3) { // nem todo dia útil tem gasto
+                    continue;
+                }
+                String[] place = places[r.nextInt(places.length)];
+                double amount = Math.round((place[1].equals("Mercado") ? 60 + r.nextInt(90) : 28 + r.nextInt(30)) * 100 + r.nextInt(100)) / 100.0;
+                movements.add(new Benefits.Movement("vr-g" + (n++), "demo-vr", d.toString(), "gasto", place[0], amount, place[1]));
+            }
+        }
+        LocalDate refundDay = first.plusMonths(2).atDay(10);
+        movements.add(new Benefits.Movement("vr-e1", "demo-vr", refundDay.toString(), "estorno", "Estorno iFood (pedido cancelado)", 42.9, "Delivery"));
+        return new Benefits(List.of(new Benefits.Account("demo-vr", "VR", 1100.0, 1, 380.0, first.atDay(1).minusDays(1).toString())), movements);
     }
 
     BudgetMonth budgetMonth(YearMonth month) {

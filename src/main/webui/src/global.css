@@ -366,3 +366,10 @@ body.busy #topbar { opacity: 1; }
 .g-rel a { padding: 2px 9px; border: 1px solid var(--border); border-radius: 999px; text-decoration: none; }
 .g-rel a:hover { border-color: var(--accent); }
 @media (max-width: 440px) { .nav a { font-size: 9.5px; letter-spacing: -.02em; } }
+/* Abas de página (Orçamento | VR): links com a aparência do .seg */
+.abas { margin: 0 0 12px; }
+.abas a { padding: 8px 16px; color: var(--text-2); text-decoration: none; font-weight: 600; }
+.abas a.on { background: var(--text); color: var(--surface); }
+/* VR: valor e saldo de cada lançamento do extrato */
+.vr-pendente { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content: space-between; margin-top: 10px; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: 8px; background: color-mix(in srgb, var(--accent) 10%, transparent); }
