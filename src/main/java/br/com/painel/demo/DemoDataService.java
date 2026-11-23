@@ -15,6 +15,7 @@ import br.com.painel.model.CurrencyHolding;
 import br.com.painel.model.Expense;
 import br.com.painel.model.Formats;
 import br.com.painel.model.Income;
+import br.com.painel.model.LastImport;
 import br.com.painel.model.FixedIncome;
 import br.com.painel.model.Position;
 import br.com.painel.model.Vehicle;
@@ -100,6 +101,9 @@ public class DemoDataService {
                     : new Reply(200, Map.of("etag", "demo"), "demo");
             case "/api/budget/rules" -> get ? new Reply(200, DEMO_RULES, "demo")
                     : new Reply(200, Map.of("etag", "demo"), "demo");
+            case "/api/budget/import/last" -> new Reply(200, Map.of("last", new LastImport(
+                    LocalDate.now().minusDays(3).atTime(13, 15).toInstant(ZoneOffset.UTC).toString(), "Fatura do cartão Nubank",
+                    "fatura-nubank.pdf", 18, 0, List.of(YearMonth.now().toString()))), null);
             case "/api/budget/summary" -> new Reply(200, budgetSummary(q.getFirst("to"), param(q, "months", "12")), null);
             default -> {
                 if (path.startsWith("/api/fipe/")) {

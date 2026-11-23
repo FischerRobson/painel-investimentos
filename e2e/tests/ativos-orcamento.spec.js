@@ -106,7 +106,12 @@ test.describe("app", () => {
     await expect(page.locator("summary").filter({ hasText: "Regras de descrição" })).toContainText("3 regras");
   });
 
-  test("Orçamento: importar extrato não existe no modo demonstração", async ({ page }) => {
+  test("Orçamento: mostra quando foi a última importação", async ({ page }) => {
+  await ir(page, "/orcamento#2026-03");
+  await expect(page.getByText(/^Última importação: \d\d\/\d\d\/\d{4} às 10:15 · Fatura do cartão Nubank \(fatura-nubank\.pdf\) · 18 lançamentos$/)).toBeVisible();
+});
+
+test("Orçamento: importar extrato não existe no modo demonstração", async ({ page }) => {
     await ir(page, "/orcamento#2026-03");
     await page.locator('input[type="file"]').setInputFiles({ name: "extrato.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4") });
     await expect(page.getByText("Não deu para ler extrato.pdf: Indisponível no modo demonstração")).toBeVisible();

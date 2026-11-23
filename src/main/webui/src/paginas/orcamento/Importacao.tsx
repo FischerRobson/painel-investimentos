@@ -3,7 +3,8 @@
 import { useRef } from "react";
 import { money } from "../../lib/formato";
 import { isoBR } from "../../lib/dados";
-import { apiFetch, textoDoErro } from "../../lib/api";
+import { useQuery } from "@tanstack/react-query";
+import { apiFetch, getJson, textoDoErro } from "../../lib/api";
 import { gravacaoMes, mesCurto, tituloMes, type AreaId } from "../../lib/orcamento";
 import { SelectArea, SeloMeio } from "./Lancamentos";
 import { useFoco } from "./Orcamento";
@@ -55,6 +56,25 @@ export function BotaoImportar({ imp, onArquivo }: { imp: EstadoImportacao | null
   );
 }
 
+// "Última importação: 20/11/2026 às 10:15 · Fatura do cartão Nubank (fatura.pdf) · 18 lançamentos"
+export type UltimaImportacao = { at: string; source?: string; fileName?: string; imported: number; skipped: number; months: string[] };
+
+export function useUltimaImportacao() {
+  return useQuery({ queryKey: ["budget-import-last"], queryFn: () => getJson<{ last: UltimaImportacao | null }>("/api/budget/import/last") });
+}
+
+export function LinhaUltimaImportacao() {
+  const q = useUltimaImportacao();
+  const u = q.data?.last;
+  if (!q.data) return null;
+  if (!u) return <div className="status" style={{ marginTop: 6 }}>Nenhuma importação feita ainda.</div>;
+  const d = new Date(u.at);
+  const quando = `${d.toLocaleDateString("pt-BR")} às ${d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+  const oque = [u.source, u.fileName && (u.source ? `(${u.fileName})` : u.fileName)].filter(Boolean).join(" ");
+  const quantos = u.imported ? `${u.imported} ${u.imported === 1 ? "lançamento" : "lançamentos"}` : "nenhum lançamento novo";
+  return <div className="status" style={{ marginTop: 6 }}>Última importação: <strong>{quando}</strong>{oque ? ` · ${oque}` : ""} · {quantos}</div>;
+}
+
 export function StatusImportacao({ imp, importou }: { imp: EstadoImportacao | null; importou: string | null }) {
   if (!imp?.preview && imp?.err) return <div className="err" style={{ marginTop: 8 }}>Não deu para ler {imp.fileName}: {imp.err}</div>;
   return importou ? <div className="up" style={{ marginTop: 8 }}>{importou}</div> : null;
@@ -85,7 +105,7 @@ export function Importacao({ imp, setImp, mes: _mes, foco, onRegra, onConcluir }
       await gravacaoMes.descarregar();
       const r = await apiFetch("/api/budget/import/commit", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: chosen, includeFutureInstallments: imp.includeFuture }),
+        body: JSON.stringify({ items: chosen, includeFutureInstallments: imp.includeFuture, source: preview.source, fileName: imp.fileName }),
       });
       if (!r.ok) throw new Error(await textoDoErro(r));
       await onConcluir(await r.json());

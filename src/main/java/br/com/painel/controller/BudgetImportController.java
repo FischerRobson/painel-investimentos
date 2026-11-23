@@ -3,11 +3,13 @@ package br.com.painel.controller;
 import br.com.painel.dto.ImportPreview;
 import br.com.painel.dto.ImportRequest;
 import br.com.painel.dto.ImportResult;
+import br.com.painel.model.LastImport;
 import br.com.painel.service.StatementImportService;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -22,6 +24,17 @@ public class BudgetImportController {
 
     public BudgetImportController(StatementImportService service) {
         this.service = service;
+    }
+
+    // Last import ({"last": null} before the first one)
+    public record Status(LastImport last) {
+    }
+
+    @GET
+    @Path("/last")
+    @RunOnVirtualThread
+    public Status last() {
+        return new Status(service.lastImport().orElse(null));
     }
 
     @POST

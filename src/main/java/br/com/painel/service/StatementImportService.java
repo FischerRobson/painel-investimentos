@@ -10,6 +10,7 @@ import br.com.painel.model.BudgetArea;
 import br.com.painel.model.BudgetMonth;
 import br.com.painel.model.Expense;
 import br.com.painel.model.Income;
+import br.com.painel.model.LastImport;
 import br.com.painel.repository.DocumentStore.Condition;
 import br.com.painel.repository.UserDataRepository;
 import br.com.painel.repository.UserDataRepository.Versioned;
@@ -25,6 +26,8 @@ import br.com.painel.statement.document.StatementFile;
 import br.com.painel.statement.parser.StatementParsers;
 import jakarta.enterprise.context.ApplicationScoped;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -48,6 +51,7 @@ public class StatementImportService {
     private final UserDataRepository repository;
     private final BudgetService budget;
     private final CurrentUser user;
+    private Clock clock = Clock.systemUTC();
 
     public StatementImportService(StatementParsers parsers, UserDataRepository repository, BudgetService budget, CurrentUser user) {
         this.parsers = parsers;
@@ -172,7 +176,16 @@ public class StatementImportService {
                 months.add(e.getKey().toString());
             }
         }
+        repository.saveLastImport(owner, new LastImport(Instant.now(clock).toString(), request.source(), request.fileName(), imported, skipped, months));
         return new ImportResult(imported, skipped, months);
+    }
+
+    public Optional<LastImport> lastImport() {
+        return repository.lastImport(user.id());
+    }
+
+    void useClock(Clock clock) {
+        this.clock = clock;
     }
 
     private ImportItem item(Draft d, Set<String> knownKeys, AreaSuggester areas, DescriptionRules rules) {
