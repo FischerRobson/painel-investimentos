@@ -1,4 +1,4 @@
-// Composição da carteira e comparativo com o mercado: as regras do app atual (renderWallet e calcularComparativo).
+// Composição da carteira e comparativo com o mercado.
 import { describe, expect, test } from "vitest";
 import { montarComposicao } from "./composicao";
 import { calcularComparativo, pedidoComparativo, valorEm } from "./comparativo";

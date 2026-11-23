@@ -1,5 +1,5 @@
 // Backup da carteira: exporta um JSON com tudo (carteira, histórico, preferências e orçamento) e importa substituindo os dados
-// salvos no servidor (/api/backup/import). Mesmo formato do app atual (app: "painel-acoes", versao: 1).
+// salvos no servidor (/api/backup/import). Formato: app "painel-acoes", versao 1 (o mesmo da versão 1 do painel).
 import { apiFetch, textoDoErro } from "../../lib/api";
 import { carteiraStore } from "../../lib/carteira";
 import { DEMO } from "../../lib/store";
@@ -21,7 +21,7 @@ export async function exportarBackup(historico: Record<string, unknown>): Promis
     app: "painel-acoes", versao: 1, exportadoEm: new Date().toISOString(),
     acoesFiis: doc.acoesFiis ?? [], cripto: doc.cripto ?? [], rendaFixa: doc.rendaFixa ?? [], moedas: doc.moedas ?? [], bens: doc.bens ?? [],
     historico, listaPainel,
-    // todas as preferências guardadas na carteira (o app atual só conhece projecao, simulador e listaPainel)
+    // todas as preferências guardadas na carteira
     preferencias: { ...prefs, listaPainel }, budget,
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });

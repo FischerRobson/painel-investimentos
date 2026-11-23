@@ -66,6 +66,7 @@ jobs:
       - run: cfn-lint --non-zero-exit-code error template.yaml infra/github-oidc.yaml
 
   frontend:
+    # O nome é um check obrigatório da proteção da master: trocar aqui exige trocar lá também
     name: Frontend (React, motor e app atual)
     runs-on: ubuntu-latest
     defaults:
@@ -83,16 +84,10 @@ jobs:
         run: npm run typecheck
       - name: Testes (Vitest; inclui o motor financeiro)
         run: npm test
-      - name: motor.js do app atual gerado a partir do motor.ts
-        run: |
-          npm run -s motor:legado
-          git diff --exit-code -- ../resources/META-INF/resources/motor.js \
-            || { echo "::error file=src/main/resources/META-INF/resources/motor.js::motor.js desatualizado: rode 'npm run motor:legado' em src/main/webui e faça commit"; exit 1; }
-      - name: App atual (sintaxe do JS inline, PWA e glossário)
+      - name: Arquivos estáticos (service worker, manifest da PWA e glossário)
         working-directory: .
         run: |
-          node --check src/main/resources/META-INF/resources/sw.js
-          node --check src/main/resources/META-INF/resources/motor.js
+          node --check src/main/webui/public/sw.js
           node .github/scripts/check-frontend.mjs
 
   e2e:

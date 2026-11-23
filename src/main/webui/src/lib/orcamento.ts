@@ -1,5 +1,4 @@
-// Orçamento: tipos, contas puras e gravação no servidor, com as mesmas regras do app atual (loadBudget, persistBudget,
-// budgetTotals, budgetReference, ruleFor... do index.html).
+// Orçamento: tipos, contas puras e gravação no servidor.
 // Cada mês é um documento (/api/budget/months/AAAA-MM) com ETag próprio; metas (/settings) e regras (/rules) também.
 import { apiFetch, textoDoErro } from "./api";
 import { salvarStore } from "./salvar";

@@ -53,7 +53,7 @@ export function Ativos() {
       carteiraStore.atualizar(d => ({ ...d, preferencias: { ...(d.preferencias ?? {}), listaPainel: l } }));
     }
     history.replaceState(null, "", "#" + encodeURIComponent(l.replace(/\s+/g, "")));
-    if (l === lista && r === range) void q.refetch(); // mesmo pedido: busca de novo, como o botão do app atual
+    if (l === lista && r === range) void q.refetch(); // mesmo pedido: busca de novo
   };
   // Primeira lista: a da URL (fora da demonstração) ou a salva na carteira
   useEffect(() => {
@@ -273,7 +273,7 @@ function Cartao({ it, onRemover }: { it: Linha; onRemover: () => void }) {
       {divs.length > 0 && (
         <details className="divs" onToggle={e => { if (e.currentTarget.open) setDivsAberto(true); }}>
           <summary>Proventos (últimos 2 anos · {divs.length} pagamentos)</summary>
-          {/* o gráfico só é criado na primeira vez que abre, como no app atual */}
+          {/* o gráfico só é criado na primeira vez que abre */}
           <div className="divbox">{divsAberto && <Grafico deps={[it.symbol, divs.length]} config={() => configProventos(divs, c, it.currency)} />}</div>
         </details>
       )}

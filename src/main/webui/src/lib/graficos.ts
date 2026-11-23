@@ -1,5 +1,5 @@
-// Chart.js com as mesmas opções visuais do app atual (gridOpts, tickOpts, tooltipOpts, timeTicks, crosshair, lineChart e
-// barChart do index.html). Só os módulos usados são registrados, para o bundle ficar menor.
+// Chart.js com as opções visuais do painel (grade, eixos, tooltip, crosshair, linha, barras, rosca e radar).
+// Só os módulos usados são registrados, para o bundle ficar menor.
 import {
   ArcElement, BarController, BarElement, CategoryScale, Chart, DoughnutController, Filler, LinearScale, LineController, LineElement,
   PointElement, RadarController, RadialLinearScale, Tooltip, type ChartConfiguration, type Plugin, type ScriptableContext, type TooltipModel,

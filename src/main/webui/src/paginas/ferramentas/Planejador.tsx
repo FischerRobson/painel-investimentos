@@ -35,7 +35,7 @@ export function Planejador() {
   const orc = useQuery({ queryKey: ["planejador-orcamento"], queryFn: carregarOrcamento, retry: false });
   const { atuais: cur } = useRendaFixa();
   const [planCfg, setPlanCfg] = usePreferencia<Cfg>("planejador", {});
-  // "Atualizar orçamento" volta para o carregando, como no app atual
+  // "Atualizar orçamento" volta para o carregando
   if (orc.isPending || orc.isFetching) return <div className="panel"><h2>Planejador de metas</h2><div className="hint">Carregando o seu orçamento…</div></div>;
   if (orc.isError) return <div className="panel err">{orc.error.message || "Falha ao ler o orçamento."}</div>;
 

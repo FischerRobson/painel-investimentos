@@ -1,4 +1,4 @@
-// Campos dos formulários das ferramentas, com o comportamento do app atual:
+// Campos dos formulários das ferramentas:
 // o número vale quando o campo perde o foco (ou com Enter), e campo vazio vira null (a ferramenta volta ao padrão).
 // Com aoDigitar, o valor vale a cada tecla (como no IPCA+ × Prefixado), sem reescrever o que está sendo digitado.
 import { useEffect, useRef, useState, type InputHTMLAttributes, type ReactNode } from "react";

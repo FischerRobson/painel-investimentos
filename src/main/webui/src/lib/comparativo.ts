@@ -1,5 +1,5 @@
 // Carteira × CDI, Ibovespa e IFIX (/api/benchmarks): como a composição de HOJE (cada ativo pesando pelo valor atual) teria se
-// saído no período. Mesma conta do calcularComparativo do app atual. Bens ficam de fora; compras, vendas e aportes não entram.
+// saído no período. Bens ficam de fora; compras, vendas e aportes não entram.
 import type { Composicao, ItemAtivo } from "./composicao";
 
 type Serie = [number, number][];

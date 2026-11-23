@@ -1,11 +1,7 @@
-// Valida a sintaxe do JavaScript inline do index.html (sem executar) e o manifest da PWA.
+// Valida os arquivos estáticos do app (src/main/webui/public): o manifest da PWA e os ícones que ele cita, e o glossário.
 import { readFileSync } from "node:fs";
 
-const base = "src/main/resources/META-INF/resources";
-const html = readFileSync(`${base}/index.html`, "utf8");
-const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
-if (scripts.length === 0) throw new Error("nenhum <script> inline no index.html");
-scripts.forEach(code => new Function(code));
+const base = "src/main/webui/public";
 
 const manifest = JSON.parse(readFileSync(`${base}/manifest.json`, "utf8"));
 for (const icon of manifest.icons) readFileSync(`${base}${icon.src}`);
@@ -27,4 +23,4 @@ for (const t of glossario.termos) {
 }
 if (erros.length) throw new Error("glossario.json:\n" + erros.join("\n"));
 
-console.log(`index.html: ${scripts.length} script(s) ok · manifest e ícones ok · glossário: ${ids.size} termos ok`);
+console.log(`manifest e ícones ok · glossário: ${ids.size} termos ok`);

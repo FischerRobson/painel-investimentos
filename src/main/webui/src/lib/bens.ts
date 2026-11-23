@@ -23,7 +23,7 @@ export function comPreco(b: Bem, d: PrecoFipe): Bem {
   return { ...b, hist, info: { brand: d.brand, model: d.model, modelYear: d.modelYear, fuel: d.fuel, codeFipe: d.codeFipe }, last: { month: d.month, price: d.price } };
 }
 
-// Preço FIPE do mês de cada bem salvo, uma vez por página aberta (como o loadBensPrices do app atual); se mudou algo,
+// Preço FIPE do mês de cada bem salvo, uma vez por página aberta; se mudou algo,
 // grava na carteira. Sem resposta da FIPE, vale o último preço salvo no bem.
 export function usePrecosBens() {
   const carteira = useCarteira();

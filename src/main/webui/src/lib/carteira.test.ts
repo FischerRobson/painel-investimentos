@@ -102,3 +102,38 @@ describe("carteiraStore", () => {
     expect(() => carteiraStore.atualizar(d => d)).toThrow("carteira ainda não carregada");
   });
 });
+
+describe("dados da versão antiga (localStorage)", () => {
+  afterEach(() => localStorage.clear());
+
+  test("sem carteira no servidor, oferece enviar e envia como backup uma vez só", async () => {
+    localStorage.setItem("carteira", JSON.stringify([{ t: "ITSA4", q: 10 }]));
+    localStorage.setItem("tickers", "ITSA4");
+    let existe = false;
+    const posts: unknown[] = [];
+    getResp = () => existe ? Response.json({ acoesFiis: [{ t: "ITSA4", q: 10 }] }, { headers: { ETag: '"v1"' } }) : new Response(null, { status: 404 });
+    vi.mocked(fetch).mockImplementation(async (url, init = {}) => {
+      if (url === "/api/backup/import") { posts.push(JSON.parse(String(init.body))); existe = true; return new Response(null, { status: 204 }); }
+      return getResp();
+    });
+    const perguntas: string[] = [];
+    efeitos.confirmar = m => { perguntas.push(m); return true; };
+    await carteiraStore.carregar();
+    expect(perguntas).toHaveLength(1);
+    expect(posts[0]).toMatchObject({ app: "painel-acoes", acoesFiis: [{ t: "ITSA4", q: 10 }], listaPainel: "ITSA4" });
+    expect(carteiraStore.get().doc?.acoesFiis).toEqual([{ t: "ITSA4", q: 10 }]);
+    expect(localStorage.getItem("migrado")).toBe("1");
+
+    existe = false;
+    await carteiraStore.recarregar();
+    expect(perguntas).toHaveLength(1); // não pergunta de novo
+    expect(carteiraStore.get().doc).toEqual({});
+  });
+
+  test("sem dados antigos, não pergunta nada", async () => {
+    getResp = () => new Response(null, { status: 404 });
+    efeitos.confirmar = () => { throw new Error("não deveria perguntar"); };
+    await carteiraStore.carregar();
+    expect(carteiraStore.get().doc).toEqual({});
+  });
+});

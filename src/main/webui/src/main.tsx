@@ -12,14 +12,16 @@ const queryClient = new QueryClient({
   },
 });
 
+// Abre sem internet com os últimos dados (public/sw.js); no npm run dev não, para não guardar o código de desenvolvimento
+if (import.meta.env.PROD && "serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+
 const raiz = createRoot(document.getElementById("root")!);
 
 iniciarSessao()
   .then(sessao => raiz.render(
     <StrictMode>
       <QueryClientProvider client={queryClient}>
-        {/* import.meta.env.BASE_URL = "/novo/" enquanto convive com o app atual */}
-        <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+        <BrowserRouter>
           <App sessao={sessao} />
         </BrowserRouter>
       </QueryClientProvider>

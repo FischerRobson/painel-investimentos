@@ -1,5 +1,5 @@
 // Projeção da renda fixa: quanto os títulos da carteira vão valer numa data futura, líquido de IR.
-// Contas em Motor.rfCalc e Motor.projectOne. Preferências na carteira (preferencias.projecao), como no app atual.
+// Contas em Motor.rfCalc e Motor.projectOne. Preferências na carteira (preferencias.projecao).
 import { Link } from "react-router";
 import { hojeISO, isoBR, useRendaFixa } from "../../lib/dados";
 import { usePrefCarteira } from "../../lib/preferencia";
@@ -109,7 +109,7 @@ function Projecao({ rfW, rates, cur, projCfg, setProjCfg }: {
   );
 }
 
-// Mesmo gráfico do app atual (drawProjection): área com o líquido projetado
+// Gráfico de área com o líquido projetado
 function configProjecao(canvas: HTMLCanvasElement, series: { x: number; y: number }[]) {
   const min = series[0].x, max = series[series.length - 1].x;
   const c = css("--s2");

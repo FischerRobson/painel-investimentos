@@ -24,7 +24,7 @@ export function Comparativo({ c, pronta }: { c: Composicao; pronta: boolean }) {
   const q = useQuery({
     queryKey: ["comparativo", range, fx.join(","), coins.join(","), tickers.join(",")],
     enabled: aberto && pronta,
-    staleTime: Infinity, // como no app atual: busca uma vez por período, até recarregar a página
+    staleTime: Infinity, // busca uma vez por período, até recarregar a página
     retry: false,
     queryFn: async () => {
       const [bench, dados] = await Promise.all([

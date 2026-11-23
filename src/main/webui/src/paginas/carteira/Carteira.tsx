@@ -1,5 +1,5 @@
 // Carteira: ações, FIIs, cripto, renda fixa, moedas e bens, com os totais, a divisão por classe, o comparativo com o mercado e a
-// evolução do patrimônio. Mesma tela e mesmas contas do renderWallet do app atual (contas em lib/composicao.ts e no motor).
+// evolução do patrimônio. Contas em lib/composicao.ts e no motor.
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -74,7 +74,7 @@ export function Carteira() {
     <Painel c={c} erros={[cryptoErr, rf.ratesErr]} semTaxas={!!rf.titulos.length && !rf.rates} ratesErr={rf.ratesErr}
       historico={historico.data ?? {}} />
     {!c.vazia && <Comparativo c={c} pronta={pronta} />}
-    {/* sem /api/historico (erro), o painel trata como histórico vazio, como no app atual */}
+    {/* sem /api/historico (erro), o painel trata como histórico vazio */}
     {!c.vazia && !historico.isPending && <Historico hist={historico.data ?? {}} />}
   </>;
 }
@@ -239,13 +239,13 @@ function Painel({ c, erros, semTaxas, ratesErr, historico }: {
   );
 }
 
-// Seção recolhível; aberta ou fechada fica guardado (acc_rv, acc_rf, acc_fx, acc_bens), como no app atual
+// Seção recolhível; aberta ou fechada fica guardado (acc_rv, acc_rf, acc_fx, acc_bens)
 function Acordeao({ k, resumo, children }: { k: string; resumo: React.ReactNode; children: React.ReactNode }) {
   const [aberto, setAberto] = useAberto("acc_" + k, "1");
   return <details className="acc" open={aberto} onToggle={e => setAberto(e.currentTarget.open)}>{resumo}{children}</details>;
 }
 
-// Quantidade na tabela: vale ao sair do campo (ou com Enter), como o change do app atual
+// Quantidade na tabela: vale ao sair do campo (ou com Enter)
 function CampoQtd({ r, onQtd }: { r: LinhaRV; onQtd: (v: string) => void }) {
   return (
     <input type="number" min="0" step={r.kind === "cr" ? "any" : "1"} defaultValue={r.q} key={r.q} aria-label={`Quantidade de ${r.t}`}

@@ -1,4 +1,4 @@
-// Composição da carteira: o valor de cada ativo e os totais por classe, com as mesmas regras do renderWallet do app atual.
+// Composição da carteira: o valor de cada ativo e os totais por classe.
 // Função pura: recebe o documento da carteira e as cotações já buscadas, e devolve o que a página Carteira mostra.
 import { rfCalc, type TaxasBCB, type TituloRF, type ValorRF } from "../motor";
 import type { Bem, DocCarteira, Moeda } from "./carteira";

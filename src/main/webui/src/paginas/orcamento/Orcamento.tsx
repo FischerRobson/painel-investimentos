@@ -1,5 +1,5 @@
 // Orçamento: entradas e saídas do mês, meta × realizado por área, importação de extrato/fatura, histórico de 12 meses, metas
-// e regras de descrição. Mesma tela do renderBudget do app atual; contas e gravação em lib/orcamento.ts.
+// e regras de descrição. Contas e gravação em lib/orcamento.ts.
 // O mês aberto fica na URL (/orcamento#2026-01).
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";

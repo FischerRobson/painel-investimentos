@@ -15,7 +15,7 @@ type Aba = "rv" | "cr" | "rf";
 export const parseTickers = (s: string) =>
   [...new Set(s.split(/[,\s;]+/).map(t => t.trim().toUpperCase().replace(/\.SA$/, "")).filter(Boolean))];
 
-// Booleano guardado no localStorage ("1"/"0"), com as mesmas chaves do app atual
+// Booleano guardado no localStorage ("1"/"0")
 export function useAberto(chave: string, padrao: "1" | "0"): [boolean, (v: boolean) => void] {
   const [v, setV] = useState(() => store.get(chave, padrao) === "1");
   return [v, novo => { setV(novo); store.set(chave, novo ? "1" : "0"); }];

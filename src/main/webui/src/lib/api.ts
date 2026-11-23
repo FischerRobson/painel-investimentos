@@ -1,10 +1,8 @@
 // Cliente da API: login (Cognito + Google, authorization code com PKCE), token em toda chamada a /api/*, modo demonstração
-// e aviso de dados offline. Mesmo fluxo do app atual (index.html), com as mesmas chaves no localStorage, então o login feito
-// num app vale no outro.
+// e aviso de dados offline. As chaves no localStorage são as da versão 1, então quem já estava logado continua logado.
 //
-// Durante a migração o redirect_uri continua sendo a raiz ("/"), a única URL de retorno cadastrada no Cognito: quem troca
-// o código pelo token é o app atual, que depois volta para a página de origem (pkce.back, por exemplo /novo/ferramentas).
-// O tratamento do ?code= daqui já fica pronto para quando o React passar a servir a raiz.
+// O redirect_uri é a raiz ("/"), a única URL de retorno cadastrada no Cognito: o app troca o ?code= pelo token ali e
+// volta para a página de onde o login saiu (pkce.back, por exemplo /ferramentas#comparador).
 import { DEMO, store } from "./store";
 
 type AuthConfig = { enabled: false } | { enabled: true; domain: string; clientId: string };

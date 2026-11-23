@@ -1,5 +1,5 @@
 // "Salvando…", "Salvo ✓" ou o erro da última gravação, no cabeçalho. Vale para tudo que grava no servidor (carteira, orçamento,
-// metas e regras), como o setSaveState do app atual. "Salvo ✓" some depois de 2,5 s.
+// metas e regras). "Salvo ✓" some depois de 2,5 s.
 import { useSyncExternalStore } from "react";
 
 export type EstadoSalvar = { estado: "" | "pendente" | "ok" | "erro"; msg?: string };

@@ -1,4 +1,4 @@
-// Contas do orçamento: totais, renda de referência, meta × realizado, filtros e regras de descrição (mesmas regras do app atual).
+// Contas do orçamento: totais, renda de referência, meta × realizado, filtros e regras de descrição.
 import { describe, expect, test } from "vitest";
 import { FILTRO_PADRAO, aplicarRegra, filtrar, filtroAtivo, mesCurto, referencia, regraPara, somaMeses, totais, valoresArea, type Mes } from "./orcamento";
 

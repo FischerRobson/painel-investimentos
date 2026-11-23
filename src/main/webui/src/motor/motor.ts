@@ -1,5 +1,4 @@
-// Motor financeiro: contas puras, sem DOM nem estado da página. Usado pelas ferramentas do app React e, enquanto a migração
-// não termina, também pelo app atual (index.html), por meio do motor.js gerado (npm run motor:legado). Testes em motor.test.ts.
+// Motor financeiro: contas puras, sem DOM nem estado da página, usadas pelas páginas e ferramentas. Testes em motor.test.ts.
 
 // ---------- Tipos de série ----------
 export type Ponto = { date: string; value: number };

@@ -1,4 +1,4 @@
-// Ícones do menu, copiados do app atual (index.html).
+// Ícones do menu.
 import type { ReactElement } from "react";
 
 export const ICONES: Record<string, ReactElement> = {
