@@ -98,3 +98,44 @@ test.describe("app", () => {
     expect((await aviso).message()).toBe("Importar backup não está disponível no modo demonstração.");
   });
 });
+
+test.describe("Evolução do patrimônio", () => {
+  const painel = page => page.locator(".panel").filter({ has: page.getByRole("heading", { name: "Evolução do patrimônio" }) });
+
+  test("mostra só os investimentos (sem bens)", async ({ page }) => {
+    await ir(page, "/carteira");
+    const p = painel(page);
+    await expect(p.locator(".legend")).toContainText("Investimentos");
+    await expect(p.locator(".legend")).not.toContainText("Patrimônio total");
+    await expect(p.locator(".tile").first()).toContainText("investimentos");
+    await expect(p).toContainText("nos dias de pregão da B3");
+  });
+
+  test("escolher um dia mostra as posições, com PV, PPV e PnL", async ({ page }) => {
+    await ir(page, "/carteira");
+    const p = painel(page);
+    const lista = p.getByRole("combobox", { name: "Posições do dia" });
+    await expect(lista.locator("option").nth(1)).toBeAttached();
+    const dia = await lista.locator("option").nth(1).getAttribute("value"); // o mais recente
+    await lista.selectOption(dia);
+    const [a, m, d] = dia.split("-");
+    await expect(p.getByRole("heading", { name: new RegExp(`^Posições em ${d}/${m}/${a}`) })).toContainText("comparadas com");
+    for (const col of ["Ativo", "Quantidade", "Preço", "PV", "PPV", "PnL do dia"]) await expect(p.getByRole("columnheader", { name: col, exact: true })).toBeVisible();
+    await expect(p.getByRole("row").filter({ hasText: "ITSA4" })).toContainText(/R\$ [\d.]+,\d\d/);
+    await expect(p.getByRole("row").filter({ hasText: "CDB Banco Exemplo" })).toContainText("Renda fixa");
+    await expect(p.getByRole("row").filter({ hasText: "Carro de exemplo" })).toHaveCount(0); // bens não são posição
+    await expect(p.getByRole("row").filter({ hasText: "Total" })).toContainText(/R\$ [\d.]+,\d\d/);
+    await p.getByRole("button", { name: "Fechar" }).click();
+    await expect(p.getByRole("heading", { name: /^Posições em/ })).toBeHidden();
+  });
+
+  test("clicar no gráfico abre as posições daquele dia", async ({ page }) => {
+    await ir(page, "/carteira");
+    const canvas = painel(page).locator(".proj-box canvas");
+    await expect(canvas).toBeVisible();
+    const box = await canvas.boundingBox();
+    await canvas.click({ position: { x: box.width * 0.5, y: box.height / 2 } }); // meio da área do gráfico (o eixo fica à direita)
+    await expect(painel(page).getByRole("heading", { name: /^Posições em \d\d\/\d\d\/\d{4}/ })).toBeVisible();
+    await expect(painel(page).getByRole("row").filter({ hasText: "BTC" })).toBeVisible();
+  });
+});

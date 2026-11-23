@@ -5,6 +5,7 @@ import br.com.painel.model.BudgetRules;
 import br.com.painel.model.BudgetSettings;
 import br.com.painel.model.KnownPrice;
 import br.com.painel.model.LastImport;
+import br.com.painel.model.PositionsDay;
 import br.com.painel.model.Snapshot;
 import br.com.painel.model.Wallet;
 import br.com.painel.repository.DocumentStore.Condition;
@@ -15,6 +16,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -88,6 +90,29 @@ public class UserDataRepository {
         store.write(lastImportKey(owner), json(lastImport), Condition.any());
     }
 
+    public void putPositions(String owner, PositionsDay day) {
+        store.write(positionsKey(owner, LocalDate.parse(day.date())), json(day), Condition.any());
+    }
+
+    public Optional<PositionsDay> positions(String owner, LocalDate date) {
+        return store.read(positionsKey(owner, date)).map(d -> parse(d.body(), PositionsDay.class));
+    }
+
+    // Days with saved positions, oldest first
+    public List<LocalDate> positionDates(String owner) {
+        return store.listFiles(positionsFolder(owner)).stream()
+                .filter(name -> name.endsWith(JSON))
+                .map(name -> date(name.substring(0, name.length() - JSON.length())))
+                .filter(Objects::nonNull)
+                .sorted()
+                .toList();
+    }
+
+    // The last saved day before the given date (what today's ppv and pnl compare against)
+    public Optional<PositionsDay> positionsBefore(String owner, LocalDate date) {
+        return positionDates(owner).stream().filter(d -> d.isBefore(date)).reduce((a, b) -> b).flatMap(d -> positions(owner, d));
+    }
+
     public Optional<Versioned<BudgetSettings>> budgetSettings(String owner) {
         return store.read(budgetSettingsKey(owner)).map(d -> new Versioned<>(parse(d.body(), BudgetSettings.class), d.etag()));
     }
@@ -155,6 +180,14 @@ public class UserDataRepository {
         return folder(owner) + "/budget/last-import.json";
     }
 
+    private static String positionsFolder(String owner) {
+        return folder(owner) + "/positions";
+    }
+
+    private static String positionsKey(String owner, LocalDate date) {
+        return positionsFolder(owner) + "/" + date + JSON;
+    }
+
     private static String budgetSettingsKey(String owner) {
         return folder(owner) + "/budget/settings.json";
     }
@@ -169,6 +202,14 @@ public class UserDataRepository {
 
     private static String budgetMonthKey(String owner, YearMonth month) {
         return budgetMonthsFolder(owner) + "/" + month + JSON;
+    }
+
+    private static LocalDate date(String text) {
+        try {
+            return LocalDate.parse(text);
+        } catch (DateTimeParseException e) {
+            return null;
+        }
     }
 
     private static YearMonth yearMonth(String text) {

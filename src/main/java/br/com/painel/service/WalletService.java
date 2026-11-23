@@ -2,6 +2,7 @@ package br.com.painel.service;
 
 import br.com.painel.model.Backup;
 import br.com.painel.model.Position;
+import br.com.painel.model.PositionsDay;
 import br.com.painel.model.Snapshot;
 import br.com.painel.model.Wallet;
 import br.com.painel.repository.DocumentStore.Condition;
@@ -10,7 +11,9 @@ import br.com.painel.repository.UserDataRepository.Versioned;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -40,6 +43,14 @@ public class WalletService {
 
     public Map<String, Snapshot> history() {
         return repository.history(user.id());
+    }
+
+    public List<String> positionDates() {
+        return repository.positionDates(user.id()).stream().map(LocalDate::toString).toList();
+    }
+
+    public Optional<PositionsDay> positions(LocalDate date) {
+        return repository.positions(user.id(), date);
     }
 
     public Backup exportBackup() {

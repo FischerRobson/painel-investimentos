@@ -18,16 +18,17 @@ import br.com.painel.model.Income;
 import br.com.painel.model.LastImport;
 import br.com.painel.model.FixedIncome;
 import br.com.painel.model.Position;
+import br.com.painel.model.PositionsDay;
 import br.com.painel.model.Vehicle;
 import br.com.painel.model.Wallet;
 import br.com.painel.service.BudgetService;
 import br.com.painel.service.CryptoService;
 import br.com.painel.service.FxService;
+import br.com.painel.util.B3Calendar;
 import br.com.painel.util.Tickers;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.core.MultivaluedMap;
 
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
@@ -51,6 +52,7 @@ public class DemoDataService {
     }
 
     private static final String BUDGET_MONTHS = "/api/budget/months/";
+    private static final String POSITIONS = "/api/positions/";
     private static final BudgetRules DEMO_RULES = new BudgetRules(List.of(
             new DescriptionRule("demo-rule-1", "Posto Shell", "Combustível", BudgetArea.FIXED_COSTS),
             new DescriptionRule("demo-rule-2", "Uber", "Aplicativo de transporte", BudgetArea.COMFORT)));
@@ -87,6 +89,7 @@ public class DemoDataService {
             case "/api/carteira" -> get ? new Reply(200, wallet(), "demo")
                     : new Reply(200, Map.of("etag", "demo"), "demo");
             case "/api/historico" -> new Reply(200, history(), null);
+            case "/api/positions" -> new Reply(200, new ArrayList<>(history().keySet()), null);
             case "/api/backup" -> new Reply(200, backup(), null);
             case "/api/backup/import", "/api/budget/import/preview", "/api/budget/import/commit" ->
                     new Reply(400, Map.of("error", "Indisponível no modo demonstração"), null);
@@ -106,6 +109,10 @@ public class DemoDataService {
                     "fatura-nubank.pdf", 18, 0, List.of(YearMonth.now().toString()))), null);
             case "/api/budget/summary" -> new Reply(200, budgetSummary(q.getFirst("to"), param(q, "months", "12")), null);
             default -> {
+                if (path.startsWith(POSITIONS)) {
+                    PositionsDay day = positions(path.substring(POSITIONS.length()));
+                    yield day == null ? new Reply(404, Map.of("error", "sem posições salvas neste dia"), null) : new Reply(200, day, null);
+                }
                 if (path.startsWith("/api/fipe/")) {
                     yield new Reply(200, Map.of("data", fipe(path.substring(10), q)), null);
                 }
@@ -160,6 +167,62 @@ public class DemoDataService {
                 day.put("stale", List.of(Map.of("asset", "BTC", "since", previousBusinessDay(d).toString())));
             }
             out.put(d.toString(), day);
+        }
+        return out;
+    }
+
+    // Positions of a day of the fake history: each class keeps its share of "i" (rv 32%, rf 50%, cr 12%, fx 6%), split
+    // among the demo wallet holdings with a small daily wobble per asset, so the lines add up to the chart.
+    PositionsDay positions(String date) {
+        Map<String, Object> hist = history();
+        if (!hist.containsKey(date)) {
+            return null;
+        }
+        String previous = ((TreeMap<String, Object>) hist).lowerKey(date);
+        Map<String, Double> today = demoValues(date, hist), before = previous == null ? Map.of() : demoValues(previous, hist);
+        Wallet w = wallet();
+        Map<String, Double> notional = new LinkedHashMap<>();
+        Map<String, String[]> info = new LinkedHashMap<>(); // key -> kind, asset, currency
+        w.stocks().forEach(p -> { notional.put("stock:" + p.ticker(), p.quantity()); info.put("stock:" + p.ticker(), new String[]{"stock", p.ticker(), "AAPL".equals(p.ticker()) ? "USD" : null}); });
+        w.fixedIncome().forEach(f -> { notional.put("fixedIncome:" + f.id(), f.invested()); info.put("fixedIncome:" + f.id(), new String[]{"fixedIncome", f.name(), null}); });
+        w.crypto().forEach(p -> { notional.put("crypto:" + p.ticker(), p.quantity()); info.put("crypto:" + p.ticker(), new String[]{"crypto", p.ticker(), null}); });
+        w.currencies().forEach(c -> { notional.put("fx:" + c.code(), c.quantity()); info.put("fx:" + c.code(), new String[]{"fx", c.code(), null}); });
+        List<PositionsDay.Line> lines = new ArrayList<>();
+        double pvSum = 0, ppvSum = 0, pnlSum = 0;
+        for (var e : notional.entrySet()) {
+            String key = e.getKey();
+            String[] i = info.get(key);
+            double pv = round(today.get(key)), ppv = previous == null ? 0 : round(before.get(key));
+            double pnl = previous == null ? 0 : round(pv - ppv); // the quantity is the same every day
+            boolean rf = "fixedIncome".equals(i[0]), exempt = "fixedIncome:demo-lci".equals(key);
+            lines.add(new PositionsDay.Line(i[0], key, i[1], e.getValue(), Math.round(pv / e.getValue() * 1e8) / 1e8, pv, ppv, pnl, i[2],
+                    rf ? round(exempt ? pv : pv * 1.04) : null, rf ? (exempt ? 0.0 : 0.175) : null, null, null));
+            pvSum += pv;
+            ppvSum += ppv;
+            pnlSum += pnl;
+        }
+        return new PositionsDay(date, previous, date + "T21:00:00Z", lines, new PositionsDay.Totals(round(pvSum), round(ppvSum), round(pnlSum)));
+    }
+
+    private Map<String, Double> demoValues(String date, Map<String, Object> hist) {
+        double invested = ((Number) ((Map<?, ?>) hist.get(date)).get("i")).doubleValue();
+        Wallet w = wallet();
+        Map<String, Double> base = new LinkedHashMap<>(); // renda fixa: proporcional ao valor aplicado
+        w.fixedIncome().forEach(f -> base.put("fixedIncome:" + f.id(), f.invested()));
+        Map<String, List<String>> classes = new LinkedHashMap<>();
+        classes.put("0.32", w.stocks().stream().map(p -> "stock:" + p.ticker()).toList());
+        classes.put("0.5", w.fixedIncome().stream().map(f -> "fixedIncome:" + f.id()).toList());
+        classes.put("0.12", w.crypto().stream().map(p -> "crypto:" + p.ticker()).toList());
+        classes.put("0.06", w.currencies().stream().map(c -> "fx:" + c.code()).toList());
+        Map<String, Double> out = new LinkedHashMap<>();
+        for (var c : classes.entrySet()) {
+            double total = invested * Double.parseDouble(c.getKey());
+            Map<String, Double> weight = new LinkedHashMap<>();
+            for (String key : c.getValue()) {
+                weight.put(key, base.getOrDefault(key, 1.0 + key.length() % 5) * (1 + (base.containsKey(key) ? 0.0005 : 0.02) * new Random((key + date).hashCode()).nextGaussian()));
+            }
+            double sum = weight.values().stream().mapToDouble(Double::doubleValue).sum();
+            weight.forEach((key, wgt) -> out.put(key, total * wgt / sum));
         }
         return out;
     }
@@ -455,7 +518,7 @@ public class DemoDataService {
     }
 
     private static boolean isBusinessDay(LocalDate d) {
-        return d.getDayOfWeek() != DayOfWeek.SATURDAY && d.getDayOfWeek() != DayOfWeek.SUNDAY;
+        return B3Calendar.isTradingDay(d);
     }
 
     private static LocalDate previousBusinessDay(LocalDate d) {

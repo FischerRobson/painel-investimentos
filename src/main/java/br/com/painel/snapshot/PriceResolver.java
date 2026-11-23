@@ -23,26 +23,38 @@ final class PriceResolver {
         this.today = today;
     }
 
+    // Unit price used for a holding: fresh, the last known one (staleSince = its date) or none (missing, unit = 0)
+    record Priced(double unit, String staleSince, boolean missing) {
+    }
+
     double value(String key, String label, double quantity, DoubleSupplier freshPrice) {
         return value(key, label, quantity, freshPrice, null);
     }
 
     double value(String key, String label, double quantity, DoubleSupplier freshPrice, KnownPrice lastResort) {
+        return quantity * price(key, label, freshPrice, lastResort).unit();
+    }
+
+    Priced price(String key, String label, DoubleSupplier freshPrice) {
+        return price(key, label, freshPrice, null);
+    }
+
+    Priced price(String key, String label, DoubleSupplier freshPrice, KnownPrice lastResort) {
         try {
             double unit = freshPrice.getAsDouble();
             if (Double.isFinite(unit) && unit >= 0) {
                 fresh.put(key, new KnownPrice(unit, today));
-                return quantity * unit;
+                return new Priced(unit, null, false);
             }
         } catch (RuntimeException ignored) {
         }
         KnownPrice previous = known.getOrDefault(key, lastResort);
         if (previous != null) {
             stale.add(new StaleQuote(label, previous.date()));
-            return quantity * previous.value();
+            return new Priced(previous.value(), previous.date() == null ? "" : previous.date(), false);
         }
         missing.add(label);
-        return 0;
+        return new Priced(0, null, true);
     }
 
     Map<String, KnownPrice> fresh() {
