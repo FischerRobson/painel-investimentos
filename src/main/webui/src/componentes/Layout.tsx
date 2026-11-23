@@ -1,5 +1,4 @@
-// Moldura de todas as páginas: cabeçalho, aviso do modo demonstração, menu e aviso de offline. Mesma marcação (e classes CSS)
-// do app atual.
+// Moldura de todas as páginas: cabeçalho, aviso do modo demonstração, menu e aviso de offline.
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { NavLink, Outlet } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -7,7 +6,8 @@ import { PAGINAS } from "../rotas";
 import { ICONES } from "./icones";
 import { DEMO, alternarDemo, store } from "../lib/store";
 import { logout, offlineStore, type Sessao } from "../lib/api";
-import { carteiraStore, textoSalvar, useEstadoSalvar } from "../lib/carteira";
+import { carteiraStore } from "../lib/carteira";
+import { textoSalvar, useEstadoSalvar } from "../lib/salvar";
 
 const FONTES = "Cotação: brapi.dev · Indicadores: Fundamentus · Histórico e proventos: Yahoo Finance · Cripto: CoinGecko · Taxas: Banco Central";
 const QUINZE_MIN = 15 * 60 * 1000;
@@ -96,7 +96,7 @@ function EstadoSalvar() {
   return <div className={"status " + s.estado} aria-live="polite">{textoSalvar(s)}</div>;
 }
 
-// "Atualizado às 14:32": hora da última consulta que terminou com sucesso (como o setStatus do app atual)
+// "Atualizado às 14:32": hora da última consulta que terminou com sucesso 
 function Atualizado() {
   const qc = useQueryClient();
   const [hora, setHora] = useState<string | null>(null);
@@ -105,7 +105,7 @@ function Atualizado() {
     let carteiraCarregada = !!carteiraStore.get().doc;
     if (carteiraCarregada) agora();
     const tirarQuery = qc.getQueryCache().subscribe(ev => {
-      if (ev.type === "updated" && ev.action.type === "success" && !["versao", "glossario"].includes(String(ev.query.queryKey[0]))) agora(); // como no app atual, só dados do servidor
+      if (ev.type === "updated" && ev.action.type === "success" && !["versao", "glossario"].includes(String(ev.query.queryKey[0]))) agora(); // só dados do servidor
     });
     const tirarCarteira = carteiraStore.subscribe(() => {
       if (!carteiraCarregada && carteiraStore.get().doc) { carteiraCarregada = true; agora(); }

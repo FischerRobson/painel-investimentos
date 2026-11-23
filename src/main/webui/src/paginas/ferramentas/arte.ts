@@ -1,4 +1,4 @@
-// Desenhos dos cards do hub de ferramentas: SVG estático montado por código, copiado do app atual (TOOL_ART do index.html).
+// Desenhos dos cards do hub de ferramentas: SVG estático montado por código.
 // Só tem constantes e o rótulo de acessibilidade; nada vem do usuário.
 const ART = (inner: string, label: string) => `<svg viewBox="0 0 260 112" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${label}">${inner}</svg>`;
 export const TOOL_ART: Record<string, string> = {

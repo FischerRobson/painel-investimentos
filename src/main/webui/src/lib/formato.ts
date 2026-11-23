@@ -1,4 +1,4 @@
-// Formatação em pt-BR, com as mesmas regras do app atual (brl, money, pct, big, fmtDate do index.html).
+// Formatação em pt-BR (números, dinheiro, porcentagem, valores grandes e datas).
 
 export const brl = (v: number | null | undefined, d = 2): string =>
   v == null ? "—" : v.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });

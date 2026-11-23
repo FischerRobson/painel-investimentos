@@ -2,14 +2,13 @@
 
 Painel pessoal de investimentos: carteira (ações, FIIs, exterior, cripto, renda fixa, moedas e bens),
 orçamento mensal (entradas × saídas com metas por área), projeção de renda fixa, simulador de aportes, pesquisa de ativos, cotações de moedas e um glossário de termos financeiros.
-Frontend em uma página (PWA instalável no iPhone) e backend em **Quarkus** rodando no **AWS Lambda**.
+Frontend em React (PWA instalável no iPhone) e backend em **Quarkus** rodando no **AWS Lambda**.
 
 ## Arquitetura
 
 ```
 Navegador / PWA ──HTTPS──► Lambda Function URL ──► Quarkus (Java 21, SnapStart)
-                                                   ├── index.html, service worker, ícones (app atual)
-                                                   ├── /novo/*  (app React, em migração; build do Vite pelo Quinoa)
+                                                   ├── /*  (app React: build do Vite servido pelo Quinoa, service worker e ícones)
                                                    ├── /api/*  (token do Cognito validado pelo quarkus-oidc)
                                                    ├── S3: users/{sub}/carteira.json, historico.json, precos.json e budget/
                                                    └── brapi · Yahoo · Fundamentus · Banco Central · AwesomeAPI · CoinGecko · FIPE
@@ -54,7 +53,7 @@ Login: Cognito (Google) com authorization code + PKCE; só e-mails da lista ALLO
 ### Glossário
 
 A página **Glossário** (`/glossario`) explica termos como Selic, CDI, CDB, P/VP e come-cotas, com exemplo
-e "por que importa". O conteúdo fica em `src/main/resources/META-INF/resources/glossario.json` (público, sem
+e "por que importa". O conteúdo fica em `src/main/webui/public/glossario.json` (público, sem
 login, funciona offline). Para incluir um termo, adicione um item em `termos` com `id`, `nome`, `categoria`,
 `resumo` e, se quiser, `sigla`, `outrosNomes` (entram na busca), `exemplo`, `importa` e `relacionados`
 (ids de outros termos). O CI confere ids, categorias e relacionados. Link direto: `/glossario#selic`.
@@ -152,26 +151,24 @@ Requer Java 21. Localmente não há login e os dados ficam em `data/` (fora do g
 
 Opcional: crie um `.env` com `BRAPI_TOKEN=...` (token grátis em brapi.dev). Sem ele, as cotações vêm só do Yahoo.
 
-### Frontend: migração para React
+### Frontend (React)
 
-O frontend está migrando do `index.html` (JavaScript inline) para **React + TypeScript** em `src/main/webui`
-(Vite, React Router, TanStack Query). Enquanto as duas versões convivem, o app novo fica em **`/novo`** e o atual
-continua em `/`; cada página migrada passa a funcionar em `/novo/<página>`, e as que faltam levam para a versão atual.
-No corte final, `/` passa a servir o React e o `index.html` sai.
+O frontend é **React + TypeScript** em `src/main/webui` (Vite, React Router, TanStack Query, Chart.js), servido na raiz
+(`/`). Até a versão 1.x ele era um `index.html` com JavaScript inline; a migração terminou na 2.0.0, com a mesma tela,
+as mesmas URLs e as mesmas chaves do localStorage (quem estava logado continua logado).
 
 - O **Quinoa** roda o build do Vite no `mvn package` com um Node próprio (baixado em `.quinoa/`), então o build não
-  depende do Node da máquina. No `./run.sh dev` ele sobe o Vite com hot reload em `/novo`.
-- **Motor financeiro**: `src/main/webui/src/motor/motor.ts` é a única fonte. O `motor.js` que o app atual carrega é
-  gerado a partir dele: depois de mudar o motor, rode `npm run motor:legado` em `src/main/webui` (o CI confere).
-- Login: o React usa o mesmo fluxo e as mesmas chaves do localStorage do app atual; o retorno do Cognito continua
-  sendo `/`, que devolve para a página `/novo/...` de origem.
+  depende do Node da máquina. No `./run.sh dev` ele sobe o Vite com hot reload. Rotas sem arquivo (`/carteira`,
+  `/orcamento`...) devolvem o `index.html` do React; `/api`, `/internal` e `/q` continuam com o Quarkus.
+- **Motor financeiro**: as contas puras ficam em `src/main/webui/src/motor/motor.ts`, com testes no Vitest.
+- **Offline**: `public/sw.js` guarda o app (index.html e assets do build) e as últimas respostas da API.
+- Arquivos estáticos (`sw.js`, `manifest.json`, ícones e `glossario.json`) ficam em `src/main/webui/public`.
 
 ```bash
 cd src/main/webui
 npm ci
-npm test              # Vitest: motor financeiro e cliente da API
+npm test              # Vitest: motor financeiro, contas das páginas e cliente da API
 npm run typecheck     # TypeScript strict
-npm run motor:legado  # regenera o motor.js do app atual
 
 cd ../../../e2e       # ponta a ponta (Playwright), em modo demonstração, contra o jar empacotado
 npm ci && npx playwright install --only-shell chromium
@@ -181,7 +178,7 @@ npx playwright test
 ## Fluxo de trabalho e deploy
 
 1. Crie uma branch, faça as alterações, **suba a versão no `pom.xml`** e abra um Pull Request para a `master`.
-2. O workflow **CI** roda em todo PR: versão, testes, pacote do Lambda, `cfn-lint` dos templates, frontend (tipos, Vitest e `motor.js` em dia) e testes de ponta a ponta com Playwright.
+2. O workflow **CI** roda em todo PR: versão, testes, pacote do Lambda, `cfn-lint` dos templates, frontend (tipos, Vitest, service worker, manifest e glossário) e testes de ponta a ponta com Playwright.
 3. Depois do merge, rode **Actions → Deploy → Run workflow** (só funciona na `master`). Ele recusa versão já
    publicada, testa de novo, faz o deploy com o SAM e confere se a página responde, se a API exige login e se
    a versão no ar é a nova. No fim cria a tag `vX.Y.Z` e o release no GitHub, com as mudanças desde o anterior.

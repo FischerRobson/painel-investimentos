@@ -1,5 +1,5 @@
 // Dados compartilhados pelas ferramentas: taxas do BCB para a renda fixa da carteira, Termômetro (IPCA, Selic, CDI e Focus),
-// histórico do patrimônio e orçamento. Mesmas fontes e mensagens do app atual.
+// histórico do patrimônio e orçamento.
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch, getJson } from "./api";
 import { useCarteira } from "./carteira";
@@ -11,7 +11,7 @@ export const isoBR = (d?: string | null): string => d ? d.split("-").reverse().j
 // ---------- Renda fixa da carteira e taxas do BCB (/api/rates) ----------
 type RespostaTaxas = TaxasBCB & { stale?: string; error?: string };
 
-// Títulos da carteira e as séries do BCB desde a aplicação mais antiga. Sem títulos, não há taxas (como no app atual).
+// Títulos da carteira e as séries do BCB desde a aplicação mais antiga. Sem títulos, não há taxas.
 export function useRendaFixa() {
   const carteira = useCarteira();
   const titulos = (carteira.doc?.rendaFixa ?? []) as TituloRF[];
@@ -53,7 +53,7 @@ export function useTermometro() {
       if (j.error) throw new Error(j.error);
       return j as Termometro;
     },
-    staleTime: Infinity, // o servidor guarda por 6 h; na página vale a primeira resposta, como no app atual
+    staleTime: Infinity, // o servidor guarda por 6 h; na página vale a primeira resposta
     retry: false,
   });
 }

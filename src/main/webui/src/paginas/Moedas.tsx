@@ -87,7 +87,7 @@ function CartaoMoeda({ c, i, fx, tenho, onQtd }: { c: string; i: number; fx: Cam
         <div className="stat"><div className="k">No período</div><div className={"v " + (per == null ? "muted" : signCls(per))}>{pct(per)}</div></div>
       </div>
       <div className="fx-have">
-        {/* grava ao sair do campo (change), como no app atual */}
+        {/* grava ao sair do campo (ou com Enter) */}
         <label>Você tem ({c})
           <input type="number" min="0" step="any" placeholder="0" defaultValue={tenho || ""} key={tenho}
             onBlur={e => { if (Number(e.target.value || 0) !== tenho) onQtd(e.target.value); }}

@@ -1,5 +1,5 @@
 // Preferências das ferramentas.
-// - usePreferencia: JSON no localStorage, com as mesmas chaves do app atual (ipcaPre, comparador, marcacao, analisador, planejador).
+// - usePreferencia: JSON no localStorage, com as chaves ipcaPre, comparador, marcacao, analisador, planejador).
 // - usePrefCarteira: dentro do documento da carteira (preferencias.projecao e preferencias.simulador), salvas no servidor.
 // O setter recebe uma função ou um objeto parcial que é mesclado.
 import { useCallback, useState } from "react";

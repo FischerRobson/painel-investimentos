@@ -3,10 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Chart, type ChartConfiguration } from "chart.js";
 
-export function Grafico({ config, deps, rotulo }: {
-  config: (canvas: HTMLCanvasElement) => ChartConfiguration<"line"> | ChartConfiguration<"bar"> | null;
+type Config = ChartConfiguration<"line"> | ChartConfiguration<"bar"> | ChartConfiguration<"doughnut"> | ChartConfiguration<"radar">;
+
+export function Grafico({ config, deps, rotulo, aoCriar, onMouseLeave }: {
+  config: (canvas: HTMLCanvasElement) => Config | null;
   deps: unknown[];
   rotulo?: string; // aria-label do canvas
+  aoCriar?: (ch: Chart | null) => void; // o gráfico criado (null ao destruir), para a página mexer nele (ex.: destacar uma fatia)
+  onMouseLeave?: () => void;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const tema = useTema();
@@ -16,10 +20,11 @@ export function Grafico({ config, deps, rotulo }: {
     const cfg = config(canvas);
     if (!cfg) return;
     const ch = new Chart(canvas, cfg as ChartConfiguration);
-    return () => ch.destroy();
+    aoCriar?.(ch);
+    return () => { aoCriar?.(null); ch.destroy(); };
     // recria só quando os dados (deps) ou o tema mudam; config é uma função nova a cada render
   }, [...deps, tema]);
-  return <canvas ref={ref} aria-label={rotulo} />;
+  return <canvas ref={ref} aria-label={rotulo} onMouseLeave={onMouseLeave} />;
 }
 
 // Muda a cada troca de tema do sistema (prefers-color-scheme), para redesenhar com as cores novas

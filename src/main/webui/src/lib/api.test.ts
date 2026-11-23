@@ -75,14 +75,14 @@ describe("apiFetch", () => {
 
   test("sem refresh token, manda para o login do Cognito guardando a página de volta", async () => {
     const { api, ir } = await carregar({ auth: true });
-    history.replaceState(null, "", "/novo/ferramentas#comparador");
+    history.replaceState(null, "", "/ferramentas#comparador");
     void api.iniciarSessao(); // não resolve: a página sai para o Cognito
     await vi.waitFor(() => expect(ir).toHaveBeenCalled());
     const destino = new URL(ir.mock.calls[0][0]);
     expect(destino.origin + destino.pathname).toBe("https://login.exemplo/oauth2/authorize");
     expect(destino.searchParams.get("redirect_uri")).toBe(location.origin + "/");
     expect(destino.searchParams.get("code_challenge_method")).toBe("S256");
-    expect(JSON.parse(sessionStorage.getItem("pkce")!).back).toBe("/novo/ferramentas#comparador");
+    expect(JSON.parse(sessionStorage.getItem("pkce")!).back).toBe("/ferramentas#comparador");
   });
 });
 

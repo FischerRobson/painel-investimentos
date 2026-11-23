@@ -1,5 +1,5 @@
-// localStorage com as MESMAS chaves do app atual (demo, auth_refresh, auth_email, range, comparador...), para que as
-// preferências e o login continuem valendo nos dois apps durante a migração. Leitura e escrita nunca lançam erro
+// localStorage com as mesmas chaves da versão 1 (demo, auth_refresh, auth_email, range, comparador...), para que as
+// preferências e o login de quem já usava o painel continuem valendo. Leitura e escrita nunca lançam erro
 // (aba anônima, armazenamento bloqueado).
 export const store = {
   get(k: string, padrao: string): string {

@@ -4,27 +4,12 @@ import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.greaterThan;
 
-// Tests that need no network (external sources are not called).
+// Tests that need no network (external sources are not called). The pages and glossario.json come from the React build
+// (src/main/webui), which is off in tests: they are covered by the e2e tests and .github/scripts/check-frontend.mjs.
 @QuarkusTest
-class PageControllerTest {
-
-    @Test
-    void pagesServeTheIndex() {
-        for (String p : new String[]{"/", "/carteira", "/orcamento", "/ferramentas", "/projecao", "/ativos", "/moedas", "/bens", "/custos", "/glossario"}) {
-            given().when().get(p).then().statusCode(200).body(containsString("Meus Investimentos"));
-        }
-    }
-
-    @Test
-    void glossaryIsPublicAndValid() {
-        given().when().get("/glossario.json").then().statusCode(200)
-                .body("termos.size()", greaterThan(50))
-                .body("categorias.size()", greaterThan(0));
-    }
+class PublicEndpointsTest {
 
     @Test
     void doesNotExposeOtherFiles() {

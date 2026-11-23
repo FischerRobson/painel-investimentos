@@ -1,6 +1,6 @@
-// Páginas do app, na ordem do menu. Mesmas URLs do app atual, com o prefixo /novo enquanto os dois convivem.
+// Páginas do app, na ordem do menu (as mesmas URLs da versão 1).
 export type Pagina = {
-  id: string;       // id do ícone (o mesmo data-page do app atual)
+  id: string;       // id do ícone (componentes/icones.tsx)
   caminho: string;  // relativo à base do app
   titulo: string;   // menu e <title>
 };

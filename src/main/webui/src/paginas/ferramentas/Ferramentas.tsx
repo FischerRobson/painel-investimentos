@@ -30,7 +30,7 @@ export function Ferramentas() {
   const { hash } = useLocation();
   const tool = TOOLS.find(t => t.id === hash.slice(1));
   useTitulo(tool ? tool.nome : "Ferramentas");
-  // Como no app atual, a página já carrega a carteira e as taxas do BCB (as ferramentas usam; o cabeçalho mostra a hora)
+  // A página já carrega a carteira e as taxas do BCB (as ferramentas usam; o cabeçalho mostra a hora)
   useRendaFixa();
   useEffect(() => { scrollTo(0, 0); }, [tool]);
   if (tool) return <><Voltar /><tool.Componente /></>;

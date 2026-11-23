@@ -1,5 +1,5 @@
 // Simulador de aportes: quanto se terá aportando todo mês e quando chega na meta de patrimônio ou de renda.
-// Conta em Motor.simulate. As preferências ficam na carteira (preferencias.simulador), no servidor, como no app atual.
+// Conta em Motor.simulate. As preferências ficam na carteira (preferencias.simulador), no servidor.
 import { useHistorico, useRendaFixa, fmtPrazo, isoBR, mesAno } from "../../lib/dados";
 import { usePrefCarteira } from "../../lib/preferencia";
 import { big, brl, money } from "../../lib/formato";

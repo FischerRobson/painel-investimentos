@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useTitulo } from "../lib/useTitulo";
 import { big, money, pct, signCls } from "../lib/formato";
-import { apiFetch } from "../lib/api";
 import { carteiraStore, useCarteira, type Bem } from "../lib/carteira";
+import { bemNome, comPreco, fipeGet, usePrecosBens, type PrecoFipe } from "../lib/bens";
 import { configLinha, css } from "../lib/graficos";
 import { Grafico } from "../componentes/Grafico";
 import { ErroCarteira } from "../componentes/ErroCarteira";
@@ -13,26 +13,11 @@ const FIPE_TIPOS: Record<string, string> = { cars: "Carro", motorcycles: "Moto",
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 
 type Opcao = { code: string; name: string };
-type PrecoFipe = { brand: string; model: string; modelYear: number | string; fuel: string; codeFipe: string; month: string; price: number; history: { month: string; price: number }[] };
 type Selecao = { type: string; brand: string; model: string; year: string };
 
 // "outubro de 2026" -> número ordenável; "out/26"
 const mesKey = (m: string) => { const [nome, , ano] = m.split(" "); return Number(ano) * 12 + MESES.indexOf(nome); };
 const mesCurto = (m: string) => { const [nome, , ano] = m.split(" "); return nome.slice(0, 3) + "/" + String(ano).slice(2); };
-const bemNome = (b: Bem) => b.apelido || b.info?.model || "Veículo";
-
-async function fipeGet<T>(kind: string, params: Record<string, string>): Promise<T> {
-  const j = await (await apiFetch(`/api/fipe/${kind}?${new URLSearchParams(params)}`)).json();
-  if (j.error) throw new Error(j.error);
-  return j.data;
-}
-
-// Junta o preço do mês no histórico do bem (sem mudar o original)
-function comPreco(b: Bem, d: PrecoFipe): Bem {
-  const hist = { ...(b.hist || {}) };
-  for (const h of d.history || []) if (h.price) hist[h.month] = h.price;
-  return { ...b, hist, info: { brand: d.brand, model: d.model, modelYear: d.modelYear, fuel: d.fuel, codeFipe: d.codeFipe }, last: { month: d.month, price: d.price } };
-}
 
 // Variação entre o primeiro e o último mês: "+R$ 1.300,00 (+1,77%) desde set/26"
 function Variacao({ h }: { h: { month: string; price: number }[] }) {
@@ -45,37 +30,14 @@ export function Bens() {
   useTitulo("Bens");
   const carteira = useCarteira();
   const bens = carteira.doc?.bens ?? [];
-  const [precos, setPrecos] = useState<Record<string, PrecoFipe>>({});
-  const [bensErr, setBensErr] = useState<string | null>(null);
-  const atualizou = useRef(false);
-
-  // Preço FIPE do mês de cada bem salvo; se mudou algo, grava na carteira
-  useEffect(() => {
-    if (!carteira.doc || atualizou.current) return;
-    atualizou.current = true;
-    const lista = carteira.doc.bens ?? [];
-    if (!lista.length) return;
-    void (async () => {
-      const novos: Record<string, PrecoFipe> = {};
-      await Promise.all(lista.map(async b => {
-        try { novos[b.id] = await fipeGet<PrecoFipe>("price", { type: b.type, brand: b.brand, model: b.model, year: b.year }); }
-        catch (e) { setBensErr("FIPE: " + (e as Error).message + ". Usando o último valor salvo."); }
-      }));
-      setPrecos(p => ({ ...p, ...novos }));
-      const doc = carteiraStore.get().doc;
-      if (!doc?.bens) return;
-      const atualizados = doc.bens.map(b => novos[b.id] ? comPreco(b, novos[b.id]) : b);
-      if (JSON.stringify(atualizados) !== JSON.stringify(doc.bens)) carteiraStore.atualizar(d => ({ ...d, bens: atualizados }));
-    })();
-  }, [carteira.doc]);
+  const { valor, erro: bensErr, guardar } = usePrecosBens();
 
   if (carteira.erro) return <ErroCarteira msg={carteira.erro} />;
-  const valor = (b: Bem) => precos[b.id]?.price ?? b.last?.price ?? null;
   const total = bens.reduce((a, b) => a + (valor(b) || 0), 0);
 
   const salvar = (sel: Selecao, r: PrecoFipe, apelido: string) => {
     const b = comPreco({ id: Date.now().toString(36), ...sel, apelido: apelido.trim() || null }, r);
-    setPrecos(p => ({ ...p, [b.id]: r }));
+    guardar(b.id, r);
     carteiraStore.atualizar(d => ({ ...d, bens: [...(d.bens ?? []), b] }));
   };
   const remover = (b: Bem) => {

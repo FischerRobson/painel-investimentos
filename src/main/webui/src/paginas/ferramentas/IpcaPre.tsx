@@ -15,7 +15,7 @@ export function IpcaPre() {
   const [ipCfg, setIpCfg] = usePreferencia<Cfg>("ipcaPre", {});
   const cfg = { valor: 10000, anos: 5, pre: 12, real: 6.5, ...ipCfg } as Required<Cfg>;
   if (cfg.ipca == null) cfg.ipca = cur ? +cur.ipca.toFixed(2) : 4.5;
-  // campo vazio sai da preferência (volta ao padrão), como no app atual
+  // campo vazio sai da preferência (volta ao padrão)
   const campo = (n: keyof Cfg) => (v: number | null) => setIpCfg(c => { const x = { ...c }; if (v == null) delete x[n]; else x[n] = v; return x; });
   const setIpca = (v: number) => setIpCfg({ ipca: Math.round(v * 1e4) / 1e4 });
 

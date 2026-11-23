@@ -1,12 +1,13 @@
-// Chart.js com as mesmas opções visuais do app atual (gridOpts, tickOpts, tooltipOpts, timeTicks, crosshair, lineChart e
-// barChart do index.html). Só os módulos usados são registrados, para o bundle ficar menor.
+// Chart.js com as opções visuais do painel (grade, eixos, tooltip, crosshair, linha, barras, rosca e radar).
+// Só os módulos usados são registrados, para o bundle ficar menor.
 import {
-  BarController, BarElement, CategoryScale, Chart, Filler, LinearScale, LineController, LineElement, PointElement, Tooltip,
-  type ChartConfiguration, type Plugin, type ScriptableContext,
+  ArcElement, BarController, BarElement, CategoryScale, Chart, DoughnutController, Filler, LinearScale, LineController, LineElement,
+  PointElement, RadarController, RadialLinearScale, Tooltip, type ChartConfiguration, type Plugin, type ScriptableContext, type TooltipModel,
 } from "chart.js";
 import { brl } from "./formato";
 
-Chart.register(LineController, LineElement, PointElement, BarController, BarElement, LinearScale, CategoryScale, Filler, Tooltip);
+Chart.register(LineController, LineElement, PointElement, BarController, BarElement, DoughnutController, ArcElement, RadarController,
+  RadialLinearScale, LinearScale, CategoryScale, Filler, Tooltip);
 
 // Cor de um token CSS (--s1, --grid...), lida na hora: muda com o tema claro/escuro
 export const css = (v: string): string => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
@@ -109,6 +110,30 @@ export function configBarras(labels: string[], values: number[], fmt: (v: number
       scales: {
         x: { grid: { display: false }, border: { color: css("--border") }, ticks: { ...tickOpts(), maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } },
         y: { grid: gridOpts(), border: { display: false }, beginAtZero: true, ticks: { ...tickOpts(), maxTicksLimit: 4, callback: v => fmtEixo(Number(v)) } },
+      },
+    },
+  };
+}
+
+// Rosca da divisão da carteira. O tooltip do Chart.js fica desligado: aoPassar recebe a fatia e a posição na tela
+// (ou null ao sair), e a página desenha o detalhe dela.
+export function configRosca(nomes: string[], valores: number[], cores: string[],
+  aoPassar: (fatia: { i: number; x: number; y: number } | null) => void): ChartConfiguration<"doughnut"> {
+  return {
+    type: "doughnut",
+    data: { labels: nomes, datasets: [{ data: valores, backgroundColor: cores, borderColor: css("--surface"), borderWidth: 2, hoverOffset: 6, borderRadius: 3 }] },
+    options: {
+      cutout: "64%", maintainAspectRatio: false, animation: false, layout: { padding: 8 },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          enabled: false,
+          external: ({ chart, tooltip }: { chart: Chart; tooltip: TooltipModel<"doughnut"> }) => {
+            if (!tooltip.opacity || !tooltip.dataPoints?.length) return aoPassar(null);
+            const r = chart.canvas.getBoundingClientRect();
+            aoPassar({ i: tooltip.dataPoints[0].dataIndex, x: r.left + tooltip.caretX, y: r.top + tooltip.caretY });
+          },
+        },
       },
     },
   };
