@@ -6,12 +6,14 @@ import { Moedas } from "./paginas/Moedas";
 import { Bens } from "./paginas/Bens";
 import { Custos } from "./paginas/Custos";
 import { Ferramentas } from "./paginas/ferramentas/Ferramentas";
+import { Carteira } from "./paginas/carteira/Carteira";
 import { PAGINAS } from "./rotas";
 import type { ReactElement } from "react";
 import type { Sessao } from "./lib/api";
 
 // Páginas já migradas; as demais mostram o link para a versão atual
 const MIGRADAS: Record<string, ReactElement> = {
+  carteira: <Carteira />,
   ferramentas: <Ferramentas />,
   moedas: <Moedas />,
   bens: <Bens />,

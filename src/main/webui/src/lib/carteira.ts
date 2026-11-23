@@ -79,6 +79,13 @@ export const carteiraStore = {
     timer = setTimeout(() => { fila = fila.then(gravar); }, DEBOUNCE_MS);
   },
 
+  // Lê de novo do servidor (depois de importar um backup, que substitui o documento inteiro)
+  recarregar(): Promise<void> {
+    clearTimeout(timer);
+    carregando = null;
+    return carteiraStore.carregar();
+  },
+
   // Só para os testes
   _reiniciar(): void {
     clearTimeout(timer); clearTimeout(okTimer);

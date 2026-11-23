@@ -9,9 +9,10 @@ export const FX_SYM: Record<string, string> = { BRL: "R$", USD: "US$", EUR: "€
 export type Cotacao = { bid: number; low: number; high: number; pct: number; name: string; time: number };
 export type Cambio = { quotes: Record<string, Cotacao | undefined>; history: Record<string, [number, number][] | undefined>; fetchedAt: number; stale?: boolean };
 
-export function useCambio(dias: number) {
+export function useCambio(dias: number, ativo = true) {
   return useQuery({
     queryKey: ["fx", dias],
+    enabled: ativo,
     queryFn: () => getJson<Cambio>(`/api/fx?days=${dias}`),
     placeholderData: prev => prev, // ao trocar o período, mostra o anterior até chegar o novo
   });
