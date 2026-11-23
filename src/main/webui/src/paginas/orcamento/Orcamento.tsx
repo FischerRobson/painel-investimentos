@@ -13,7 +13,7 @@ import {
   type Filtro, type Mes, type Metas, type Referencia, type Regra, type ResumoMes, type Tipo, type ValorArea,
 } from "../../lib/orcamento";
 import { Lancamentos } from "./Lancamentos";
-import { Importacao, BotaoImportar, StatusImportacao, type EstadoImportacao } from "./Importacao";
+import { Importacao, BotaoImportar, LinhaUltimaImportacao, StatusImportacao, type EstadoImportacao } from "./Importacao";
 import { MetasPorArea, Regras, type RascunhoRegra } from "./Configuracoes";
 
 type Vista = { mes: string; dados: Mes; resumo: ResumoMes[] };
@@ -166,6 +166,7 @@ export function Orcamento() {
       onRegra={abrirRegra}
       onConcluir={async (res) => {
         setImportacao(null);
+        void qc.invalidateQueries({ queryKey: ["budget-import-last"] });
         setImportou(`${res.imported} ${res.imported === 1 ? "lançamento importado" : "lançamentos importados"}`
           + (res.months.length ? ` em ${res.months.map(mesCurto).join(", ")}` : "")
           + (res.skipped ? ` (${res.skipped} já existiam)` : "") + ".");
@@ -182,6 +183,7 @@ export function Orcamento() {
           if (r) setFoco({ alvo: "importacao", n: Date.now() });
         }} />
       </div>
+      <LinhaUltimaImportacao />
       <StatusImportacao imp={importacao} importou={importou} />
       <Lancamentos dados={dados} mes={vista.mes} filtro={filtro} setFiltro={setFiltro} mostrarTodos={mostrarTodos} setMostrarTodos={setMostrarTodos}
         editando={editando} setEditando={setEditando} tipoForm={tipoForm} setTipoForm={setTipoForm}

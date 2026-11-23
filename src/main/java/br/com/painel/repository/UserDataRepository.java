@@ -4,6 +4,7 @@ import br.com.painel.model.BudgetMonth;
 import br.com.painel.model.BudgetRules;
 import br.com.painel.model.BudgetSettings;
 import br.com.painel.model.KnownPrice;
+import br.com.painel.model.LastImport;
 import br.com.painel.model.PositionsDay;
 import br.com.painel.model.Snapshot;
 import br.com.painel.model.Wallet;
@@ -79,6 +80,14 @@ public class UserDataRepository {
 
     public void putPrices(String owner, Map<String, KnownPrice> prices) {
         update(pricesKey(owner), PRICES, current -> current.putAll(prices));
+    }
+
+    public Optional<LastImport> lastImport(String owner) {
+        return store.read(lastImportKey(owner)).map(d -> parse(d.body(), LastImport.class));
+    }
+
+    public void saveLastImport(String owner, LastImport lastImport) {
+        store.write(lastImportKey(owner), json(lastImport), Condition.any());
     }
 
     public void putPositions(String owner, PositionsDay day) {
@@ -165,6 +174,10 @@ public class UserDataRepository {
 
     private static String pricesKey(String owner) {
         return folder(owner) + "/precos.json";
+    }
+
+    private static String lastImportKey(String owner) {
+        return folder(owner) + "/budget/last-import.json";
     }
 
     private static String positionsFolder(String owner) {

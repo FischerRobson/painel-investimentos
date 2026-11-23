@@ -97,6 +97,27 @@ class BudgetImportControllerTest {
     }
 
     @Test
+    void savesWhenTheLastImportHappened() {
+        given().when().get("/api/budget/import/last").then().statusCode(200).body("last", equalTo(null));
+
+        JsonPath p = preview("extrato.xlsx", SampleStatements.accountXlsx());
+        given().contentType(ContentType.JSON)
+                .body(Map.of("items", List.of(item(p, "Padaria Do Bairro")), "includeFutureInstallments", false,
+                        "source", p.getString("source"), "fileName", "extrato.xlsx"))
+                .when().post("/api/budget/import/commit").then().statusCode(200);
+
+        JsonPath last = given().when().get("/api/budget/import/last").then().statusCode(200).extract().jsonPath();
+        assertEquals(p.getString("source"), last.getString("last.source"));
+        assertEquals("extrato.xlsx", last.getString("last.fileName"));
+        assertEquals(1, last.getInt("last.imported"));
+        assertEquals(List.of("2026-10"), last.getList("last.months"));
+        assertTrue(java.time.Duration.between(java.time.Instant.parse(last.getString("last.at")), java.time.Instant.now()).abs().toMinutes() < 5);
+
+        commit(List.of(item(p, "Padaria Do Bairro")), false); // já importado: a data muda mesmo sem lançamento novo
+        assertEquals(0, given().when().get("/api/budget/import/last").then().extract().jsonPath().getInt("last.imported"));
+    }
+
+    @Test
     void cardInstallmentsAreProjectedAndNotDuplicatedNextMonth() {
         JsonPath oct = preview("fatura.pdf", SampleStatements.cardPdf("Outubro", "05 Set Havan (2/4) R$ 399,99", "23 Set Uber R$ 5,40"));
         assertEquals("creditCard", oct.getString("kind"));

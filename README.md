@@ -40,7 +40,8 @@ Login: Cognito (Google) com authorization code + PKCE; só e-mails da lista ALLO
 | `GET /api/budget/summary?to=AAAA-MM&months=12` | Entradas, saídas e gasto por área dos últimos meses (até 24) |
 | `GET/PUT /api/budget/rules` | Regras de descrição "de → para" (`If-Match` no PUT) |
 | `POST /api/budget/import/preview?name=` | Lê um extrato/fatura (corpo binário, até 5 MB) e devolve os lançamentos sugeridos, sem gravar |
-| `POST /api/budget/import/commit` | Grava os lançamentos escolhidos na prévia (ignora os já importados) |
+| `POST /api/budget/import/commit` | Grava os lançamentos escolhidos na prévia (ignora os já importados) e registra a data da importação |
+| `GET /api/budget/import/last` | Quando foi a última importação, de qual arquivo e quantos lançamentos entraram (`budget/last-import.json`) |
 | `GET /api/historico` | Totais de cada dia (gerados pelo servidor, só leitura) |
 | `GET /api/positions` · `GET /api/positions/{AAAA-MM-DD}` | Dias com posições salvas · posições de um dia |
 | `POST /internal/snapshots` | Gera a foto do dia para todos os usuários; chamado pelo agendamento com o header `X-Snapshot-Token` |
