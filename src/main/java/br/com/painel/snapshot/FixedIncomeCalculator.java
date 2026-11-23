@@ -15,7 +15,15 @@ public final class FixedIncomeCalculator {
     private FixedIncomeCalculator() {
     }
 
+    // gross and net (after income tax) values, and the income tax rate that applies today (0 when tax exempt)
+    public record Value(double gross, double net, double taxRate) {
+    }
+
     public static double netValue(FixedIncome title, RatesResponse rates, LocalDate today) {
+        return value(title, rates, today).net();
+    }
+
+    public static Value value(FixedIncome title, RatesResponse rates, LocalDate today) {
         String todayIso = today.toString();
         String end = title.maturity() != null && title.maturity().compareTo(todayIso) < 0 ? title.maturity() : todayIso;
         List<RatePoint> businessDays = rates.cdi().stream()
@@ -38,6 +46,6 @@ public final class FixedIncomeCalculator {
         long calendarDays = ChronoUnit.DAYS.between(LocalDate.parse(title.start()), LocalDate.parse(end));
         double taxRate = calendarDays <= 180 ? 0.225 : calendarDays <= 360 ? 0.20 : calendarDays <= 720 ? 0.175 : 0.15;
         double tax = title.taxExempt() ? 0 : Math.max(0, income) * taxRate;
-        return gross - tax;
+        return new Value(gross, gross - tax, title.taxExempt() ? 0 : taxRate);
     }
 }

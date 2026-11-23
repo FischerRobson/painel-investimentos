@@ -34,6 +34,13 @@ class PublicEndpointsTest {
     }
 
     @Test
+    void positionsValidateTheDate() {
+        given().when().get("/api/positions/ontem").then().statusCode(400).body("error", equalTo("data inválida"));
+        given().when().get("/api/positions/2001-01-02").then().statusCode(404).body("error", equalTo("sem posições salvas neste dia"));
+        given().when().get("/api/positions").then().statusCode(200);
+    }
+
+    @Test
     void dataWithoutTickersCallsNothing() {
         given().when().get("/api/data").then().statusCode(200)
                 .body("range", equalTo("1y")).body("items.size()", equalTo(0));

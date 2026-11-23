@@ -14,7 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Optional;
 
-// Called by EventBridge Scheduler (direct Lambda invoke) every day at 18:00 Brasília time. Outside /api, so no Cognito
+// Called by EventBridge Scheduler (direct Lambda invoke) at 18:00 Brasília time, Monday to Friday (B3 holidays are skipped). Outside /api, so no Cognito
 // token is required; the shared token from the template protects it instead.
 @Path("/internal/snapshots")
 public class SnapshotController {

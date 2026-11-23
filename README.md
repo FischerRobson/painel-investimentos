@@ -10,9 +10,9 @@ Frontend em React (PWA instalável no iPhone) e backend em **Quarkus** rodando n
 Navegador / PWA ──HTTPS──► Lambda Function URL ──► Quarkus (Java 21, SnapStart)
                                                    ├── /*  (app React: build do Vite servido pelo Quinoa, service worker e ícones)
                                                    ├── /api/*  (token do Cognito validado pelo quarkus-oidc)
-                                                   ├── S3: users/{sub}/carteira.json, historico.json, precos.json e budget/
+                                                   ├── S3: users/{sub}/carteira.json, historico.json, positions/, precos.json e budget/
                                                    └── brapi · Yahoo · Fundamentus · Banco Central · AwesomeAPI · CoinGecko · FIPE
-EventBridge Scheduler (18h, Brasília) ──invoke──► POST /internal/snapshots (foto diária de todos os usuários)
+EventBridge Scheduler (18h, Brasília, dias úteis) ──invoke──► POST /internal/snapshots (posições do dia de todos os usuários)
 Login: Cognito (Google) com authorization code + PKCE; só e-mails da lista ALLOWED_EMAILS criam conta
 ```
 
@@ -20,7 +20,7 @@ Login: Cognito (Google) com authorization code + PKCE; só e-mails da lista ALLO
 |---|---|---|
 | Controller | `controller` | Recursos REST, validação de entrada, mapeamento de erros |
 | Service | `service` | Regras de negócio, cache (`@CacheResult`), tolerância a falhas (`@Retry`) |
-| Snapshot | `snapshot` | Foto diária do patrimônio: avaliação no servidor, valor anterior quando uma cotação falha |
+| Snapshot | `snapshot` | Posições do dia (dias de pregão da B3): avaliação no servidor, PV/PPV/PnL, valor anterior quando uma cotação falha |
 | Repository | `repository` | Documentos JSON com concorrência otimista por ETag: arquivo local ou S3 |
 | Client | `client` | MicroProfile REST Clients, um por provedor externo |
 | Model / DTO | `model`, `dto` | Dados do usuário (com Bean Validation) e contratos de resposta |
@@ -41,7 +41,8 @@ Login: Cognito (Google) com authorization code + PKCE; só e-mails da lista ALLO
 | `GET/PUT /api/budget/rules` | Regras de descrição "de → para" (`If-Match` no PUT) |
 | `POST /api/budget/import/preview?name=` | Lê um extrato/fatura (corpo binário, até 5 MB) e devolve os lançamentos sugeridos, sem gravar |
 | `POST /api/budget/import/commit` | Grava os lançamentos escolhidos na prévia (ignora os já importados) |
-| `GET /api/historico` | Fotos diárias do patrimônio (geradas pelo servidor, só leitura) |
+| `GET /api/historico` | Totais de cada dia (gerados pelo servidor, só leitura) |
+| `GET /api/positions` · `GET /api/positions/{AAAA-MM-DD}` | Dias com posições salvas · posições de um dia |
 | `POST /internal/snapshots` | Gera a foto do dia para todos os usuários; chamado pelo agendamento com o header `X-Snapshot-Token` |
 | `GET /api/backup`, `POST /api/backup/import` | Exporta/importa tudo |
 | `GET /api/benchmarks?range=&fx=&crypto=` | CDI, Ibovespa, IFIX (via XFIX11), câmbio e cripto em reais no período, para comparar a carteira |
@@ -107,13 +108,20 @@ carteira, histórico, orçamento, cotações, câmbio, cripto, taxas, FIPE, comp
 descartadas, importar backup é recusado, o e-mail do usuário fica oculto e o service worker não guarda
 essas respostas. O login continua exigido.
 
-### Foto diária do patrimônio
+### Posições do dia
 
-Todo dia às **18h (horário de Brasília)** o EventBridge Scheduler (evento `DailySnapshot` no `template.yaml`)
+Às **18h (horário de Brasília), de segunda a sexta**, o EventBridge Scheduler (evento `DailySnapshot` no `template.yaml`)
 invoca a função com um evento no formato da Function URL para `POST /internal/snapshots`. O `SnapshotService`
 percorre `users/` no S3 e, para cada carteira, avalia no servidor ações/FIIs (brapi, com o Yahoo de reserva),
 cripto (CoinGecko), moedas (AwesomeAPI), renda fixa (CDI/IPCA do Banco Central, mesmas regras do `rfCalc`
-da página) e bens (FIPE). O resultado vai para `historico.json` no dia de hoje.
+da página) e bens (FIPE). Feriados da B3 (calculados em `util/B3Calendar`, incluindo Carnaval, Sexta-feira Santa,
+Corpus Christi, 24/12 e 31/12) são pulados.
+
+- **Posições**: `users/{sub}/positions/AAAA-MM-DD.json`, uma linha por ativo (bens ficam de fora): `notional`
+  (quantidade; na renda fixa, o valor aplicado), `price` (em reais; na renda fixa, o valor líquido na curva por real
+  aplicado), `pv` = price × notional, `ppv` = pv do último dia salvo e `pnl` = notional do dia anterior × variação do
+  preço (compra e venda não contam como lucro; `null` sem preço). A Carteira mostra a tabela ao clicar num dia do gráfico.
+- **Totais**: `historico.json` guarda os totais do dia (`i` = investimentos, usado pelo gráfico; `t` inclui os bens).
 
 - **Cotação que falha**: usa o último valor conhecido, guardado em `precos.json` a cada foto (para bens, o
   último valor FIPE salvo na carteira). O dia fica marcado em `stale` (`[{"asset": "BTC", "since": "2026-11-03"}]`);
