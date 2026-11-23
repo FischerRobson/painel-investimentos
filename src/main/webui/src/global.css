@@ -373,3 +373,9 @@ body.busy #topbar { opacity: 1; }
 /* VR: valor e saldo de cada lançamento do extrato */
 .vr-pendente { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content: space-between; margin-top: 10px; padding: 10px 12px;
   border: 1px solid var(--border); border-radius: 8px; background: color-mix(in srgb, var(--accent) 10%, transparent); }
+/* Avisos de gasto do mês */
+.b-avisos { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.b-aviso { padding: 8px 12px; border: 1px solid var(--border); border-left-width: 4px; border-radius: 8px; font-size: 14px; color: var(--text-2); }
+.b-aviso strong { color: var(--text); }
+.b-aviso.estourou { border-left-color: var(--bad); }
+.b-aviso.quase, .b-aviso.ritmo { border-left-color: var(--s4); }

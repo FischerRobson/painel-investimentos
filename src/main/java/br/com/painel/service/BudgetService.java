@@ -10,6 +10,7 @@ import br.com.painel.model.BudgetRules;
 import br.com.painel.model.DescriptionRule;
 import br.com.painel.statement.ImportKeys;
 import br.com.painel.model.BudgetSettings;
+import br.com.painel.model.Recurring;
 import br.com.painel.model.Expense;
 import br.com.painel.model.Income;
 import br.com.painel.repository.DocumentStore.Condition;
@@ -63,6 +64,37 @@ public class BudgetService {
     public String saveRules(BudgetRules rules, Condition condition) {
         validate(rules);
         return repository.saveBudgetRules(user.id(), rules, condition);
+    }
+
+    public Versioned<Recurring> recurring() {
+        return repository.recurring(user.id()).orElseGet(() -> new Versioned<>(Recurring.EMPTY, null));
+    }
+
+    public String saveRecurring(Recurring recurring, Condition condition) {
+        validate(recurring);
+        return repository.saveRecurring(user.id(), recurring, condition);
+    }
+
+    private static void validate(Recurring r) {
+        Set<String> ids = new HashSet<>();
+        for (Recurring.Rule rule : r.rules()) {
+            if (!ids.add(rule.id())) {
+                throw new InvalidDataException("lançamento recorrente repetido: " + rule.description());
+            }
+            if ("expense".equals(rule.kind())) {
+                if (rule.area() == null) {
+                    throw new InvalidDataException("escolha a área de \"" + rule.description() + "\"");
+                }
+                if (rule.area() == BudgetArea.FINANCIAL_FREEDOM) {
+                    throw new InvalidDataException("Liberdade financeira vem dos aportes da Carteira e não recebe lançamentos manuais");
+                }
+            } else if (rule.area() != null) {
+                throw new InvalidDataException("entrada não tem área: " + rule.description());
+            }
+            if (rule.end() != null && rule.end().compareTo(rule.start()) < 0) {
+                throw new InvalidDataException("o fim de \"" + rule.description() + "\" é antes do começo");
+            }
+        }
     }
 
     public Versioned<Benefits> benefits() {
@@ -124,7 +156,8 @@ public class BudgetService {
         BudgetSettings settings = repository.budgetSettings(owner).map(Versioned::value).orElse(null);
         BudgetRules rules = repository.budgetRules(owner).map(Versioned::value).orElse(null);
         Benefits benefits = repository.benefits(owner).map(Versioned::value).orElse(null);
-        return new BudgetBackup(settings, months, rules, benefits);
+        Recurring recurring = repository.recurring(owner).map(Versioned::value).orElse(null);
+        return new BudgetBackup(settings, months, rules, benefits, recurring);
     }
 
     public void importBackup(BudgetBackup backup) {
@@ -141,6 +174,9 @@ public class BudgetService {
         if (backup.benefits() != null) {
             validate(backup.benefits());
         }
+        if (backup.recurring() != null) {
+            validate(backup.recurring());
+        }
         String owner = user.id();
         if (backup.settings() != null) {
             repository.saveBudgetSettings(owner, backup.settings(), Condition.any());
@@ -151,6 +187,9 @@ public class BudgetService {
         }
         if (backup.benefits() != null) {
             repository.saveBenefits(owner, backup.benefits(), Condition.any());
+        }
+        if (backup.recurring() != null) {
+            repository.saveRecurring(owner, backup.recurring(), Condition.any());
         }
     }
 

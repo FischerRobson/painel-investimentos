@@ -7,6 +7,7 @@ import br.com.painel.model.BudgetSettings;
 import br.com.painel.model.KnownPrice;
 import br.com.painel.model.LastImport;
 import br.com.painel.model.PositionsDay;
+import br.com.painel.model.Recurring;
 import br.com.painel.model.Snapshot;
 import br.com.painel.model.Wallet;
 import br.com.painel.repository.DocumentStore.Condition;
@@ -122,6 +123,14 @@ public class UserDataRepository {
         return store.write(budgetSettingsKey(owner), json(settings), condition);
     }
 
+    public Optional<Versioned<Recurring>> recurring(String owner) {
+        return store.read(recurringKey(owner)).map(d -> new Versioned<>(parse(d.body(), Recurring.class), d.etag()));
+    }
+
+    public String saveRecurring(String owner, Recurring recurring, Condition condition) {
+        return store.write(recurringKey(owner), json(recurring), condition);
+    }
+
     public Optional<Versioned<Benefits>> benefits(String owner) {
         return store.read(benefitsKey(owner)).map(d -> new Versioned<>(parse(d.body(), Benefits.class), d.etag()));
     }
@@ -199,6 +208,10 @@ public class UserDataRepository {
 
     private static String budgetSettingsKey(String owner) {
         return folder(owner) + "/budget/settings.json";
+    }
+
+    private static String recurringKey(String owner) {
+        return folder(owner) + "/budget/recurring.json";
     }
 
     private static String benefitsKey(String owner) {

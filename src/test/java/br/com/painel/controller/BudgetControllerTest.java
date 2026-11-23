@@ -124,6 +124,42 @@ class BudgetControllerTest {
     }
 
     @Test
+    void recurringRulesAreSavedWithOptimisticLockingAndGoToTheBackup() {
+        given().when().get("/api/budget/recurring").then().statusCode(200).body("rules.size()", equalTo(0)).header("ETag", nullValue());
+        String body = """
+                {"rules":[{"id":"aluguel1","kind":"expense","description":"Aluguel","amount":2400,"area":"fixedCosts","method":"bill","day":5,"start":"2026-11"},
+                          {"id":"salario1","kind":"income","description":"Salário","amount":9800,"day":31,"start":"2026-01","end":"2027-12"}],
+                 "generated":{"2026-11":["aluguel1"]}}""";
+        String v1 = given().contentType(ContentType.JSON).header("If-None-Match", "*").body(body)
+                .when().put("/api/budget/recurring").then().statusCode(200).extract().path("etag");
+        given().when().get("/api/budget/recurring").then().statusCode(200)
+                .body("rules[0].area", equalTo("fixedCosts")).body("rules[1].end", equalTo("2027-12"))
+                .body("generated.'2026-11'[0]", equalTo("aluguel1"));
+        given().contentType(ContentType.JSON).header("If-None-Match", "*").body(body).when().put("/api/budget/recurring").then().statusCode(412);
+        given().contentType(ContentType.JSON).header("If-Match", "\"" + v1 + "\"").body(body).when().put("/api/budget/recurring").then().statusCode(200);
+        given().when().get("/api/backup").then().statusCode(200).body("budget.recurring.rules.size()", equalTo(2));
+    }
+
+    @Test
+    void rejectsInvalidRecurringRules() {
+        String expenseWithoutArea = "{\"rules\":[{\"id\":\"a\",\"kind\":\"expense\",\"description\":\"X\",\"amount\":10,\"day\":1,\"start\":\"2026-11\"}]}";
+        given().contentType(ContentType.JSON).header("If-None-Match", "*").body(expenseWithoutArea)
+                .when().put("/api/budget/recurring").then().statusCode(400).body("error", containsString("escolha a área"));
+        String freedom = "{\"rules\":[{\"id\":\"a\",\"kind\":\"expense\",\"description\":\"X\",\"amount\":10,\"area\":\"financialFreedom\",\"day\":1,\"start\":\"2026-11\"}]}";
+        given().contentType(ContentType.JSON).header("If-None-Match", "*").body(freedom)
+                .when().put("/api/budget/recurring").then().statusCode(400).body("error", containsString("Liberdade financeira"));
+        String badRange = "{\"rules\":[{\"id\":\"a\",\"kind\":\"income\",\"description\":\"X\",\"amount\":10,\"day\":1,\"start\":\"2026-11\",\"end\":\"2026-01\"}]}";
+        given().contentType(ContentType.JSON).header("If-None-Match", "*").body(badRange)
+                .when().put("/api/budget/recurring").then().statusCode(400).body("error", containsString("antes do começo"));
+        String badDay = "{\"rules\":[{\"id\":\"a\",\"kind\":\"income\",\"description\":\"X\",\"amount\":10,\"day\":32,\"start\":\"2026-11\"}]}";
+        given().contentType(ContentType.JSON).header("If-None-Match", "*").body(badDay).when().put("/api/budget/recurring").then().statusCode(400);
+        String repeated = "{\"rules\":[{\"id\":\"a\",\"kind\":\"income\",\"description\":\"X\",\"amount\":10,\"day\":1,\"start\":\"2026-11\"},"
+                + "{\"id\":\"a\",\"kind\":\"income\",\"description\":\"Y\",\"amount\":10,\"day\":1,\"start\":\"2026-11\"}]}";
+        given().contentType(ContentType.JSON).header("If-None-Match", "*").body(repeated)
+                .when().put("/api/budget/recurring").then().statusCode(400).body("error", containsString("repetido"));
+    }
+
+    @Test
     void rejectsInvalidBenefitCards() {
         given().contentType(ContentType.JSON).header("If-None-Match", "*")
                 .body("{\"contas\":[],\"movimentos\":[{\"id\":\"m\",\"conta\":\"nada\",\"data\":\"2026-11-01\",\"tipo\":\"gasto\",\"valor\":10}]}")

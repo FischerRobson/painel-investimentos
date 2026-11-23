@@ -39,6 +39,7 @@ Login: Cognito (Google) com authorization code + PKCE; só e-mails da lista ALLO
 | `GET/PUT /api/budget/months/{AAAA-MM}` | Entradas e saídas do mês (`If-Match` no PUT; mês sem dados volta vazio e sem ETag) |
 | `GET /api/budget/summary?to=AAAA-MM&months=12` | Entradas, saídas e gasto por área dos últimos meses (até 24) |
 | `GET/PUT /api/budget/rules` | Regras de descrição "de → para" (`If-Match` no PUT) |
+| `GET/PUT /api/budget/recurring` | Regras de lançamentos recorrentes e o que já foi criado em cada mês (`If-Match` no PUT) |
 | `POST /api/budget/import/preview?name=` | Lê um extrato/fatura (corpo binário, até 5 MB) e devolve os lançamentos sugeridos, sem gravar |
 | `POST /api/budget/import/commit` | Grava os lançamentos escolhidos na prévia (ignora os já importados) e registra a data da importação |
 | `GET /api/budget/import/last` | Quando foi a última importação, de qual arquivo e quantos lançamentos entraram (`budget/last-import.json`) |
@@ -99,6 +100,18 @@ que reconhece o arquivo. **Novo formato** = nova classe `@ApplicationScoped` que
 sem mexer no resto. O `StatementImportService` aplica regras (desmarcar, área, duplicados) e grava os meses.
 
 Próximas etapas: aportes automáticos vindos da Carteira (com correção do valor) e lançamentos recorrentes.
+
+### Orçamento: recorrentes, próximos meses e avisos
+
+- **Lançamentos recorrentes** (aluguel, assinaturas, salário): regras em `users/{sub}/budget/recurring.json`
+  (`GET`/`PUT /api/budget/recurring`, com ETag, e no backup). Ao abrir um mês atual ou passado, a página cria os
+  lançamentos que faltam, com id `rec-{regra}-{mês}` (nunca duplica); o mês é gravado antes de a regra ser marcada em
+  `generated`, e um lançamento apagado não volta. O botão ↻ de um lançamento cria a regra a partir dele, começando no mês seguinte.
+- **Próximos meses**: o que já está comprometido nos 6 meses seguintes, somando as parcelas do cartão lançadas nas
+  importações, os recorrentes (previstos até serem criados) e outros lançamentos.
+- **Avisos de gasto** (só no mês atual): área que passou da meta, que já usou 80% dela ou que, no ritmo do mês, vai passar
+  (custos fixos ficam fora do ritmo; ele só vale depois do dia 5).
+- **VR**: o gasto pago com VR no mês aparece ao lado das entradas e saídas, fora das metas.
 
 ### Operações e imposto de renda
 

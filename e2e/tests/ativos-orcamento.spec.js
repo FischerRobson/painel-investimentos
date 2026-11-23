@@ -55,8 +55,8 @@ test.describe("app", () => {
   test("Orçamento: novo lançamento, troca de área, edição e remoção", async ({ page }) => {
     await ir(page, "/orcamento#2026-03");
     await expect(page.getByText("14 lançamentos", { exact: true })).toBeVisible();
-    await page.getByLabel("Descrição", { exact: true }).fill("Padaria");
-    await page.getByLabel("Valor (R$)").fill("35.5");
+    await page.locator("form.b-form").getByLabel("Descrição").fill("Padaria");
+    await page.locator("form.b-form").getByLabel("Valor (R$)").fill("35.5");
     await page.getByRole("button", { name: "Adicionar", exact: true }).click();
     await expect(page.getByText("15 lançamentos", { exact: true })).toBeVisible();
     await expect(page.getByText("Salvo ✓")).toBeVisible();
@@ -67,7 +67,7 @@ test.describe("app", () => {
 
     await linha(page, "Padaria").getByRole("button", { name: /Editar|✎/ }).click();
     await expect(page.getByRole("heading", { name: "Editar lançamento" })).toBeVisible();
-    await page.getByLabel("Valor (R$)").fill("40");
+    await page.locator("form.b-form").getByLabel("Valor (R$)").fill("40");
     await page.getByRole("button", { name: "Salvar alteração" }).click();
     await expect(linha(page, "Padaria")).toContainText("R$ 40,00");
 

@@ -2,6 +2,7 @@ package br.com.painel.controller;
 
 import br.com.painel.dto.BudgetMonthSummary;
 import br.com.painel.model.Benefits;
+import br.com.painel.model.Recurring;
 import br.com.painel.model.BudgetMonth;
 import br.com.painel.model.BudgetRules;
 import br.com.painel.model.BudgetSettings;
@@ -70,6 +71,23 @@ public class BudgetController {
                               @HeaderParam("If-Match") String ifMatch,
                               @HeaderParam("If-None-Match") String ifNoneMatch) {
         return saved(service.saveRules(rules, Preconditions.from(ifMatch, ifNoneMatch)));
+    }
+
+    @GET
+    @Path("/recurring")
+    @RunOnVirtualThread
+    public Response recurring() {
+        var v = service.recurring();
+        return withEtag(Response.ok(v.value()), v.etag());
+    }
+
+    @PUT
+    @Path("/recurring")
+    @RunOnVirtualThread
+    public Response saveRecurring(@Valid @NotNull Recurring recurring,
+                                  @HeaderParam("If-Match") String ifMatch,
+                                  @HeaderParam("If-None-Match") String ifNoneMatch) {
+        return saved(service.saveRecurring(recurring, Preconditions.from(ifMatch, ifNoneMatch)));
     }
 
     @GET
