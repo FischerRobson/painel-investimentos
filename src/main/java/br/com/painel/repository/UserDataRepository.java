@@ -1,5 +1,6 @@
 package br.com.painel.repository;
 
+import br.com.painel.model.Benefits;
 import br.com.painel.model.BudgetMonth;
 import br.com.painel.model.BudgetRules;
 import br.com.painel.model.BudgetSettings;
@@ -121,6 +122,14 @@ public class UserDataRepository {
         return store.write(budgetSettingsKey(owner), json(settings), condition);
     }
 
+    public Optional<Versioned<Benefits>> benefits(String owner) {
+        return store.read(benefitsKey(owner)).map(d -> new Versioned<>(parse(d.body(), Benefits.class), d.etag()));
+    }
+
+    public String saveBenefits(String owner, Benefits benefits, Condition condition) {
+        return store.write(benefitsKey(owner), json(benefits), condition);
+    }
+
     public Optional<Versioned<BudgetRules>> budgetRules(String owner) {
         return store.read(budgetRulesKey(owner)).map(d -> new Versioned<>(parse(d.body(), BudgetRules.class), d.etag()));
     }
@@ -190,6 +199,10 @@ public class UserDataRepository {
 
     private static String budgetSettingsKey(String owner) {
         return folder(owner) + "/budget/settings.json";
+    }
+
+    private static String benefitsKey(String owner) {
+        return folder(owner) + "/budget/vr.json";
     }
 
     private static String budgetRulesKey(String owner) {
