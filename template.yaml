@@ -195,15 +195,15 @@ Resources:
         AuthType: NONE               # public; /api/* requires a Cognito token (checked in Quarkus)
       LoggingConfig:
         LogGroup: !Ref PainelLogGroup
-      # Daily wallet snapshot. The scheduler invokes the function directly with a Function URL style event for
+      # Daily wallet snapshot (Monday to Friday; the app itself skips B3 holidays). The scheduler invokes the function directly with a Function URL style event for
       # POST /internal/snapshots; the token is the random part of the stack id, known only inside the account.
       Events:
         DailySnapshot:
           Type: ScheduleV2
           Properties:
             Name: !Sub "${AWS::StackName}-daily-snapshot"
-            Description: Daily wallet snapshot at 18:00 Brasília time
-            ScheduleExpression: cron(0 18 * * ? *)
+            Description: Wallet positions at 18:00 Brasília time, Monday to Friday
+            ScheduleExpression: cron(0 18 ? * MON-FRI *)
             ScheduleExpressionTimezone: America/Sao_Paulo
             RetryPolicy:
               MaximumRetryAttempts: 2

@@ -74,6 +74,27 @@ export function useHistorico() {
   return useQuery({ queryKey: ["historico"], queryFn: () => getJson<Record<string, FotoPatrimonio>>("/api/historico") });
 }
 
+// ---------- Posições do dia (/api/positions) ----------
+// Montadas pela foto das 18h nos dias de pregão da B3. pnl = quantidade do dia anterior × variação do preço (null sem preço).
+export type TipoPosicao = "stock" | "crypto" | "fx" | "fixedIncome";
+export type LinhaPosicao = {
+  kind: TipoPosicao; key: string; asset: string; notional: number; price: number; pv: number; ppv: number; pnl: number | null;
+  currency?: string; gross?: number; taxRate?: number; staleSince?: string; missing?: boolean;
+};
+export type DiaPosicoes = { date: string; previousDate?: string; takenAt: string; positions: LinhaPosicao[]; totals: { pv: number; ppv: number; pnl: number } };
+
+// Dias com posições salvas (do mais antigo ao mais recente)
+export function useDatasPosicoes() {
+  return useQuery({ queryKey: ["positions"], queryFn: () => getJson<string[]>("/api/positions") });
+}
+
+export function usePosicoes(data: string | null | undefined) {
+  return useQuery({
+    queryKey: ["positions", data], enabled: !!data, retry: false, staleTime: Infinity, // um dia salvo não muda
+    queryFn: () => getJson<DiaPosicoes>(`/api/positions/${data}`),
+  });
+}
+
 // ---------- Datas para tabelas ----------
 // "2 anos e 3 meses"; "mai. de 2027" (m meses a partir de hoje)
 export const fmtPrazo = (m: number): string => {

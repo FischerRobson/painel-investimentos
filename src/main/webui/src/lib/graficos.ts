@@ -49,11 +49,12 @@ export type SerieLinha = {
 export type OpcoesLinha = {
   fmtY?: (v: number) => string; fmtTip?: (v: number) => string; fill?: boolean; height?: number;
   tipFooter?: ((i: number) => string) | null;
+  aoClicar?: (i: number) => void; // índice do ponto mais perto do clique (no eixo x)
 };
 
 // Gráfico de linha simples (1 ou mais séries), com crosshair. null quando não há pontos.
 export function configLinha(canvas: HTMLCanvasElement, datasets: SerieLinha[],
-  { fmtY = v => brl(v), fmtTip = v => brl(v), fill = true, height = 150, tipFooter = null }: OpcoesLinha = {}): ChartConfiguration<"line"> | null {
+  { fmtY = v => brl(v), fmtTip = v => brl(v), fill = true, height = 150, tipFooter = null, aoClicar }: OpcoesLinha = {}): ChartConfiguration<"line"> | null {
   const all = datasets.flatMap(d => d.data);
   if (!all.length) return null;
   const min = Math.min(...all.map(p => p.x)), max = Math.max(...all.map(p => p.x));
@@ -78,6 +79,10 @@ export function configLinha(canvas: HTMLCanvasElement, datasets: SerieLinha[],
     options: {
       maintainAspectRatio: false, animation: false, parsing: false,
       interaction: { mode: "index", intersect: false },
+      ...(aoClicar ? {
+        onClick: (_e, els) => { if (els.length) aoClicar(els[0].index); },
+        onHover: (e, els) => { const c = e.native?.target as HTMLElement | undefined; if (c) c.style.cursor = els.length ? "pointer" : ""; },
+      } : {}),
       plugins: {
         legend: { display: false },
         tooltip: {

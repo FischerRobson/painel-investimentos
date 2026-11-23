@@ -10,6 +10,8 @@ import br.com.painel.model.CurrencyHolding;
 import br.com.painel.model.FixedIncome;
 import br.com.painel.model.KnownPrice;
 import br.com.painel.model.Position;
+import br.com.painel.model.PositionsDay;
+import br.com.painel.model.PositionsDay.Line;
 import br.com.painel.model.Snapshot;
 import br.com.painel.model.Snapshot.StaleQuote;
 import br.com.painel.model.Vehicle;
@@ -33,6 +35,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -50,6 +53,7 @@ class SnapshotServiceTest {
 
     private UserDataRepository repository;
     private boolean marketDown;
+    private double petr4 = 40.0;
 
     @BeforeEach
     void setUp() {
@@ -117,8 +121,86 @@ class SnapshotServiceTest {
 
         SnapshotService.RunSummary summary = service.takeAll();
 
-        assertEquals(new SnapshotService.RunSummary("2026-11-04", 2, 1, 0), summary);
+        assertEquals(new SnapshotService.RunSummary("2026-11-04", true, 2, 1, 0), summary);
         assertEquals(Instant.parse("2026-11-04T21:00:00Z").toString(), repository.history(OWNER).get("2026-11-04").takenAt());
+    }
+
+    @Test
+    void skipsWeekendsAndB3Holidays() {
+        SnapshotService service = service();
+        for (String day : new String[]{"2026-11-21", "2026-11-22", "2026-11-20"}) { // sábado, domingo, Consciência Negra
+            service.useClock(Clock.fixed(LocalDate.parse(day).atTime(LocalTime.of(21, 0)).toInstant(ZoneOffset.UTC), ZoneOffset.UTC));
+            assertEquals(new SnapshotService.RunSummary(day, false, 0, 0, 0), service.takeAll());
+        }
+        assertTrue(repository.history(OWNER).isEmpty());
+        assertTrue(repository.positionDates(OWNER).isEmpty());
+    }
+
+    @Test
+    void savesTheDayPositionsWithoutVehicles() {
+        service().take(OWNER, TODAY);
+
+        PositionsDay day = repository.positions(OWNER, TODAY).orElseThrow();
+        assertEquals("2026-11-04", day.date());
+        assertEquals(null, day.previousDate());
+        Map<String, Line> byKey = byKey(day);
+        assertEquals(List.of("stock:PETR4", "stock:AAPL", "crypto:BTC", "fx:USD", "fixedIncome:rf1"), List.copyOf(byKey.keySet()));
+        Line aapl = byKey.get("stock:AAPL");
+        assertEquals(2.0, aapl.notional());
+        assertEquals(1000.0, aapl.price(), 1e-9); // US$ 200 × 5,00
+        assertEquals(2000.0, aapl.pv(), 1e-9);
+        assertEquals("USD", aapl.currency());
+        assertEquals(0.0, aapl.ppv());
+        assertEquals(0.0, aapl.pnl()); // primeiro dia: nada a comparar
+        Line rf = byKey.get("fixedIncome:rf1");
+        assertEquals(1000.0, rf.notional());
+        assertEquals(1.0, rf.price(), 1e-9);
+        assertEquals(1000.0, rf.gross(), 1e-9);
+        assertEquals(0.0, rf.taxRate()); // isento
+        assertEquals(s(byKey.values().stream().mapToDouble(Line::pv).sum()), day.totals().pv(), 1e-9);
+        assertEquals(repository.history(OWNER).get("2026-11-04").invested(), day.totals().pv(), 1e-9);
+    }
+
+    @Test
+    void pnlIsThePriceGainOnThePreviousQuantity() {
+        service().take(OWNER, TODAY); // PETR4: 10 a R$ 40
+        repository.saveWallet(OWNER, new Wallet(List.of(new Position("PETR4", 15.0)), List.of(), List.of(), List.of(), List.of(), null), Condition.any());
+        petr4 = 42.0;
+
+        LocalDate next = LocalDate.parse("2026-11-05");
+        service().take(OWNER, next);
+
+        PositionsDay day = repository.positions(OWNER, next).orElseThrow();
+        assertEquals("2026-11-04", day.previousDate());
+        Line petr = byKey(day).get("stock:PETR4");
+        assertEquals(15.0 * 42, petr.pv(), 1e-9);
+        assertEquals(10.0 * 40, petr.ppv(), 1e-9);
+        assertEquals(10.0 * (42 - 40), petr.pnl(), 1e-9); // a compra de 5 ações não conta como lucro
+        assertEquals(20.0, day.totals().pnl(), 1e-9);
+    }
+
+    @Test
+    void pnlIsUnknownWhenThereIsNoPrice() {
+        marketDown = true; // sem preço e sem preço anterior salvo
+        service().take(OWNER, TODAY);
+        Line petr = byKey(repository.positions(OWNER, TODAY).orElseThrow()).get("stock:PETR4");
+        assertEquals(Boolean.TRUE, petr.missing());
+        assertEquals(null, petr.pnl());
+
+        marketDown = false;
+        LocalDate next = LocalDate.parse("2026-11-05");
+        service().take(OWNER, next);
+        assertEquals(null, byKey(repository.positions(OWNER, next).orElseThrow()).get("stock:PETR4").pnl()); // ontem não tinha preço
+    }
+
+    private static Map<String, Line> byKey(PositionsDay day) {
+        Map<String, Line> m = new LinkedHashMap<>();
+        day.positions().forEach(l -> m.put(l.key(), l));
+        return m;
+    }
+
+    private static double s(double v) {
+        return Math.round(v * 100) / 100.0;
     }
 
     private SnapshotService service() {
@@ -126,7 +208,7 @@ class SnapshotServiceTest {
             @Override
             public PriceQuote currentPrice(String ticker) {
                 down();
-                return "AAPL".equals(ticker) ? new PriceQuote(200.0, "USD") : new PriceQuote(40.0, "BRL");
+                return "AAPL".equals(ticker) ? new PriceQuote(200.0, "USD") : new PriceQuote(petr4, "BRL");
             }
         };
         CryptoService crypto = new CryptoService(null) {
