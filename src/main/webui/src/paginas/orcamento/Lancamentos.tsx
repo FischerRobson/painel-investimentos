@@ -4,8 +4,8 @@ import { useState } from "react";
 import { money } from "../../lib/formato";
 import { isoBR } from "../../lib/dados";
 import {
-  AREAS_MANUAIS, FILTRO_PADRAO, MEIOS, chaveDe, filtrar, filtroAtivo, hojeIso, mesDe, novoId,
-  type AreaId, type Filtro, type Lancamento, type Mes, type Tipo,
+  AREAS_MANUAIS, FILTRO_PADRAO, MEIOS, chaveDe, ehRecorrente, filtrar, filtroAtivo, hojeIso, mesDe, novoId,
+  type AreaId, type Filtro, type ItemLista, type Lancamento, type Mes, type Tipo,
 } from "../../lib/orcamento";
 import { useFoco, type Edicao } from "./Orcamento";
 import type { RascunhoRegra } from "./Configuracoes";
@@ -30,6 +30,7 @@ type Props = {
   editando: Edicao; setEditando: (e: Edicao) => void; tipoForm: Tipo; setTipoForm: (t: Tipo) => void;
   focoForm: number; pedirFocoForm: () => void;
   onMudar: (d: Mes) => void; onRegra: (d: Omit<RascunhoRegra, "id" | "apply">) => void;
+  onRecorrente: (x: ItemLista) => void; // transforma o lançamento numa regra recorrente
 };
 
 export function Lancamentos(p: Props) {
@@ -70,7 +71,7 @@ export function Lancamentos(p: Props) {
   </>;
 }
 
-function Tabela({ dados, filtro: f, setFiltro, mostrarTodos, setMostrarTodos, editando, setEditando, setTipoForm, pedirFocoForm, onMudar, onRegra }: Props) {
+function Tabela({ dados, filtro: f, setFiltro, mostrarTodos, setMostrarTodos, editando, setEditando, setTipoForm, pedirFocoForm, onMudar, onRegra, onRecorrente }: Props) {
   const all = dados.incomes.length + dados.expenses.length;
   if (!all) return <div className="hint" style={{ marginTop: 8 }}>Nenhum lançamento neste mês.</div>;
   const list = filtrar(dados, f);
@@ -102,12 +103,13 @@ function Tabela({ dados, filtro: f, setFiltro, mostrarTodos, setMostrarTodos, ed
       <tbody>{shown.map(x => (
         <tr key={x.kind + x.id} className={editando?.kind === x.kind && editando.id === x.id ? "editing" : undefined}>
           <td>{isoBR(x.date)}</td>
-          <td className="b-desc">{x.description}{x.installment && <> <span className="muted">{x.installment}</span></>}<SeloMeio m={x.method} /></td>
+          <td className="b-desc">{x.description}{x.installment && <> <span className="muted">{x.installment}</span></>}{ehRecorrente(x.id) && <> <span className="muted" title="Criado por um lançamento recorrente">recorrente</span></>}<SeloMeio m={x.method} /></td>
           <td className="b-left">{x.kind === "expense"
             ? <SelectArea valor={x.area} onMudar={a => onMudar({ ...dados, expenses: dados.expenses.map(e => e.id === x.id ? { ...e, area: a } : e) })} />
             : <span className="b-kind">Entrada</span>}</td>
           <td className={x.kind === "income" ? "b-in" : undefined}>{x.kind === "income" ? "+ " : ""}{money(x.amount)}</td>
           <td style={{ whiteSpace: "nowrap" }}>
+            {!ehRecorrente(x.id) && !x.installment && <button className="x" title="Repetir todo mês (lançamento recorrente)" aria-label={`Repetir ${x.description} todo mês`} onClick={() => onRecorrente(x)}>↻</button>}
             <button className="x" title="Criar regra para esta descrição" onClick={() => onRegra({ match: x.description, description: "", area: x.kind === "expense" ? x.area ?? "" : "" })}>⇄</button>
             <button className="x" title="Editar" aria-label={`Editar ${x.description}`} onClick={() => { setEditando({ kind: x.kind, id: x.id }); setTipoForm(x.kind); pedirFocoForm(); }}>✎</button>
             <button className="x" title="Remover" aria-label={`Remover ${x.description}`} onClick={() => remover(x.kind, x.id)}>×</button>

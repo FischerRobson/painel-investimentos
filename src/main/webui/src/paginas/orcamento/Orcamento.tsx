@@ -1,21 +1,28 @@
-// Orçamento: entradas e saídas do mês, meta × realizado por área, importação de extrato/fatura, histórico de 12 meses, metas
-// e regras de descrição. Contas e gravação em lib/orcamento.ts.
+// Orçamento: entradas e saídas do mês, avisos de gasto, meta × realizado por área, importação de extrato/fatura, lançamentos
+// recorrentes, próximos meses, histórico de 12 meses, metas e regras de descrição. Contas e gravação em lib/orcamento.ts.
 // O mês aberto fica na URL (/orcamento#2026-01).
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import type { ChartConfiguration } from "chart.js";
 import { useTitulo } from "../../lib/useTitulo";
 import { big, brl, money, signCls } from "../../lib/formato";
 import { css, gridOpts, tickOpts, tooltipOpts } from "../../lib/graficos";
 import { Grafico } from "../../componentes/Grafico";
+import { useVR } from "../../lib/vr";
+import { DEMO } from "../../lib/store";
 import {
-  FILTRO_PADRAO, MES_VALIDO, api, aplicarRegra, gravacaoMes, regraPara, mesCurto, mesDe, referencia, somaMeses, tituloMes, totais, valoresArea,
-  type Filtro, type Mes, type Metas, type Referencia, type Regra, type ResumoMes, type Tipo, type ValorArea,
+  FILTRO_PADRAO, MES_VALIDO, api, aplicarRegra, avisosDeGasto, gerarDoMes, gravacaoMes, hojeIso, regraPara, mesCurto, mesDe, referencia, somaMeses,
+  tituloMes, totais, valoresArea,
+  type AreaId, type Aviso, type DocRecorrentes, type Filtro, type ItemLista, type Mes, type Metas, type Referencia, type RegraRecorrente, type Regra,
+  type ResumoMes, type Tipo, type ValorArea,
 } from "../../lib/orcamento";
 import { Lancamentos } from "./Lancamentos";
 import { Importacao, BotaoImportar, LinhaUltimaImportacao, StatusImportacao, type EstadoImportacao } from "./Importacao";
 import { MetasPorArea, Regras, type RascunhoRegra } from "./Configuracoes";
 import { AbasOrcamento } from "./Abas";
+import { Recorrentes, rascunhoVazio, type RascunhoRecorrente } from "./Recorrentes";
+import { Proximos } from "./Proximos";
 
 type Vista = { mes: string; dados: Mes; resumo: ResumoMes[] };
 export type Edicao = { kind: Tipo; id: string } | null;
@@ -29,6 +36,14 @@ export function Orcamento() {
   const [vista, setVista] = useState<Vista | null>(null);
   const [metas, setMetas] = useState<Metas | null>(null);
   const [regras, setRegras] = useState<Regra[] | null>(null); // null: sem regras (o painel não aparece)
+  const [recorrentes, setRecorrentes] = useState<DocRecorrentes | null>(null); // null: não carregou (sem painel e sem criar lançamentos)
+  const [recorrentesAbertas, setRecorrentesAbertas] = useState(false);
+  const [rascunhoRecorrente, setRascunhoRecorrente] = useState<RascunhoRecorrente | null>(null);
+  const [erroRecorrentes, setErroRecorrentes] = useState<string | null>(null);
+  const vr = useVR();
+  const recorrentesRef = useRef(recorrentes);
+  recorrentesRef.current = recorrentes;
+  const criando = useRef<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [recarga, setRecarga] = useState(0);
 
@@ -42,7 +57,7 @@ export function Orcamento() {
   const [regrasAbertas, setRegrasAbertas] = useState(false);
   const [rascunhoRegra, setRascunhoRegra] = useState<RascunhoRegra | null>(null);
   const [erroRegras, setErroRegras] = useState<string | null>(null);
-  const [foco, setFoco] = useState<{ alvo: "regra" | "renda" | "form" | "importacao"; n: number } | null>(null);
+  const [foco, setFoco] = useState<{ alvo: "regra" | "renda" | "form" | "importacao" | "recorrente"; n: number } | null>(null);
 
   // Mês, resumo de 12 meses, metas e regras (metas e regras só na primeira vez). Passa pelo TanStack Query para o
   // "Atualizado às" do cabeçalho, mas o estado fica aqui (ETag e edições).
@@ -53,16 +68,40 @@ export function Orcamento() {
       queryKey: ["orcamento", m, recarga], staleTime: 0, gcTime: 0, retry: false,
       queryFn: () => Promise.all([
         metas ? null : api.metas(), api.mes(m), api.resumo(m), regras ? null : api.regras().catch(() => null),
+        recorrentes ? null : api.recorrentes().catch(() => null),
       ]),
-    }).then(([novasMetas, dados, resumo, novasRegras]) => {
+    }).then(([novasMetas, dados, resumo, novasRegras, novosRecorrentes]) => {
       if (!vivo) return;
       if (novasMetas) setMetas(novasMetas);
       if (novasRegras) setRegras(novasRegras.rules);
+      if (novosRecorrentes) setRecorrentes(novosRecorrentes);
       setVista({ mes: m, dados, resumo });
       setErro(null);
     }).catch(e => { if (vivo) setErro(e instanceof Error ? e.message : String(e)); });
     return () => { vivo = false; };
   }, [mes, recarga]);
+  // Lançamentos recorrentes: ao abrir o mês (atual ou anterior), cria os que faltam. O mês é gravado antes de marcar as regras
+  // como criadas; se a gravação falhar, nada é marcado e a próxima abertura tenta de novo.
+  useEffect(() => {
+    if (!vista || !recorrentes) return;
+    const m = vista.mes, r = gerarDoMes(m, vista.dados, recorrentes, hojeIso());
+    if (!r.criados && r.regras.length === (recorrentes.generated[m]?.length ?? 0)) return;
+    if (criando.current === m) return;
+    criando.current = m;
+    void (async () => {
+      try {
+        if (r.criados) {
+          setVista(v => v && v.mes === m ? { ...v, dados: r.mes } : v);
+          gravacaoMes.agendar(m, r.mes);
+          if ((await gravacaoMes.descarregar()) !== true) return;
+        }
+        const atual = recorrentesRef.current ?? recorrentes;
+        const doc: DocRecorrentes = { rules: atual.rules, generated: { ...atual.generated, [m]: r.regras } };
+        // na demonstração nada é gravado: sem a marca, o mês criado de novo ao voltar a ele, como no resto da demonstração
+        if (!(await api.salvarRecorrentes(doc)) && !DEMO) { setRecorrentes(doc); void qc.invalidateQueries({ queryKey: ["orcamento-futuro"] }); }
+      } finally { criando.current = null; }
+    })();
+  }, [vista?.mes, recorrentes]);
   // O Planejador (Ferramentas) usa o resumo do orçamento: ao sair daqui ele busca de novo
   useEffect(() => () => { void gravacaoMes.descarregar(); void qc.invalidateQueries({ queryKey: ["planejador-orcamento"] }); }, []);
 
@@ -102,6 +141,26 @@ export function Orcamento() {
     setRascunhoRegra(null);
     return true;
   };
+  const salvarRecorrentes = async (lista: RegraRecorrente[]) => {
+    if (!recorrentes) return false;
+    setErroRecorrentes(null);
+    const doc: DocRecorrentes = { rules: lista, generated: recorrentes.generated };
+    const e = await api.salvarRecorrentes(doc);
+    if (e) { setErroRecorrentes(e); return false; }
+    setRecorrentes(doc);
+    return true;
+  };
+  // ↻ numa linha: abre o formulário com os dados do lançamento. A regra começa no mês seguinte, porque este lançamento já existe.
+  const repetirTodoMes = (x: ItemLista) => {
+    if (!recorrentes) return;
+    setRascunhoRecorrente({
+      ...rascunhoVazio(), kind: x.kind, description: x.description, amount: String(x.amount), area: (x.area ?? "fixedCosts") as AreaId,
+      method: x.method ?? "", day: String(Number(x.date.slice(8))), start: somaMeses(vista!.mes, 1),
+    });
+    setRecorrentesAbertas(true);
+    setErroRecorrentes(null);
+    setFoco({ alvo: "recorrente", n: Date.now() });
+  };
   // Nova regra: renomeia os itens da importação em revisão e, se pedido, os lançamentos já salvos do mês
   const usarRegra = (regra: Regra, noMes: boolean) => {
     if (importacao?.items) {
@@ -126,6 +185,10 @@ export function Orcamento() {
   const contagem = (n: number) => `${n} ${n === 1 ? "lançamento" : "lançamentos"}`;
   const serie = vista.resumo.map(s => s.month === vista.mes ? { ...s, income: t.income, expenses: t.expenses } : s);
   const temHistorico = serie.some(s => s.income || s.expenses);
+  const avisos = avisosDeGasto(areas, ref, hojeIso(), vista.mes);
+  // Gasto pago com VR no mês (líquido de estornos): informativo, fora das metas
+  const noVR = vr.doc?.contas.length ? vr.doc.movimentos.filter(m => m.data.startsWith(vista.mes) && (m.tipo === "gasto" || m.tipo === "estorno")) : null;
+  const gastoVR = noVR ? noVR.reduce((s, m) => s + (m.tipo === "gasto" ? m.valor : -m.valor), 0) : 0;
 
   return <>
     <AbasOrcamento />
@@ -144,8 +207,15 @@ export function Orcamento() {
         <div className="tile"><div className="k">Saídas</div><div className="v">{money(t.expenses)}</div>
           <div className="s">{contagem(dados.expenses.length)}{ref.income ? ` · ${brl(t.expenses / ref.income * 100, 1)}% da renda${refNote}` : ""}</div></div>
         <div className="tile"><div className="k">Saldo</div><div className={"v " + signCls(saldo)}>{money(saldo)}</div><div className="s">{saldo >= 0 ? "sobrou no mês" : "faltou no mês"}</div></div>
+        {noVR && <div className="tile"><div className="k">Pago com VR</div><div className="v">{money(gastoVR)}</div>
+          <div className="s">fora das metas · <Link to="/orcamento/vr">ver VR</Link></div></div>}
       </div>
     </div>
+
+    {avisos.length > 0 && <div className="panel">
+      <h2>Avisos do mês</h2>
+      <div className="b-avisos" role="status">{avisos.map(a => <AvisoGasto key={a.area} a={a} />)}</div>
+    </div>}
 
     <div className="panel">
       <h2>Meta × realizado</h2>
@@ -190,7 +260,7 @@ export function Orcamento() {
       <Lancamentos dados={dados} mes={vista.mes} filtro={filtro} setFiltro={setFiltro} mostrarTodos={mostrarTodos} setMostrarTodos={setMostrarTodos}
         editando={editando} setEditando={setEditando} tipoForm={tipoForm} setTipoForm={setTipoForm}
         focoForm={foco?.alvo === "form" ? foco.n : 0} pedirFocoForm={() => setFoco({ alvo: "form", n: Date.now() })}
-        onMudar={mudarDados} onRegra={abrirRegra} />
+        onMudar={mudarDados} onRegra={abrirRegra} onRecorrente={repetirTodoMes} />
     </div>
 
     {temHistorico && <div className="panel">
@@ -199,12 +269,22 @@ export function Orcamento() {
       <div className="proj-box"><Grafico deps={[JSON.stringify(serie)]} config={() => configHistorico(serie)} /></div>
     </div>}
 
+    {recorrentes && <Proximos doc={recorrentes} />}
+
+    {recorrentes && <Recorrentes regras={recorrentes.rules} aberto={recorrentesAbertas} setAberto={setRecorrentesAbertas}
+      rascunho={rascunhoRecorrente} setRascunho={setRascunhoRecorrente} erro={erroRecorrentes}
+      foco={foco?.alvo === "recorrente" ? foco.n : 0} onSalvar={salvarRecorrentes} />}
+
     <MetasPorArea metas={metas} aberto={metasAbertas} setAberto={setMetasAbertas} foco={foco?.alvo === "renda" ? foco.n : 0} onSalvar={salvarMetas} />
     {regras && <Regras regras={regras} mes={vista.mes} aberto={regrasAbertas} setAberto={setRegrasAbertas}
       rascunho={rascunhoRegra} setRascunho={setRascunhoRegra} erro={erroRegras} setErro={setErroRegras}
       foco={foco?.alvo === "regra" ? foco.n : 0}
       onSalvar={salvarRegras} onUsar={usarRegra} />}
   </>;
+}
+
+function AvisoGasto({ a }: { a: Aviso }) {
+  return <div className={"b-aviso " + a.nivel}>{a.texto}</div>;
 }
 
 // Aviso sobre a renda que as metas estão usando (ou o pedido da renda, se não houver nenhuma)

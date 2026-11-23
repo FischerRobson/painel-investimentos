@@ -10,10 +10,11 @@ public record BudgetBackup(
         @Valid BudgetSettings settings,
         Map<@Pattern(regexp = Formats.YEAR_MONTH) String, @Valid BudgetMonth> months,
         @Valid BudgetRules rules,
-        @JsonProperty("vr") @Valid Benefits benefits) {
+        @JsonProperty("vr") @Valid Benefits benefits,
+        @JsonProperty("recurring") @Valid Recurring recurring) {
 
     public BudgetBackup(BudgetSettings settings, Map<String, BudgetMonth> months, BudgetRules rules) {
-        this(settings, months, rules, null);
+        this(settings, months, rules, null, null);
     }
 
     public BudgetBackup {

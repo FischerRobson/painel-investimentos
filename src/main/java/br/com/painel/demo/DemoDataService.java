@@ -20,8 +20,10 @@ import br.com.painel.model.Income;
 import br.com.painel.model.LastImport;
 import br.com.painel.model.FixedIncome;
 import br.com.painel.model.Operation;
+import br.com.painel.model.PaymentMethod;
 import br.com.painel.model.Position;
 import br.com.painel.model.PositionsDay;
+import br.com.painel.model.Recurring;
 import br.com.painel.model.Vehicle;
 import br.com.painel.model.Wallet;
 import br.com.painel.service.BudgetService;
@@ -110,6 +112,7 @@ public class DemoDataService {
             case "/api/budget/import/last" -> new Reply(200, Map.of("last", new LastImport(
                     LocalDate.now().minusDays(3).atTime(13, 15).toInstant(ZoneOffset.UTC).toString(), "Fatura do cartão Nubank",
                     "fatura-nubank.pdf", 18, 0, List.of(YearMonth.now().toString()))), null);
+            case "/api/budget/recurring" -> get ? new Reply(200, recurring(), "demo") : new Reply(200, Map.of("etag", "demo"), "demo");
             case "/api/budget/vr" -> get ? new Reply(200, benefits(), "demo") : new Reply(200, Map.of("etag", "demo"), "demo");
             case "/api/budget/summary" -> new Reply(200, budgetSummary(q.getFirst("to"), param(q, "months", "12")), null);
             default -> {
@@ -290,7 +293,19 @@ public class DemoDataService {
         return new Benefits(List.of(new Benefits.Account("demo-vr", "VR", 1100.0, 1, 380.0, first.atDay(1).minusDays(1).toString())), movements);
     }
 
+    // Recorrentes fictícios, a partir do mês atual (os meses passados da demonstração já têm os lançamentos deles)
+    Recurring recurring() {
+        String start = YearMonth.now().toString();
+        return new Recurring(List.of(
+                new Recurring.Rule("demoacademia", "expense", "Academia", 119.9, BudgetArea.COMFORT, PaymentMethod.CREDIT_CARD, 10, start, null),
+                new Recurring.Rule("demoseguro", "expense", "Seguro do carro", 210.0, BudgetArea.FIXED_COSTS, PaymentMethod.BILL, 20, start, null),
+                new Recurring.Rule("demoaluguelrec", "income", "Aluguel recebido (sala comercial)", 1200.0, null, PaymentMethod.TRANSFER, 8, start, null)), null);
+    }
+
     BudgetMonth budgetMonth(YearMonth month) {
+        if (month.isAfter(YearMonth.now())) {
+            return futureMonth(month);
+        }
         Random r = new Random(month.hashCode());
         List<Income> incomes = new ArrayList<>(List.of(new Income("demo-salary", month.atDay(5).toString(), "Salário", 9800.0)));
         if (month.getMonthValue() % 3 == 0) {
@@ -304,6 +319,21 @@ public class DemoDataService {
             expenses.add(new Expense("demo-" + i, date, e.description(), amount, e.area()));
         }
         return new BudgetMonth(incomes, expenses);
+    }
+
+    // Meses futuros só têm o que já foi comprado parcelado no cartão
+    private BudgetMonth futureMonth(YearMonth month) {
+        int k = (int) java.time.temporal.ChronoUnit.MONTHS.between(YearMonth.now(), month);
+        List<Expense> expenses = new ArrayList<>();
+        if (3 + k <= 12) {
+            expenses.add(new Expense("demo-notebook-" + month, month.atDay(12).toString(), "Notebook", 389.9, BudgetArea.COMFORT,
+                    PaymentMethod.CREDIT_CARD, (3 + k) + "/12", null));
+        }
+        if (5 + k <= 10) {
+            expenses.add(new Expense("demo-geladeira-" + month, month.atDay(18).toString(), "Geladeira", 219.0, BudgetArea.FIXED_COSTS,
+                    PaymentMethod.CREDIT_CARD, (5 + k) + "/10", null));
+        }
+        return new BudgetMonth(List.of(), expenses);
     }
 
     List<BudgetMonthSummary> budgetSummary(String to, String months) {
