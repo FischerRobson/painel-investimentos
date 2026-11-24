@@ -37,6 +37,7 @@ import jakarta.ws.rs.core.MultivaluedMap;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -52,6 +53,9 @@ import java.util.TreeMap;
 // they stay the same on every reload and always end at the same price, whatever the period.
 @ApplicationScoped
 public class DemoDataService {
+
+    // "Hoje" da demonstração é o de Brasília (o mesmo do navegador e do agendador), não o do servidor, que roda em UTC
+    private static final ZoneId ZONA = ZoneId.of("America/Sao_Paulo");
 
     public record Reply(int status, Object body, String etag) {
     }
@@ -101,7 +105,7 @@ public class DemoDataService {
             case "/api/data" -> new Reply(200, data(q.getFirst("symbols"), param(q, "range", "1y")), null);
             case "/api/crypto" -> new Reply(200, crypto(q.getFirst("coins")), null);
             case "/api/fx" -> new Reply(200, fx(Integer.parseInt(param(q, "days", "30").replaceAll("\\D", "0"))), null);
-            case "/api/rates" -> new Reply(200, rates(param(q, "from", LocalDate.now().minusYears(1).toString())), null);
+            case "/api/rates" -> new Reply(200, rates(param(q, "from", LocalDate.now(ZONA).minusYears(1).toString())), null);
             case "/api/benchmarks" -> new Reply(200, benchmarks(param(q, "range", "1y"), q.getFirst("fx"), q.getFirst("crypto")), null);
             case "/api/custos" -> new Reply(200, costs(), null);
             case "/api/brapi/uso" -> new Reply(200, brapiUsage(), null);
@@ -110,8 +114,8 @@ public class DemoDataService {
             case "/api/budget/rules" -> get ? new Reply(200, DEMO_RULES, "demo")
                     : new Reply(200, Map.of("etag", "demo"), "demo");
             case "/api/budget/import/last" -> new Reply(200, Map.of("last", new LastImport(
-                    LocalDate.now().minusDays(3).atTime(13, 15).toInstant(ZoneOffset.UTC).toString(), "Fatura do cartão Nubank",
-                    "fatura-nubank.pdf", 18, 0, List.of(YearMonth.now().toString()))), null);
+                    LocalDate.now(ZONA).minusDays(3).atTime(13, 15).toInstant(ZoneOffset.UTC).toString(), "Fatura do cartão Nubank",
+                    "fatura-nubank.pdf", 18, 0, List.of(YearMonth.now(ZONA).toString()))), null);
             case "/api/budget/recurring" -> get ? new Reply(200, recurring(), "demo") : new Reply(200, Map.of("etag", "demo"), "demo");
             case "/api/budget/vr" -> get ? new Reply(200, benefits(), "demo") : new Reply(200, Map.of("etag", "demo"), "demo");
             case "/api/budget/summary" -> new Reply(200, budgetSummary(q.getFirst("to"), param(q, "months", "12")), null);
@@ -135,7 +139,7 @@ public class DemoDataService {
     // ------------------------------------------------------------------ user data
 
     Wallet wallet() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZONA);
         Map<String, Double> hist = new LinkedHashMap<>();
         for (int i = 2; i >= 0; i--) {
             hist.put(fipeMonth(today.minusMonths(i)), 74_800.0 - (2 - i) * 650);
@@ -193,9 +197,9 @@ public class DemoDataService {
         Random r = new Random(42);
         Map<String, Object> out = new TreeMap<>();
         double invested = 96_000;
-        LocalDate d = LocalDate.now().minusDays(120);
-        LocalDate staleDay = previousBusinessDay(previousBusinessDay(LocalDate.now()));
-        for (; !d.isAfter(LocalDate.now()); d = d.plusDays(1)) {
+        LocalDate d = LocalDate.now(ZONA).minusDays(120);
+        LocalDate staleDay = previousBusinessDay(previousBusinessDay(LocalDate.now(ZONA)));
+        for (; !d.isAfter(LocalDate.now(ZONA)); d = d.plusDays(1)) {
             if (!isBusinessDay(d)) {
                 continue;
             }
@@ -269,15 +273,15 @@ public class DemoDataService {
 
     // VR fictício: R$ 1.100 todo dia 1 desde junho, gastos de restaurante, mercado e delivery um pouco abaixo disso (o saldo cresce)
     Benefits benefits() {
-        YearMonth first = YearMonth.now().minusMonths(5);
+        YearMonth first = YearMonth.now(ZONA).minusMonths(5);
         List<Benefits.Movement> movements = new ArrayList<>();
         String[][] places = {{"Restaurante Sabor Caseiro", "Restaurante"}, {"Padaria Pão Quente", "Padaria"}, {"Mercado do Bairro", "Mercado"},
                 {"iFood", "Delivery"}, {"Bistrô Central", "Restaurante"}, {"Lanchonete da Esquina", "Restaurante"}};
         int n = 0;
-        for (YearMonth m = first; !m.isAfter(YearMonth.now()); m = m.plusMonths(1)) {
+        for (YearMonth m = first; !m.isAfter(YearMonth.now(ZONA)); m = m.plusMonths(1)) {
             movements.add(new Benefits.Movement("vr-c" + m, "demo-vr", m.atDay(1).toString(), "credito", "Crédito do benefício", 1100.0, null));
             Random r = new Random(m.hashCode() * 31L);
-            int last = m.equals(YearMonth.now()) ? LocalDate.now().getDayOfMonth() : m.lengthOfMonth();
+            int last = m.equals(YearMonth.now(ZONA)) ? LocalDate.now(ZONA).getDayOfMonth() : m.lengthOfMonth();
             for (int day = 2; day <= last; day++) {
                 LocalDate d = m.atDay(day);
                 if (!isBusinessDay(d) || r.nextInt(10) < 3) { // nem todo dia útil tem gasto
@@ -295,7 +299,7 @@ public class DemoDataService {
 
     // Recorrentes fictícios, a partir do mês atual (os meses passados da demonstração já têm os lançamentos deles)
     Recurring recurring() {
-        String start = YearMonth.now().toString();
+        String start = YearMonth.now(ZONA).toString();
         return new Recurring(List.of(
                 new Recurring.Rule("demoacademia", "expense", "Academia", 119.9, BudgetArea.COMFORT, PaymentMethod.CREDIT_CARD, 10, start, null),
                 new Recurring.Rule("demoseguro", "expense", "Seguro do carro", 210.0, BudgetArea.FIXED_COSTS, PaymentMethod.BILL, 20, start, null),
@@ -303,7 +307,7 @@ public class DemoDataService {
     }
 
     BudgetMonth budgetMonth(YearMonth month) {
-        if (month.isAfter(YearMonth.now())) {
+        if (month.isAfter(YearMonth.now(ZONA))) {
             return futureMonth(month);
         }
         Random r = new Random(month.hashCode());
@@ -323,7 +327,7 @@ public class DemoDataService {
 
     // Meses futuros só têm o que já foi comprado parcelado no cartão
     private BudgetMonth futureMonth(YearMonth month) {
-        int k = (int) java.time.temporal.ChronoUnit.MONTHS.between(YearMonth.now(), month);
+        int k = (int) java.time.temporal.ChronoUnit.MONTHS.between(YearMonth.now(ZONA), month);
         List<Expense> expenses = new ArrayList<>();
         if (3 + k <= 12) {
             expenses.add(new Expense("demo-notebook-" + month, month.atDay(12).toString(), "Notebook", 389.9, BudgetArea.COMFORT,
@@ -337,7 +341,7 @@ public class DemoDataService {
     }
 
     List<BudgetMonthSummary> budgetSummary(String to, String months) {
-        YearMonth end = to == null || yearMonth(to) == null ? YearMonth.now() : yearMonth(to);
+        YearMonth end = to == null || yearMonth(to) == null ? YearMonth.now(ZONA) : yearMonth(to);
         int count = Math.clamp(months.matches("\\d{1,2}") ? Integer.parseInt(months) : 12, 1, BudgetService.MAX_SUMMARY_MONTHS);
         List<BudgetMonthSummary> result = new ArrayList<>();
         for (int i = count - 1; i >= 0; i--) {
@@ -428,7 +432,7 @@ public class DemoDataService {
         int step = "FII".equals(type) ? 1 : 3;
         double amount = "FII".equals(type) ? price * 0.0075 : price * ("Exterior".equals(type) ? 0.0012 : 0.015);
         for (int m = 24; m >= 1; m -= step) {
-            out.add(new Dividend(ms(LocalDate.now().minusMonths(m).withDayOfMonth(15)), round4(amount)));
+            out.add(new Dividend(ms(LocalDate.now(ZONA).minusMonths(m).withDayOfMonth(15)), round4(amount)));
         }
         return out;
     }
@@ -467,14 +471,14 @@ public class DemoDataService {
             return Map.of("error", "data inválida");
         }
         List<RatePoint> cdi = new ArrayList<>();
-        for (LocalDate d = start; d.isBefore(LocalDate.now()); d = d.plusDays(1)) {
+        for (LocalDate d = start; d.isBefore(LocalDate.now(ZONA)); d = d.plusDays(1)) {
             if (isBusinessDay(d)) {
                 cdi.add(new RatePoint(d.toString(), 0.0508));
             }
         }
         List<RatePoint> ipca = new ArrayList<>();
         Random r = new Random(7);
-        for (LocalDate m = start; m.isBefore(LocalDate.now().withDayOfMonth(1)); m = m.plusMonths(1)) {
+        for (LocalDate m = start; m.isBefore(LocalDate.now(ZONA).withDayOfMonth(1)); m = m.plusMonths(1)) {
             ipca.add(new RatePoint(m.toString(), round4(0.25 + 0.3 * r.nextDouble())));
         }
         return Map.of("cdi", cdi, "ipca", ipca);
@@ -510,7 +514,7 @@ public class DemoDataService {
     }
 
     Map<String, Object> costs() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZONA);
         List<Map<String, Object>> months = new ArrayList<>();
         double[] totals = {0.0, 0.12, 0.31, 0.28, 0.44, 0.37};
         for (int i = 0; i < 6; i++) {
@@ -528,7 +532,7 @@ public class DemoDataService {
     }
 
     Map<String, Object> brapiUsage() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZONA);
         return Map.of("enabled", true, "plano", "free", "limite", 15_000, "usado", 3_120, "restante", 11_880,
                 "janela", "rolling-30d", "inicio", today.minusDays(30) + "T00:00:00.000Z", "fim", today + "T12:00:00.000Z",
                 "fetchedAt", System.currentTimeMillis());
@@ -544,7 +548,7 @@ public class DemoDataService {
             case "price" -> {
                 String key = q.getFirst("model") + q.getFirst("year");
                 double base = 45_000 + Math.abs(key.hashCode() % 60_000);
-                LocalDate today = LocalDate.now();
+                LocalDate today = LocalDate.now(ZONA);
                 List<Map<String, Object>> hist = new ArrayList<>();
                 for (int i = 2; i >= 0; i--) {
                     hist.add(Map.of("month", fipeMonth(today.minusMonths(i)), "price", base + i * 650.0));
@@ -590,7 +594,7 @@ public class DemoDataService {
 
     private static List<LocalDate> businessDays(int n) {
         List<LocalDate> out = new ArrayList<>();
-        for (LocalDate d = LocalDate.now(); out.size() < n; d = d.minusDays(1)) {
+        for (LocalDate d = LocalDate.now(ZONA); out.size() < n; d = d.minusDays(1)) {
             if (isBusinessDay(d)) {
                 out.add(0, d);
             }
@@ -605,7 +609,7 @@ public class DemoDataService {
     private static List<LocalDate> steps(int n, int days) {
         List<LocalDate> out = new ArrayList<>();
         for (int i = n - 1; i >= 0; i--) {
-            out.add(LocalDate.now().minusDays((long) i * days));
+            out.add(LocalDate.now(ZONA).minusDays((long) i * days));
         }
         return out;
     }
@@ -631,7 +635,7 @@ public class DemoDataService {
     }
 
     private static double dailyChange(String key, double amplitude) {
-        Random r = new Random((key + LocalDate.now()).hashCode());
+        Random r = new Random((key + LocalDate.now(ZONA)).hashCode());
         return Math.round((r.nextDouble() * 2 - 1) * amplitude * 100) / 100.0;
     }
 
