@@ -3,6 +3,7 @@ import { test, expect, ir } from "./base.js";
 const PAGINAS = [
   { caminho: "/carteira", titulo: "Carteira", heading: "Minha carteira" },
   { caminho: "/operacoes", titulo: "Operações", heading: "Operações" },
+  { caminho: "/saude", titulo: "Saúde", heading: "Saúde da carteira" },
   { caminho: "/orcamento", titulo: "Orçamento", heading: "Meta × realizado" },
   { caminho: "/ferramentas", titulo: "Ferramentas", heading: "Ferramentas" },
   { caminho: "/ativos", titulo: "Ativos", heading: "Comparativo de desempenho" },
@@ -15,7 +16,7 @@ const PAGINAS = [
 for (const p of PAGINAS) {
   test(`${p.titulo} abre`, async ({ page }) => {
     await ir(page, p.caminho);
-    await expect(page).toHaveTitle(`${p.titulo} · Meus Investimentos`);
+    await expect(page).toHaveTitle(`${p.titulo === "Saúde" ? "Saúde da carteira" : p.titulo} · Meus Investimentos`);
     await expect(page.getByRole("heading", { name: p.heading, exact: true })).toBeVisible();
   });
 }
@@ -36,7 +37,7 @@ test("o menu leva a cada página", async ({ page }) => {
   const menu = page.getByRole("navigation", { name: "Páginas" });
   for (const p of PAGINAS.slice(1)) {
     await menu.getByRole("link", { name: p.titulo }).click();
-    await expect(page).toHaveTitle(`${p.titulo} · Meus Investimentos`);
+    await expect(page).toHaveTitle(`${p.titulo === "Saúde" ? "Saúde da carteira" : p.titulo} · Meus Investimentos`);
   }
 });
 
@@ -72,7 +73,7 @@ test("o menu troca de página sem recarregar", async ({ page }) => {
   const menu = page.getByRole("navigation", { name: "Páginas" });
   for (const p of PAGINAS.slice(1)) {
     await menu.getByRole("link", { name: p.titulo }).click();
-    await expect(page).toHaveTitle(`${p.titulo} · Meus Investimentos`);
+    await expect(page).toHaveTitle(`${p.titulo === "Saúde" ? "Saúde da carteira" : p.titulo} · Meus Investimentos`);
   }
   expect(await page.evaluate(() => window.__semRecarregar)).toBe(true);
 });
