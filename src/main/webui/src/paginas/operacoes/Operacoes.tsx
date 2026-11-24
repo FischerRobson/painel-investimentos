@@ -4,17 +4,18 @@
 // Operação lançada não se edita nem se apaga: estornar deixa as duas no histórico. Ativos que já estavam na carteira
 // antes das operações pedem um saldo inicial (data e preço médio).
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useTitulo } from "../../lib/useTitulo";
 import { apiFetch, getJson } from "../../lib/api";
 import { useCambio } from "../../lib/cambio";
-import { hojeISO, isoBR } from "../../lib/dados";
+import { hojeISO, isoBR, useRendaFixa } from "../../lib/dados";
 import { brl, money, pct, signCls } from "../../lib/formato";
 import { operacoesStore, useOperacoes } from "../../lib/operacoes";
-import { NOME_CLASSE, NOME_CLASSE_OP, NOME_TIPO, ehRV, estornadas, processar, valorDaOperacao, type Classe, type Operacao } from "../../motor";
+import { NOME_CLASSE, NOME_CLASSE_OP, NOME_TIPO, ehRV, estornadas, processar, valorDaOperacao, type Classe, type Operacao, type TituloRF } from "../../motor";
 import type { ItemAtivo, PrecoCripto } from "../../lib/composicao";
 import { ErroCarteira } from "../../componentes/ErroCarteira";
-import { FormOperacao, deOperacao, type CamposOperacao } from "./FormOperacao";
+import { FormOperacao, inicialDe, type Grupo, type Inicial, type Movimento } from "./FormOperacao";
 import { Impostos } from "./Impostos";
 import { Proventos } from "./Proventos";
 import { Declaracao } from "./Declaracao";
@@ -25,7 +26,16 @@ type ItemComProventos = ItemAtivo & { dividends?: { date: number; amount: number
 export function Operacoes() {
   useTitulo("Operações");
   const { doc, erro, operacoes, proventos } = useOperacoes();
-  const [refazer, setRefazer] = useState<Partial<CamposOperacao> | null>(null); // operação estornada, para lançar corrigida
+  // Vindo da Carteira (?classe=rf&mov=saida&ativo=...) o formulário já abre no caso certo
+  const [params, setParams] = useSearchParams();
+  const doLink = (): Inicial | null => {
+    const g = params.get("classe") as Grupo | null, m = params.get("mov") as Movimento | null;
+    return g && m && ["rv", "cripto", "rf"].includes(g) && ["entrada", "saida", "evento"].includes(m)
+      ? { grupo: g, mov: m, campos: params.get("ativo") ? { ativo: params.get("ativo")! } : undefined } : null;
+  };
+  const [refazer, setRefazer] = useState<Inicial | null>(doLink); // operação estornada (para lançar corrigida) ou link
+  const [estornada, setEstornada] = useState(false);
+  const rf = useRendaFixa();
   const [anoLista, setAnoLista] = useState<number | "todos">("todos");
 
   const acoes = (doc?.acoesFiis ?? []) as Pos[], cripto = (doc?.cripto ?? []) as Pos[];
@@ -63,16 +73,19 @@ export function Operacoes() {
   };
   const historico = Object.fromEntries(Object.values(itens).map(i => [i.ticker, (i.dividends ?? []).map(d => ({ date: new Date(d.date).toLocaleDateString("sv-SE"), amount: d.amount }))]));
 
+  const limpar = () => { setRefazer(null); setEstornada(false); if ([...params.keys()].length) setParams({}, { replace: true }); };
   const salvar = (o: Operacao) => {
     operacoesStore.lancar(o);
-    setRefazer(null);
+    limpar();
   };
-  // Estornar: pede o motivo (opcional); cancelar a pergunta desiste. Ação, FII ou cripto volta preenchida no formulário.
+  // Estornar: pede o motivo (opcional); cancelar a pergunta desiste. A operação volta preenchida no formulário
+  // (menos moedas, que se lançam na página Moedas).
   const estornar = (o: Operacao) => {
     const motivo = prompt(`Estornar ${NOME_TIPO[o.tipo].toLowerCase()} de ${nomeAtivo(o)} de ${isoBR(o.data)}?\n\nA operação continua no histórico, marcada como estornada. Motivo (opcional):`, "");
     if (motivo === null) return;
     operacoesStore.estornar(o, motivo);
-    if (ehRV(o)) setRefazer({ ...deOperacao(o), data: o.data });
+    const ini = inicialDe(o);
+    setRefazer(ini); setEstornada(!!ini);
   };
 
   const linhas = Object.values(posicoes).filter(p => p.qtd > 0 || p.realizado);
@@ -93,7 +106,7 @@ export function Operacoes() {
   return <>
     <div className="panel">
       <div className="w-head">
-        <div><h2>Operações</h2><div className="hint" style={{ margin: 0 }}>Compras, vendas e eventos (desdobramento, grupamento, bonificação). A carteira só muda por operações: a quantidade de cada ativo vem daqui.</div></div>
+        <div><h2>Operações</h2><div className="hint" style={{ margin: 0 }}>A carteira só muda por aqui: compras, vendas e eventos de ações, FIIs e cripto, aplicações e resgates de renda fixa (moedas, na página Moedas).</div></div>
       </div>
       {alertas.map(a => <div key={a} className="err" style={{ marginTop: 8 }}>{a}</div>)}
       {operacoes.length > 0 && <div className="tiles">
@@ -103,11 +116,12 @@ export function Operacoes() {
         <div className="tile"><div className="k">Lucro realizado</div><div className={"v " + signCls(totais.realizado)}>{money(totais.realizado)}</div><div className="s">vendas, líquido de taxas</div></div>
       </div>}
       {pendentes.length > 0 && <SaldosIniciais pendentes={pendentes} classeDe={classeDe} />}
-      <h3>{refazer ? "Lançar de novo, corrigida" : "Lançar operação"}</h3>
-      {refazer && <div className="hint">Operação estornada. Corrija o que estava errado e lance de novo (ou cancele).</div>}
-      <FormOperacao key={refazer ? JSON.stringify(refazer) : "nova"} inicial={refazer ?? undefined} classeDe={classeDe}
-        cambioDe={(_c, a) => fx(itens[a]?.currency ?? "USD") ?? undefined}
-        pendente={a => pendentes.some(p => p.t === a)} onSalvar={salvar} onCancelar={() => setRefazer(null)} />
+      <h3>{estornada ? "Lançar de novo, corrigida" : "Lançar operação"}</h3>
+      {estornada && <div className="hint">Operação estornada. Corrija o que estava errado e lance de novo (ou cancele).</div>}
+      <FormOperacao key={refazer ? JSON.stringify(refazer) : "nova"} inicial={refazer} operacoes={operacoes}
+        titulos={(doc.rendaFixa ?? []) as TituloRF[]} rates={rf.rates} pendentes={pendentes.map(p => ({ t: p.t, cripto: p.cripto }))}
+        classeDe={classeDe} cambioDe={a => fx(itens[a]?.currency ?? "USD") ?? undefined} precoDe={precoAtual}
+        onSalvar={salvar} onCancelar={limpar} />
     </div>
 
     {linhas.length > 0 && <div className="panel">

@@ -29,23 +29,34 @@ test("imposto: day trade gera DARF e venda pequena de FII acumula", async ({ pag
   await expect(linha(ir_, "Agosto")).toContainText("acumula");
 });
 
-test("lançar compra e venda; vender mais do que tem avisa", async ({ page }) => {
+test("compra digitando o ticker; venda escolhendo da carteira, sem passar do que tem", async ({ page }) => {
   await ir(page, "/operacoes");
-  const form = page.locator("form").filter({ has: page.getByRole("button", { name: "Lançar" }) }).first();
-  await form.getByLabel("Ativo").fill("BBAS3");
-  await form.getByLabel("Quantidade").fill("10");
-  await form.getByLabel(/^Preço/).fill("25");
-  await form.getByLabel("Taxas (R$)").fill("1");
-  await form.getByRole("button", { name: "Lançar" }).click();
+  const compra = page.getByRole("form", { name: /Compra de ações/ });
+  await compra.getByLabel("Ativo").fill("BBAS3");
+  await compra.getByLabel("Quantidade").fill("10");
+  await compra.getByLabel("Preço").fill("25");
+  await compra.getByLabel("Taxas (R$)").fill("1");
+  await compra.getByRole("button", { name: "Lançar" }).click();
   await expect(linha(painel(page, "Posições e preço médio"), "BBAS3")).toContainText("R$ 25,10"); // (250 + 1) ÷ 10
 
-  await form.getByLabel("Tipo").selectOption("venda");
-  await form.getByLabel("Ativo").fill("BBAS3");
-  await form.getByLabel("Quantidade").fill("15");
-  await form.getByLabel(/^Preço/).fill("26");
-  await form.getByRole("button", { name: "Lançar" }).click();
-  // mesmo dia: 10 viram day trade e sobra uma venda de 5 sem posição
-  await expect(page.getByText(/BBAS3 em \d\d\/\d\d\/\d{4}: venda de 5 com só 0 em carteira/)).toBeVisible();
+  await page.getByRole("group", { name: "Operação" }).getByRole("button", { name: "Venda" }).click();
+  const venda = page.getByRole("form", { name: /Venda de ações/ });
+  await venda.getByLabel("Ativo").selectOption("BBAS3");
+  await expect(venda).toContainText("você tem 10");
+  await venda.getByLabel("Quantidade").fill("15");
+  await expect(page.getByText(/você tinha 10 de BBAS3/)).toBeVisible();
+  await expect(venda.getByRole("button", { name: "Lançar" })).toBeDisabled();
+  await venda.getByRole("button", { name: "Tudo" }).click();
+  await expect(venda.getByLabel("Quantidade")).toHaveValue("10");
+  await venda.getByLabel("Preço").fill("26");
+  await venda.getByRole("button", { name: "Lançar" }).click();
+  await expect(linha(painel(page, "Histórico de operações"), "BBAS3").filter({ hasText: /Venda/ })).toContainText("R$ 260,00");
+
+  // cripto: a venda só oferece as moedas que você tem
+  await page.getByRole("group", { name: "Classe do ativo" }).getByRole("button", { name: "Cripto" }).click();
+  await page.getByRole("group", { name: "Operação" }).getByRole("button", { name: "Venda" }).click();
+  const opcoes = await page.getByRole("form", { name: /Venda de cripto/ }).getByLabel("Ativo").locator("option").allTextContents();
+  expect(opcoes.map(o => o.split(" ")[0]).sort()).toEqual(["BTC", "ETH"]);
 });
 
 test("estornar: a operação fica no histórico, sai das contas e volta preenchida para corrigir", async ({ page }) => {
@@ -63,9 +74,10 @@ test("estornar: a operação fica no histórico, sai das contas e volta preenchi
   await expect(linha(hist, /Estorno/).filter({ hasText: "HGLG11" })).toContainText("quantidade errada");
   await expect(linha(painel(page, "Posições e preço médio"), "HGLG11")).toContainText("40");
   await expect(page.getByRole("heading", { name: "Lançar de novo, corrigida" })).toBeVisible();
-  const form = page.locator("form").filter({ has: page.getByRole("button", { name: "Lançar" }) }).first();
+  const form = page.getByRole("form", { name: /Venda de ações/ });
   await expect(form.getByLabel("Ativo")).toHaveValue("HGLG11");
-  await expect(form.getByLabel("Tipo")).toHaveValue("venda");
+  await expect(form.getByLabel("Quantidade")).toHaveValue("10");
+  await expect(page.getByRole("group", { name: "Operação" }).getByRole("button", { name: "Venda" })).toHaveAttribute("aria-pressed", "true");
 });
 
 test("proventos: totais do ano e lançamento", async ({ page }) => {

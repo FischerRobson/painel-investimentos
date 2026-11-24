@@ -12,7 +12,7 @@ import { arrow, big, brl, fmtDate, nz, pct, signCls } from "../lib/formato";
 import { cor, crosshair, css, gridOpts, tickOpts, timeTicks, tooltipOpts } from "../lib/graficos";
 import { Grafico } from "../componentes/Grafico";
 import { ErroCarteira } from "../componentes/ErroCarteira";
-import { parseTickers } from "./carteira/Adicionar";
+import { parseTickers } from "../lib/formato";
 
 export const LISTA_PADRAO = "BBDC4, EGIE3, ALUP11, SBSP3, VIVT3, KNRI11, VISC11, XPML11";
 const RANGES: [string, string][] = [["1mo", "1M"], ["3mo", "3M"], ["6mo", "6M"], ["1y", "1A"], ["5y", "5A"], ["max", "Máx"]];

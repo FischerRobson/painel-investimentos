@@ -15,11 +15,10 @@ import { montarComposicao, type Composicao, type ItemAtivo, type Posicao, type P
 import { rfTaxa } from "../ferramentas/ProjecaoRF";
 import { ErroCarteira } from "../../componentes/ErroCarteira";
 import { Distribuicao, type Categoria } from "./Distribuicao";
-import { Adicionar, FormResgate, useAberto } from "./Adicionar";
+import { useAberto } from "../../lib/useAberto";
 import { Comparativo } from "./Comparativo";
 import { Historico } from "./Historico";
 import { exportarBackup, importarBackup } from "./backup";
-import type { TaxasBCB } from "../../motor";
 
 const ERRO_CRIPTO = "Não consegui o preço das criptos agora (CoinGecko).";
 
@@ -77,20 +76,19 @@ export function Carteira() {
 
   return <>
     <Painel c={c} comOps={new Set((doc.operacoes ?? []).map(o => o.ativo))} erros={[cryptoErr, rf.ratesErr]} semTaxas={!!rf.titulos.length && !rf.rates} ratesErr={rf.ratesErr}
-      rates={rf.rates} historico={historico.data ?? {}} />
+      historico={historico.data ?? {}} />
     {!c.vazia && <Comparativo c={c} pronta={pronta} />}
     {/* sem /api/historico (erro), o painel trata como histórico vazio */}
     {!c.vazia && !historico.isPending && <Historico hist={historico.data ?? {}} />}
   </>;
 }
 
-function Painel({ c, comOps, erros, semTaxas, ratesErr, rates, historico }: {
-  c: Composicao; comOps: Set<string>; erros: (string | null)[]; semTaxas: boolean; ratesErr: string | null; rates: TaxasBCB | null; historico: Record<string, unknown>;
+function Painel({ c, comOps, erros, semTaxas, ratesErr, historico }: {
+  c: Composicao; comOps: Set<string>; erros: (string | null)[]; semTaxas: boolean; ratesErr: string | null; historico: Record<string, unknown>;
 }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const arquivo = useRef<HTMLInputElement>(null);
-  const [resgateId, setResgateId] = useState<string | null>(null);
   const share = (v: number | null) => c.total && v ? v / c.total * 100 : 0;
   const { vAcoes, vFiis, vCripto, vRf, vFx, vBens, vExt, total } = c;
 
@@ -107,12 +105,10 @@ function Painel({ c, comOps, erros, semTaxas, ratesErr, rates, historico }: {
 
   const importar = async (f: File) => {
     if (!(await importarBackup(f))) return;
-    setResgateId(null);
     await carteiraStore.recarregar();
     void qc.invalidateQueries(); // histórico, taxas e cotações dos ativos novos
   };
 
-  const resgate = c.rf.find(x => x.id === resgateId) ?? null;
   const rvRows = [...c.rv, ...c.cr].sort((a, b) => (b.value || 0) - (a.value || 0));
   const rfRows = [...c.rf].sort((a, b) => (b.calc?.liquido || 0) - (a.calc?.liquido || 0));
   const Alloc = ({ v }: { v: number | null | undefined }) => (
@@ -161,7 +157,7 @@ function Painel({ c, comOps, erros, semTaxas, ratesErr, rates, historico }: {
               <tr key={r.kind + r.t}>
                 <td><span className="tk">{r.t}</span> <span className="muted">{r.rotulo}</span></td>
                 <td>{comOps.has(r.t)
-                  ? <Link to="/operacoes" title="A quantidade vem das operações">{brl(r.q, r.q % 1 ? 4 : 0)}</Link>
+                  ? <Link to={`/operacoes?classe=${r.kind === "cr" ? "cripto" : "rv"}&mov=saida&ativo=${encodeURIComponent(r.t)}`} title="A quantidade vem das operações: abre a venda deste ativo">{brl(r.q, r.q % 1 ? 4 : 0)}</Link>
                   : <>{brl(r.q, r.q % 1 ? 4 : 0)} <Link to="/operacoes" className="muted" title="Este ativo ainda não tem operações">sem histórico</Link></>}</td>
                 <td>{r.price != null ? moneyC(r.price, r.cur || "BRL") : <span className="muted">{r.err ? "não encontrado" : "carregando…"}</span>}</td>
                 <td>{money(r.value)}</td>
@@ -184,7 +180,7 @@ function Painel({ c, comOps, erros, semTaxas, ratesErr, rates, historico }: {
             <tbody>{rfRows.map(r => {
               const k = r.calc, rendLiq = k ? k.liquido - r.aplicado : null;
               return (
-                <tr key={r.id} className={r.id === resgateId ? "editing" : undefined}>
+                <tr key={r.id}>
                   <td><span className="tk">{r.nome}</span> <span className="muted">{r.tipo}</span></td>
                   <td>{rfTaxa(r)}</td>
                   <td>{money(r.aplicado)}</td>
@@ -195,12 +191,11 @@ function Painel({ c, comOps, erros, semTaxas, ratesErr, rates, historico }: {
                   <td>{k ? money(k.liquido) : "—"}</td>
                   <td className={signCls(rendLiq ?? 0)}>{k ? <>{signedMoney(rendLiq)} <span className="muted">{pct(rendLiq! / r.aplicado * 100)}</span></> : "—"}</td>
                   <td><Alloc v={k?.liquido} /></td>
-                  <td><button type="button" aria-label={`Resgatar ${r.nome}`} onClick={() => setResgateId(r.id)}>Resgatar</button></td>
+                  <td><Link to={`/operacoes?classe=rf&mov=saida&ativo=${encodeURIComponent(r.id)}`} aria-label={`Resgatar ${r.nome}`}>Resgatar</Link></td>
                 </tr>
               );
             })}</tbody>
           </table></div>
-          {resgate && <FormResgate key={resgate.id} titulo={resgate} rates={rates} aoTerminar={() => setResgateId(null)} />}
           <div className="status">Errou algum dado do título? Estorne a aplicação em <Link to="/operacoes">Operações</Link> e aplique de novo.</div>
         </Acordeao>
       )}
@@ -228,7 +223,10 @@ function Painel({ c, comOps, erros, semTaxas, ratesErr, rates, historico }: {
         </Acordeao>
       )}
 
-      <Adicionar />
+      <div className="w-add" style={{ marginTop: 16, alignItems: "center" }}>
+        <Link className="btn primary" to="/operacoes">Lançar operação</Link>
+        <span className="status">Comprar, vender, aplicar ou resgatar: tudo entra como operação, na página <Link to="/operacoes">Operações</Link>. Moedas, na página <Link to="/moedas">Moedas</Link>.</span>
+      </div>
     </div>
   );
 }
