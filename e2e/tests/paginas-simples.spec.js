@@ -42,7 +42,7 @@ test.describe("app", () => {
     await expect(page.getByRole("group", { name: "Categorias" }).getByRole("button", { name: "Renda fixa" })).toHaveClass(/\bon\b/);
   });
 
-  test("Moedas: total, cartões, período e quantidade salva na carteira", async ({ page }) => {
+  test("Moedas: total, cartões, período e compra lançada como operação", async ({ page }) => {
     await ir(page, "/moedas");
     // demonstração: US$ 500 a 5,42 + € 200 a 5,95
     const tile = page.locator(".tile").filter({ hasText: "Você tem em moedas estrangeiras" });
@@ -52,8 +52,9 @@ test.describe("app", () => {
     await expect(page.locator(".card canvas")).toHaveCount(5);
     await page.getByRole("button", { name: "6 meses" }).click();
     await expect(page.getByRole("button", { name: "6 meses" })).toHaveClass(/\bon\b/);
-    await page.getByLabel("Você tem (GBP)").fill("10");
-    await page.getByLabel("Você tem (GBP)").press("Tab");
+    const gbp = page.getByRole("form", { name: "Operação em GBP" });
+    await gbp.getByLabel("Quantidade de GBP").fill("10");
+    await gbp.getByRole("button", { name: "Lançar" }).click();
     await expect(page.getByText("Salvo ✓")).toBeVisible();
     await expect(tile).toContainText("R$ 3.971,00");
     await expect(page.locator(".card").filter({ hasText: "GBP" })).toContainText("vale R$ 71,00");

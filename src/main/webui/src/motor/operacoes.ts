@@ -13,17 +13,54 @@
 // - Exterior (Lei 14.754/2023): 15% sobre o ganho anual em reais, na declaração de ajuste; perdas compensam anos seguintes.
 // - DARF: código 6015 (renda variável) e 4600 (cripto), vence no último dia útil do mês seguinte; abaixo de R$ 10 acumula.
 
+//
+// Toda mudança na carteira é uma operação, e operação lançada não se edita nem se apaga: um erro se desfaz com um estorno,
+// que aponta para a original (as duas ficam no histórico). O servidor recusa alterar ou remover operações e monta as
+// listas da carteira a partir delas (WalletLedger.java, com as mesmas regras de quantidadesDaCarteira, titulosDaCarteira
+// e moedasDaCarteira, abaixo).
+// - qtd: unidades do ativo (ações, cotas, moedas); na renda fixa, o valor aplicado (principal) que entra ou sai do título.
+// - valor: reais que saíram da conta (compra, aplicação, com as taxas) ou entraram (venda, resgate, já sem taxas e IR).
+// - valorPresente: valor da posição no dia da operação, logo antes dela (para auditar).
+// - registrado: quando o servidor recebeu a operação (ele mesmo preenche). estorna: id da operação estornada.
+
+import type { Indexador, TituloRF } from "./motor";
+
 export type Classe = "acao" | "fii" | "etf" | "bdr" | "exterior" | "cripto";
-export type TipoOperacao = "compra" | "venda" | "desdobramento" | "grupamento" | "bonificacao";
+export type ClasseOp = Classe | "rf" | "moeda";
+export type TipoOperacao = "compra" | "venda" | "desdobramento" | "grupamento" | "bonificacao" | "aplicacao" | "resgate" | "estorno";
+export type TermosRF = {
+  nome: string; tipo: string; idx: Indexador; taxa: number; venc?: string | null; isento?: boolean;
+  instituicao?: string | null; liquidezDiaria?: boolean;
+};
 export type Operacao = {
-  id: string; data: string; tipo: TipoOperacao; classe: Classe; ativo: string;
+  id: string; data: string; tipo: TipoOperacao; classe: ClasseOp; ativo: string;
   qtd?: number; preco?: number; taxas?: number; cambio?: number; fator?: number; inicial?: boolean; obs?: string;
+  valor?: number; valorPresente?: number; registrado?: string; estorna?: string; titulo?: TermosRF;
 };
 export type TipoProvento = "dividendo" | "jcp" | "rendimento" | "outro";
 export type Provento = { id: string; data: string; ativo: string; tipo: TipoProvento; valor: number; irRetido?: number };
 
 export const NOME_CLASSE: Record<Classe, string> = { acao: "Ação", fii: "FII", etf: "ETF", bdr: "BDR", exterior: "Exterior", cripto: "Cripto" };
-export const NOME_TIPO: Record<TipoOperacao, string> = { compra: "Compra", venda: "Venda", desdobramento: "Desdobramento", grupamento: "Grupamento", bonificacao: "Bonificação" };
+export const NOME_CLASSE_OP: Record<ClasseOp, string> = { ...NOME_CLASSE, rf: "Renda fixa", moeda: "Moeda" };
+export const NOME_TIPO: Record<TipoOperacao, string> = {
+  compra: "Compra", venda: "Venda", desdobramento: "Desdobramento", grupamento: "Grupamento", bonificacao: "Bonificação",
+  aplicacao: "Aplicação", resgate: "Resgate", estorno: "Estorno",
+};
+export const TIPOS_RV: TipoOperacao[] = ["compra", "venda", "desdobramento", "grupamento", "bonificacao"];
+export type OpRV = Operacao & { classe: Classe };
+export const ehRV = (o: Operacao): o is OpRV => o.classe !== "rf" && o.classe !== "moeda";
+
+// Operações que valem: sem os estornos e sem as operações estornadas
+export function efetivas(ops: Operacao[]): Operacao[] {
+  const estornadas = new Set(ops.filter(o => o.tipo === "estorno").map(o => o.estorna));
+  return ops.filter(o => o.tipo !== "estorno" && !estornadas.has(o.id));
+}
+export const estornadas = (ops: Operacao[]): Set<string> => new Set(ops.filter(o => o.tipo === "estorno" && o.estorna).map(o => o.estorna!));
+
+// Estorno de uma operação (a original continua no histórico, marcada como estornada)
+export function estorno(o: Operacao, { id, data, motivo }: { id: string; data: string; motivo?: string }): Operacao {
+  return { id, data, tipo: "estorno", classe: o.classe, ativo: o.ativo, estorna: o.id, ...(motivo?.trim() ? { obs: motivo.trim().slice(0, 200) } : {}) };
+}
 const TEM_DAY_TRADE: Classe[] = ["acao", "fii", "etf", "bdr"];
 
 export type Posicao = { ativo: string; classe: Classe; qtd: number; custo: number; pm: number; realizado: number };
@@ -39,11 +76,13 @@ const emReais = (o: Operacao) => (o.preco ?? 0) * (o.cambio ?? 1);
 
 // Percorre as operações em ordem de data e devolve as posições, as vendas realizadas e os avisos (vender mais do que tem).
 // ate: considera só as operações até essa data (inclusive), para a posição em 31/12.
-export function processar(ops: Operacao[], ate?: string): { posicoes: Record<string, Posicao>; realizados: Realizado[]; alertas: string[] } {
+// Só ações, FIIs, ETFs, BDRs, exterior e cripto; estornos e operações estornadas ficam de fora.
+export function processar(todas: Operacao[], ate?: string): { posicoes: Record<string, Posicao>; realizados: Realizado[]; alertas: string[] } {
+  const ops = efetivas(todas).filter(ehRV) as OpRV[];
   const posicoes: Record<string, Posicao> = {};
   const realizados: Realizado[] = [];
   const alertas: string[] = [];
-  const porDia = new Map<string, Operacao[]>();
+  const porDia = new Map<string, OpRV[]>();
   for (const o of ops) {
     if (ate && o.data > ate) continue;
     const k = o.data + "|" + o.ativo;
@@ -254,14 +293,27 @@ export function sugerirProventos(ops: Operacao[], historico: Record<string, { da
 // ---------- Rentabilidade sem aportes (TWR) ----------
 // Entre duas fotos, o retorno é (valor de hoje − dinheiro que entrou no período) ÷ valor anterior. Compras e aplicações em
 // renda fixa contam como dinheiro entrando; vendas e proventos, como dinheiro saindo (o painel não acompanha o caixa).
+// Aplicações em renda fixa contam pela data delas mesmo quando eram saldo inicial (a data é a da aplicação de verdade).
+// titulosSemOperacao: títulos antigos que ainda não viraram operação (contam como aplicados na data deles).
 export type Fluxo = { data: string; valor: number };
-export function fluxosDasOperacoes(ops: Operacao[], proventos: Provento[], aplicacoesRF: { data: string; aplicado: number }[]): Fluxo[] {
+export function fluxosDasOperacoes(todas: Operacao[], proventos: Provento[], titulosSemOperacao: { data: string; aplicado: number }[] = []): Fluxo[] {
+  const ops = efetivas(todas);
   return [
-    ...ops.filter(o => o.tipo === "compra" && !o.inicial).map(o => ({ data: o.data, valor: (o.qtd ?? 0) * emReais(o) + (o.taxas ?? 0) })),
-    ...ops.filter(o => o.tipo === "venda").map(o => ({ data: o.data, valor: -((o.qtd ?? 0) * emReais(o) - (o.taxas ?? 0)) })),
+    ...ops.filter(o => (o.tipo === "compra" && !o.inicial) || o.tipo === "venda" || o.tipo === "resgate" || o.tipo === "aplicacao").map(o => ({
+      data: o.data, valor: (o.tipo === "compra" || o.tipo === "aplicacao" ? 1 : -1) * valorDaOperacao(o),
+    })),
     ...proventos.map(p => ({ data: p.data, valor: -p.valor })),
-    ...aplicacoesRF.map(a => ({ data: a.data, valor: a.aplicado })),
+    ...titulosSemOperacao.map(a => ({ data: a.data, valor: a.aplicado })),
   ];
+}
+
+// Reais que saíram (compra, aplicação) ou entraram (venda, resgate) da conta. Operações antigas, sem valor guardado, usam
+// quantidade × preço × câmbio, com as taxas.
+export function valorDaOperacao(o: Operacao): number {
+  if (o.valor != null) return o.valor;
+  if (o.classe === "rf") return o.qtd ?? 0;
+  const bruto = (o.qtd ?? 0) * emReais(o);
+  return o.tipo === "compra" ? bruto + (o.taxas ?? 0) : o.tipo === "venda" ? bruto - (o.taxas ?? 0) : bruto;
 }
 export function rentabilidade(pontos: { data: string; valor: number }[], fluxos: Fluxo[]): { serie: { data: string; acumulado: number }[]; total: number | null } {
   const ps = [...pontos].sort((a, b) => a.data.localeCompare(b.data));
@@ -308,6 +360,59 @@ export function ultimoDiaUtil(mes: string): string {
 }
 
 // ---------- Carteira ----------
+// A carteira inteira sai das operações. Para os ativos com pelo menos uma operação (mesmo estornada), a lista da
+// carteira é a calculada aqui; ativos sem nenhuma operação (de antes do painel guardar operações) ficam como estão.
+export function governados(ops: Operacao[]): { rv: Set<string>; rf: Set<string>; moedas: Set<string> } {
+  const g = { rv: new Set<string>(), rf: new Set<string>(), moedas: new Set<string>() };
+  for (const o of ops) (o.classe === "rf" ? g.rf : o.classe === "moeda" ? g.moedas : g.rv).add(o.ativo);
+  return g;
+}
+
+const porData = (ops: Operacao[], classe: ClasseOp) => efetivas(ops).filter(o => o.classe === classe)
+  .map((o, i) => ({ o, i })).sort((a, b) => a.o.data.localeCompare(b.o.data) || a.i - b.i).map(x => x.o);
+const arred = (v: number, casas: number) => Math.round(v * 10 ** casas) / 10 ** casas;
+
+// Títulos de renda fixa: a aplicação abre o título com o principal (qtd) e os termos; o resgate tira principal (o
+// resgate total tira tudo e o título sai da carteira). ate: só as operações até essa data (inclusive).
+export function titulosDaCarteira(ops: Operacao[], ate?: string): TituloRF[] {
+  const out = new Map<string, TituloRF>();
+  for (const o of porData(ops, "rf")) {
+    if (ate && o.data > ate) continue;
+    const t = out.get(o.ativo);
+    if (o.tipo === "aplicacao" && o.titulo && !t) {
+      out.set(o.ativo, { id: o.ativo, ...o.titulo, venc: o.titulo.venc ?? null, isento: !!o.titulo.isento, instituicao: o.titulo.instituicao ?? null,
+        liquidezDiaria: !!o.titulo.liquidezDiaria, aplicado: arred(o.qtd ?? 0, 2), data: o.data });
+    } else if (o.tipo === "resgate" && t) {
+      const resto = arred(t.aplicado - (o.qtd ?? 0), 2);
+      if (resto <= 0.005) out.delete(o.ativo); else out.set(o.ativo, { ...t, aplicado: resto });
+    }
+  }
+  return [...out.values()];
+}
+
+// Moedas estrangeiras: compra soma, venda tira (até zerar)
+export function moedasDaCarteira(ops: Operacao[], ate?: string): Record<string, number> {
+  const q: Record<string, number> = {};
+  for (const o of porData(ops, "moeda")) {
+    if (ate && o.data > ate) continue;
+    const antes = q[o.ativo] ?? 0;
+    q[o.ativo] = o.tipo === "compra" ? antes + (o.qtd ?? 0) : antes - Math.min(o.qtd ?? 0, antes);
+  }
+  return Object.fromEntries(Object.entries(q).filter(([, v]) => v > EPS).map(([c, v]) => [c, arred(v, 8)]));
+}
+
+// Valor presente de uma compra ou venda (ação, FII, cripto ou moeda): a quantidade que havia logo antes, no mesmo dia,
+// pelo preço da própria operação, em reais. Renda fixa usa o valor do título na curva (calculado na página, com as taxas).
+export function valorPresenteAntes(ops: Operacao[], o: Operacao): number {
+  const preco = o.classe === "moeda" ? (o.qtd ? valorDaOperacao(o) / o.qtd : 0) : emReais(o);
+  let qtd: number;
+  if (o.classe === "moeda") qtd = moedasDaCarteira(ops, o.data)[o.ativo] ?? 0;
+  else {
+    const p = processar(ops.filter(x => x.ativo === o.ativo), o.data).posicoes[o.ativo];
+    qtd = p?.qtd ?? 0;
+  }
+  return arred(qtd * preco, 2);
+}
 // Quantidades que a carteira deve ter para os ativos com operações (ações/FIIs/ETFs/BDRs/exterior em acoesFiis; cripto em cripto)
 export function quantidadesDaCarteira(ops: Operacao[]): { acoesFiis: Record<string, number>; cripto: Record<string, number> } {
   const { posicoes } = processar(ops);

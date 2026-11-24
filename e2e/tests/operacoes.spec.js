@@ -14,7 +14,8 @@ test("posições com preço médio, custo e lucro realizado", async ({ page }) =
   await expect(linha(pos, "ITSA4")).toContainText("R$ 9,57");
   await expect(linha(pos, "ITSA4")).toContainText("R$ 182,50"); // 1139 − 956,50
   await expect(linha(pos, "AAPL")).toContainText("Exterior");
-  await expect(painel(page, "Histórico de operações").getByRole("row")).toHaveCount(15); // cabeçalho + 14
+  // cabeçalho + 14 de renda variável + 4 aplicações de renda fixa + 2 compras de moeda
+  await expect(painel(page, "Histórico de operações").getByRole("row")).toHaveCount(21);
 });
 
 test("imposto: day trade gera DARF e venda pequena de FII acumula", async ({ page }) => {
@@ -45,6 +46,26 @@ test("lançar compra e venda; vender mais do que tem avisa", async ({ page }) =>
   await form.getByRole("button", { name: "Lançar" }).click();
   // mesmo dia: 10 viram day trade e sobra uma venda de 5 sem posição
   await expect(page.getByText(/BBAS3 em \d\d\/\d\d\/\d{4}: venda de 5 com só 0 em carteira/)).toBeVisible();
+});
+
+test("estornar: a operação fica no histórico, sai das contas e volta preenchida para corrigir", async ({ page }) => {
+  await ir(page, "/operacoes");
+  const hist = painel(page, "Histórico de operações");
+  // HGLG11: comprou 40 e vendeu 10 em 20/08/2026
+  await expect(linha(painel(page, "Posições e preço médio"), "HGLG11")).toContainText("30");
+  const venda = linha(hist, "HGLG11").filter({ hasText: /Venda/ });
+  await expect(venda).toContainText("R$ 1.649,00"); // 10 × 165 − 1
+  await expect(hist.getByRole("button", { name: /Remover|Editar/ })).toHaveCount(0);
+  page.once("dialog", d => d.accept("quantidade errada"));
+  await venda.getByRole("button", { name: /^Estornar/ }).click();
+  await expect(venda).toContainText("estornada");
+  await expect(venda.getByRole("button", { name: /^Estornar/ })).toHaveCount(0);
+  await expect(linha(hist, /Estorno/).filter({ hasText: "HGLG11" })).toContainText("quantidade errada");
+  await expect(linha(painel(page, "Posições e preço médio"), "HGLG11")).toContainText("40");
+  await expect(page.getByRole("heading", { name: "Lançar de novo, corrigida" })).toBeVisible();
+  const form = page.locator("form").filter({ has: page.getByRole("button", { name: "Lançar" }) }).first();
+  await expect(form.getByLabel("Ativo")).toHaveValue("HGLG11");
+  await expect(form.getByLabel("Tipo")).toHaveValue("venda");
 });
 
 test("proventos: totais do ano e lançamento", async ({ page }) => {

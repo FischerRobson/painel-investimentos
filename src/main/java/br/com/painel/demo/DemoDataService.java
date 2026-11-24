@@ -145,19 +145,30 @@ public class DemoDataService {
             hist.put(fipeMonth(today.minusMonths(i)), 74_800.0 - (2 - i) * 650);
         }
         String latest = fipeMonth(today);
+        List<FixedIncome> bonds = List.of(
+                new FixedIncome("demo-cdb", "CDB Banco Exemplo", "CDB", "cdi", 105.0, 15_000.0, today.minusMonths(20).toString(), today.plusYears(2).toString(), false, "Banco Exemplo", true),
+                new FixedIncome("demo-lci", "LCI Banco Fictício", "LCI", "cdi", 93.0, 8_000.0, today.minusMonths(9).toString(), today.plusMonths(15).toString(), true, "Banco Fictício", false),
+                new FixedIncome("demo-ipca", "Tesouro IPCA+ 2032", "Tesouro IPCA+", "ipca", 5.5, 6_000.0, today.minusYears(3).toString(), "2032-08-15", false, null, false),
+                new FixedIncome("demo-pre", "Tesouro Prefixado 2029", "Tesouro Prefixado", "pre", 12.8, 5_000.0, today.minusMonths(14).toString(), "2029-01-01", false, null, false));
+        List<Operation> ops = new ArrayList<>(DEMO_OPERATIONS);
+        // the bonds and currencies also come from operations (aplicacao and compra), like a real wallet
+        for (FixedIncome b : bonds) {
+            ops.add(new Operation("da-" + b.id(), b.start(), "aplicacao", "rf", b.id(), b.invested(), null, null, null, null, null, null,
+                    b.invested(), 0.0, null, null, new Operation.BondTerms(b.name(), b.kind(), b.index(), b.rate(), b.maturity(), b.taxExempt(),
+                    b.institution(), b.dailyLiquidity())));
+        }
+        ops.add(new Operation("dm1", "2025-10-06", "compra", "moeda", "USD", 500.0, null, null, 5.38, null, null, null, 2_690.0, 0.0, null, null, null));
+        ops.add(new Operation("dm2", "2026-01-12", "compra", "moeda", "EUR", 200.0, null, null, 6.25, null, null, null, 1_250.0, 0.0, null, null, null));
         return new Wallet(
                 List.of(new Position("ITSA4", 400.0), new Position("WEGE3", 50.0), new Position("TAEE11", 120.0),
                         new Position("HGLG11", 30.0), new Position("XPLG11", 40.0), new Position("AAPL", 5.0)),
                 List.of(new Position("BTC", 0.02), new Position("ETH", 0.5)),
-                List.of(new FixedIncome("demo-cdb", "CDB Banco Exemplo", "CDB", "cdi", 105.0, 15_000.0, today.minusMonths(20).toString(), today.plusYears(2).toString(), false, "Banco Exemplo", true),
-                        new FixedIncome("demo-lci", "LCI Banco Fictício", "LCI", "cdi", 93.0, 8_000.0, today.minusMonths(9).toString(), today.plusMonths(15).toString(), true, "Banco Fictício", false),
-                        new FixedIncome("demo-ipca", "Tesouro IPCA+ 2032", "Tesouro IPCA+", "ipca", 5.5, 6_000.0, today.minusYears(3).toString(), "2032-08-15", false, null, false),
-                        new FixedIncome("demo-pre", "Tesouro Prefixado 2029", "Tesouro Prefixado", "pre", 12.8, 5_000.0, today.minusMonths(14).toString(), "2029-01-01", false, null, false)),
+                bonds,
                 List.of(new CurrencyHolding("USD", 500.0), new CurrencyHolding("EUR", 200.0)),
                 List.of(new Vehicle("demo-carro", "cars", "1", "1003", "2022-1", "Carro de exemplo",
                         new Vehicle.Info("Montadora Demo", "SUV Fictício 1.5 Turbo", 2022, "Gasolina", "000000-0"),
                         new Vehicle.LastPrice(latest, hist.get(latest)), hist)),
-                Map.of("listaPainel", "ITSA4, WEGE3, TAEE11, HGLG11, XPLG11, AAPL"), DEMO_OPERATIONS, DEMO_DISTRIBUTIONS);
+                Map.of("listaPainel", "ITSA4, WEGE3, TAEE11, HGLG11, XPLG11, AAPL"), ops, DEMO_DISTRIBUTIONS);
     }
 
     // Operações que fecham com as quantidades da carteira fictícia, com uma venda de ação com lucro, uma venda de FII

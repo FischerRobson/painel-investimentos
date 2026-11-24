@@ -209,3 +209,34 @@ describe("proventos sugeridos, rentabilidade e datas", () => {
     ])).toEqual({ acoesFiis: { ITSA4: 60 }, cripto: { ETH: 0.5 } });
   });
 });
+
+describe("estorno e operações de renda fixa e moedas", () => {
+  test("operação estornada e o estorno ficam fora do preço médio, do lucro e das quantidades", async () => {
+    const { estorno } = await import("./operacoes");
+    const errada = op("2026-02-01", "venda", "ITSA4", 100, 15);
+    const ops = [op("2026-01-05", "compra", "ITSA4", 100, 10), errada, estorno(errada, { id: "e1", data: "2026-02-02" })];
+    const { posicoes, realizados } = processar(ops);
+    expect(posicoes.ITSA4.qtd).toBe(100);
+    expect(realizados).toEqual([]);
+    expect(quantidadesDaCarteira(ops).acoesFiis).toEqual({ ITSA4: 100 });
+  });
+
+  test("aplicações e resgates de renda fixa e moedas não entram nas posições de renda variável", () => {
+    const { posicoes } = processar([
+      { id: "a", data: "2026-01-05", tipo: "aplicacao", classe: "rf", ativo: "cdb", qtd: 1000, titulo: { nome: "CDB", tipo: "CDB", idx: "cdi", taxa: 100 } },
+      { id: "m", data: "2026-01-05", tipo: "compra", classe: "moeda", ativo: "USD", qtd: 10, valor: 55 },
+    ]);
+    expect(posicoes).toEqual({});
+  });
+
+  test("fluxos para a rentabilidade: aplicação entra, resgate sai pelo valor recebido; estornadas não contam", async () => {
+    const { fluxosDasOperacoes, estorno } = await import("./operacoes");
+    const aplica: Operacao = { id: "a", data: "2026-01-05", tipo: "aplicacao", classe: "rf", ativo: "cdb", qtd: 1000, valor: 1000, inicial: true,
+      titulo: { nome: "CDB", tipo: "CDB", idx: "cdi", taxa: 100 } };
+    const resgate: Operacao = { id: "r", data: "2026-03-05", tipo: "resgate", classe: "rf", ativo: "cdb", qtd: 1000, valor: 1030 };
+    const compraErrada = op("2026-02-01", "compra", "ITSA4", 10, 10);
+    expect(fluxosDasOperacoes([aplica, resgate, compraErrada, estorno(compraErrada, { id: "e", data: "2026-02-02" })], [])).toEqual([
+      { data: "2026-01-05", valor: 1000 }, { data: "2026-03-05", valor: -1030 },
+    ]);
+  });
+});
