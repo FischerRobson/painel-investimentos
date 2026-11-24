@@ -104,12 +104,12 @@ function comprar({ classe, ativo, qtd, preco, data }: { classe: Classe; ativo: s
   });
 }
 
-type CamposRF = { nome: string; tipo: string; idx: Indexador; taxa: string; aplicado: string; data: string; venc: string; isento: boolean };
-const VAZIO: CamposRF = { nome: "", tipo: RF_TIPOS[0], idx: "cdi", taxa: "", aplicado: "", data: "", venc: "", isento: false };
+type CamposRF = { nome: string; tipo: string; idx: Indexador; taxa: string; aplicado: string; data: string; venc: string; isento: boolean; instituicao: string; liquidez: boolean };
+const VAZIO: CamposRF = { nome: "", tipo: RF_TIPOS[0], idx: "cdi", taxa: "", aplicado: "", data: "", venc: "", isento: false, instituicao: "", liquidez: false };
 
 function FormRendaFixa({ editando, aoTerminar }: { editando: TituloRF | null; aoTerminar: () => void }) {
   const [f, setF] = useState<CamposRF>(() => editando
-    ? { nome: editando.nome, tipo: editando.tipo, idx: editando.idx, taxa: String(editando.taxa), aplicado: String(editando.aplicado), data: editando.data, venc: editando.venc || "", isento: !!editando.isento }
+    ? { nome: editando.nome, tipo: editando.tipo, idx: editando.idx, taxa: String(editando.taxa), aplicado: String(editando.aplicado), data: editando.data, venc: editando.venc || "", isento: !!editando.isento, instituicao: editando.instituicao || "", liquidez: !!editando.liquidezDiaria }
     : VAZIO);
   const muda = (p: Partial<CamposRF>) => setF(x => ({ ...x, ...p }));
   const form = useRef<HTMLFormElement>(null);
@@ -117,7 +117,7 @@ function FormRendaFixa({ editando, aoTerminar }: { editando: TituloRF | null; ao
 
   // O tipo sugere a isenção e o indexador (Tesouro Selic = 100% do CDI)
   const mudaTipo = (tipo: string) => {
-    const p: Partial<CamposRF> = { tipo, isento: RF_ISENTOS.includes(tipo) };
+    const p: Partial<CamposRF> = { tipo, isento: RF_ISENTOS.includes(tipo), liquidez: tipo === "Tesouro Selic" };
     if (tipo === "Tesouro Selic") { p.idx = "cdi"; p.taxa = "100"; }
     if (tipo === "Tesouro Prefixado") p.idx = "pre";
     if (tipo === "Tesouro IPCA+") p.idx = "ipca";
@@ -127,7 +127,7 @@ function FormRendaFixa({ editando, aoTerminar }: { editando: TituloRF | null; ao
     e.preventDefault();
     const entry = {
       nome: f.nome.trim(), tipo: f.tipo, idx: f.idx, taxa: Number(f.taxa), aplicado: Number(f.aplicado), data: f.data,
-      venc: f.venc || null, isento: f.isento,
+      venc: f.venc || null, isento: f.isento, instituicao: f.instituicao.trim() || null, liquidezDiaria: f.liquidez,
     };
     carteiraStore.atualizar(d => {
       const lista = (d.rendaFixa ?? []) as TituloRF[];
@@ -151,7 +151,9 @@ function FormRendaFixa({ editando, aoTerminar }: { editando: TituloRF | null; ao
       <label>Valor aplicado (R$) — quanto saiu da sua conta no dia<input name="aplicado" type="number" step="0.01" min="0" required value={f.aplicado} onChange={e => muda({ aplicado: e.target.value })} /></label>
       <label>Data da aplicação<input name="data" type="date" max={hojeISO()} required value={f.data} onChange={e => muda({ data: e.target.value })} /></label>
       <label>Vencimento<input name="venc" type="date" value={f.venc} onChange={e => muda({ venc: e.target.value })} /></label>
+      <label>Banco ou corretora (para o limite do FGC)<input name="instituicao" placeholder="Ex.: Banco Inter" value={f.instituicao} onChange={e => muda({ instituicao: e.target.value })} /></label>
       <label className="chk"><input name="isento" type="checkbox" checked={f.isento} onChange={e => muda({ isento: e.target.checked })} /> Isento de IR</label>
+      <label className="chk"><input name="liquidez" type="checkbox" checked={f.liquidez} onChange={e => muda({ liquidez: e.target.checked })} /> Liquidez diária (conta na reserva de emergência)</label>
       {editando
         ? <span className="pair"><button className="primary" type="submit">Salvar alterações</button><button type="button" onClick={aoTerminar}>Cancelar</button></span>
         : <button className="primary" type="submit">Adicionar</button>}

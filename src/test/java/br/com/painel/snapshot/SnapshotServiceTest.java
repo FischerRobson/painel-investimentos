@@ -62,7 +62,7 @@ class SnapshotServiceTest {
         repository.saveWallet(OWNER, new Wallet(
                 List.of(new Position("PETR4", 10.0), new Position("AAPL", 2.0)),
                 List.of(new Position("BTC", 0.5)),
-                List.of(new FixedIncome("rf1", "CDB Teste", "CDB", "pre", 10.0, 1000.0, "2026-11-04", null, true)),
+                List.of(new FixedIncome("rf1", "CDB Teste", "CDB", "pre", 10.0, 1000.0, "2026-11-04", null, true, null, false)),
                 List.of(new CurrencyHolding("USD", 100.0)),
                 List.of(new Vehicle("car1", "cars", "1", "2", "2024-1", "Carro", null, new Vehicle.LastPrice("outubro de 2026", 80_000.0), null)),
                 null), Condition.any());

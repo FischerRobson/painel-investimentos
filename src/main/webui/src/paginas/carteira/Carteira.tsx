@@ -92,7 +92,7 @@ function Painel({ c, comOps, erros, semTaxas, ratesErr, historico }: {
   const cats: Categoria[] = [
     {
       name: "Renda variável", color: "--s1", value: vAcoes + vFiis,
-      items: c.rv.filter(r => r.value).map(r => ({ name: r.t, sub: r.type, value: r.value! })),
+      items: c.rv.filter(r => r.value).map(r => ({ name: r.t, sub: r.rotulo, value: r.value! })),
       note: vAcoes + vFiis ? `Ações ${money(vAcoes - vExt)} · FIIs ${money(vFiis)}${vExt ? ` · Exterior ${money(vExt)}` : ""}` : "",
     },
     { name: "Renda fixa", color: "--s2", value: vRf, items: c.rf.filter(r => r.calc).map(r => ({ name: r.nome, sub: rfTaxa(r), value: r.calc!.liquido })), note: "valores líquidos de IR" },
@@ -166,7 +166,7 @@ function Painel({ c, comOps, erros, semTaxas, ratesErr, historico }: {
             <thead><tr><th>Ativo</th><th>Quantidade</th><th>Preço</th><th>Valor</th><th>% da carteira</th><th>Hoje</th><th>Proventos 12m</th><th>Por mês</th><th></th></tr></thead>
             <tbody>{rvRows.map(r => (
               <tr key={r.kind + r.t}>
-                <td><span className="tk">{r.t}</span> <span className="muted">{r.type}</span></td>
+                <td><span className="tk">{r.t}</span> <span className="muted">{r.rotulo}</span></td>
                 <td>{comOps.has(r.t)
                   ? <Link to="/operacoes" title="A quantidade vem das operações">{brl(r.q, r.q % 1 ? 4 : 0)}</Link>
                   : <CampoQtd r={r} onQtd={v => mudarQtd(r, v)} />}</td>

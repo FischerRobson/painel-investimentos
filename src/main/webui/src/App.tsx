@@ -8,6 +8,7 @@ import { Ferramentas } from "./paginas/ferramentas/Ferramentas";
 import { Carteira } from "./paginas/carteira/Carteira";
 import { Ativos } from "./paginas/Ativos";
 import { Operacoes } from "./paginas/operacoes/Operacoes";
+import { Saude } from "./paginas/saude/Saude";
 import { Orcamento } from "./paginas/orcamento/Orcamento";
 import { VR } from "./paginas/orcamento/VR";
 import { PAGINAS } from "./rotas";
@@ -19,6 +20,7 @@ const PAGINA: Record<string, ReactElement> = {
   carteira: <Carteira />,
   operacoes: <Operacoes />,
   ativos: <Ativos />,
+  saude: <Saude />,
   budget: <Orcamento />,
   ferramentas: <Ferramentas />,
   moedas: <Moedas />,

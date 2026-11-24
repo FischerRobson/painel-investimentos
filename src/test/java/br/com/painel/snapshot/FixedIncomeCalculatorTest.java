@@ -18,7 +18,7 @@ class FixedIncomeCalculatorTest {
             null);
 
     private static FixedIncome title(String index, double rate, boolean exempt, String maturity) {
-        return new FixedIncome("x", "CDB", "CDB", index, rate, 1000.0, "2026-01-02", maturity, exempt);
+        return new FixedIncome("x", "CDB", "CDB", index, rate, 1000.0, "2026-01-02", maturity, exempt, null, false);
     }
 
     @Test
