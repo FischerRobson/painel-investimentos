@@ -469,6 +469,7 @@ export function comparaSetor(itens: ItemSetor[]): { setor: string; tickers: stri
 export type TituloRF = {
   id: string; nome: string; tipo: string; idx: Indexador; taxa: number; aplicado: number;
   data: string; venc?: string | null; isento?: boolean;
+  instituicao?: string | null; liquidezDiaria?: boolean; // banco ou corretora (soma do FGC) e se resgata no mesmo dia (reserva de emergência)
 };
 /** Séries do Banco Central (/api/rates): CDI diário (% ao dia útil) e IPCA mensal (%), ambos [data, valor]. */
 export type TaxasBCB = { cdi: SerieDiaria; ipca: SerieDiaria };

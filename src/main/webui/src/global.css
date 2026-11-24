@@ -123,8 +123,9 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
   .head-r { align-items: flex-start; }
   .nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; margin: 0; gap: 0; justify-content: space-around;
     background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-    border-top: 1px solid var(--border); border-bottom: 0; padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); overflow: visible; }
-  .nav a { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 2px; font-size: 10.5px;
+    border-top: 1px solid var(--border); border-bottom: 0; padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); overflow-x: auto; overflow-y: hidden; justify-content: flex-start; }
+  /* com 10 páginas não cabem todas na largura: a barra rola na horizontal e cada item tem largura mínima */
+  .nav a { flex: 1 0 auto; min-width: 62px; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 2px; font-size: 10.5px;
     border-bottom: 0; margin: 0; color: var(--text-3); -webkit-tap-highlight-color: transparent; }
   .nav a.on { color: var(--accent); border-bottom: 0; }
   .nav a svg { display: block; width: 22px; height: 22px; }
@@ -379,3 +380,9 @@ body.busy #topbar { opacity: 1; }
 .b-aviso strong { color: var(--text); }
 .b-aviso.estourou { border-left-color: var(--bad); }
 .b-aviso.quase, .b-aviso.ritmo { border-left-color: var(--s4); }
+
+/* Saúde da carteira */
+.saude-lista { margin: 4px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.5; }
+.saude-lista li { margin-bottom: 4px; }
+.w-table .txt { text-align: left; white-space: normal; min-width: 180px; max-width: 420px; }
+.w-table .txt-sm { text-align: left; white-space: normal; }

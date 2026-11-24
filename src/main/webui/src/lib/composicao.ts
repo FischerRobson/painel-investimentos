@@ -7,13 +7,14 @@ import type { Cambio } from "./cambio";
 // Item de /api/data (cotação da brapi, proventos e histórico do Yahoo)
 export type ItemAtivo = {
   ticker: string; price?: number | null; change?: number | null; changePct?: number | null;
-  currency?: string; type?: string; div12m?: number | null; error?: string; points?: [number, number][];
+  currency?: string; type?: string; sector?: string | null; div12m?: number | null; error?: string; points?: [number, number][];
 };
 export type PrecoCripto = { price: number; changePct?: number | null };
 export type Posicao = { t: string; q: number };
 
 export type LinhaRV = {
-  kind: "rv" | "cr"; t: string; q: number; type: string; cur: string; ok: boolean; err?: string;
+  kind: "rv" | "cr"; t: string; q: number; type: string; rotulo: string; // rotulo: setor da ação (ou o tipo, se não houver)
+  cur: string; ok: boolean; err?: string;
   price: number | null; value: number | null; dayChg: number | null; div12: number | null;
 };
 export type LinhaRF = TituloRF & { calc: ValorRF | null };
@@ -26,6 +27,20 @@ export type Composicao = {
   total: number; patrimonio: number; dayTotal: number; dayPct: number | null; div12: number; rfRend: number; rfAplic: number;
   vazia: boolean;
 };
+
+// Setores do Yahoo/brapi em português; o que não estiver na lista aparece como veio
+const SETOR_PT: Record<string, string> = {
+  "financial services": "Financeiro", "financial": "Financeiro", "utilities": "Utilidade pública", "energy": "Petróleo e energia",
+  "basic materials": "Materiais básicos", "industrials": "Industrial", "consumer cyclical": "Consumo cíclico", "consumer defensive": "Consumo não cíclico",
+  "healthcare": "Saúde", "technology": "Tecnologia", "communication services": "Comunicação", "real estate": "Imobiliário",
+};
+export const setorPt = (s: string): string => SETOR_PT[s.trim().toLowerCase()] ?? s;
+function rotuloRV(it: ItemAtivo | undefined): string {
+  const tipo = it?.type || "", setor = it?.sector ? setorPt(it.sector) : "";
+  if (tipo === "FII") return "FII";
+  if (tipo === "Exterior") return setor ? `Exterior · ${setor}` : "Exterior";
+  return setor || tipo;
+}
 
 const soma = <T,>(arr: T[], f: (x: T) => number | null | undefined) => arr.reduce((a, x) => a + (f(x) || 0), 0);
 
@@ -50,7 +65,7 @@ export function montarComposicao({ doc, ativos, cripto, fx, rates, hoje, valorBe
     const price = it && !it.error ? it.price ?? null : null;
     const chg = !ok ? null : it.change != null ? it.change : it.changePct != null ? price! - price! / (1 + it.changePct / 100) : null;
     return {
-      kind: "rv", t: w.t, q: w.q, type: it?.type || "", cur, ok, err: it?.error, price,
+      kind: "rv", t: w.t, q: w.q, type: it?.type || "", rotulo: rotuloRV(it), cur, ok, err: it?.error, price,
       value: ok ? w.q * price! * rate! : null, dayChg: chg != null ? chg * w.q * rate! : null,
       div12: ok ? (it.div12m || 0) * w.q * rate! : null,
     };
@@ -59,7 +74,7 @@ export function montarComposicao({ doc, ativos, cripto, fx, rates, hoje, valorBe
     const p = cripto[c.t];
     const chg = p && p.changePct != null ? p.price - p.price / (1 + p.changePct / 100) : null;
     return {
-      kind: "cr", t: c.t, q: c.q, type: "Cripto", cur: "BRL", ok: !!p, price: p?.price ?? null,
+      kind: "cr", t: c.t, q: c.q, type: "Cripto", rotulo: "Cripto", cur: "BRL", ok: !!p, price: p?.price ?? null,
       value: p ? c.q * p.price : null, dayChg: chg != null ? chg * c.q : null, div12: null,
     };
   });

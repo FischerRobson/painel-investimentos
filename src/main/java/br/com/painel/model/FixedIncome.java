@@ -16,5 +16,7 @@ public record FixedIncome(
         @JsonProperty("aplicado") @NotNull @PositiveOrZero Double invested,
         @JsonProperty("data") @NotNull @Pattern(regexp = Formats.ISO_DATE) String start,
         @JsonProperty("venc") @Pattern(regexp = Formats.ISO_DATE) String maturity,
-        @JsonProperty("isento") boolean taxExempt) {
+        @JsonProperty("isento") boolean taxExempt,
+        @JsonProperty("instituicao") @Size(max = 80) String institution,
+        @JsonProperty("liquidezDiaria") boolean dailyLiquidity) {
 }
