@@ -6,19 +6,20 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTitulo } from "../../lib/useTitulo";
 import { apiFetch, getJson } from "../../lib/api";
 import { carteiraStore, useCarteira } from "../../lib/carteira";
+import { aplicacoesDosTitulosAntigos, operacoesStore } from "../../lib/operacoes";
 import { moneyC, useCambio } from "../../lib/cambio";
 import { bemNome, usePrecosBens } from "../../lib/bens";
 import { hojeISO, isoBR, useHistorico, useRendaFixa } from "../../lib/dados";
 import { arrow, brl, money, pct, signCls } from "../../lib/formato";
-import { montarComposicao, type Composicao, type ItemAtivo, type LinhaRV, type Posicao, type PrecoCripto } from "../../lib/composicao";
+import { montarComposicao, type Composicao, type ItemAtivo, type Posicao, type PrecoCripto } from "../../lib/composicao";
 import { rfTaxa } from "../ferramentas/ProjecaoRF";
 import { ErroCarteira } from "../../componentes/ErroCarteira";
 import { Distribuicao, type Categoria } from "./Distribuicao";
-import { Adicionar, useAberto } from "./Adicionar";
+import { Adicionar, FormResgate, useAberto } from "./Adicionar";
 import { Comparativo } from "./Comparativo";
 import { Historico } from "./Historico";
 import { exportarBackup, importarBackup } from "./backup";
-import type { TituloRF } from "../../motor";
+import type { TaxasBCB } from "../../motor";
 
 const ERRO_CRIPTO = "Não consegui o preço das criptos agora (CoinGecko).";
 
@@ -60,6 +61,10 @@ export function Carteira() {
   const bens = usePrecosBens();
   const historico = useHistorico();
 
+  // Títulos de renda fixa de antes das operações viram uma aplicação com os mesmos dados (uma vez)
+  const migrar = doc ? aplicacoesDosTitulosAntigos(doc).length : 0;
+  useEffect(() => { if (migrar) operacoesStore.migrarTitulos(); }, [migrar]);
+
   if (carteira.erro) return <ErroCarteira msg={carteira.erro} />;
   if (!doc) return <div className="panel muted">Carregando sua carteira…</div>;
 
@@ -72,20 +77,20 @@ export function Carteira() {
 
   return <>
     <Painel c={c} comOps={new Set((doc.operacoes ?? []).map(o => o.ativo))} erros={[cryptoErr, rf.ratesErr]} semTaxas={!!rf.titulos.length && !rf.rates} ratesErr={rf.ratesErr}
-      historico={historico.data ?? {}} />
+      rates={rf.rates} historico={historico.data ?? {}} />
     {!c.vazia && <Comparativo c={c} pronta={pronta} />}
     {/* sem /api/historico (erro), o painel trata como histórico vazio */}
     {!c.vazia && !historico.isPending && <Historico hist={historico.data ?? {}} />}
   </>;
 }
 
-function Painel({ c, comOps, erros, semTaxas, ratesErr, historico }: {
-  c: Composicao; comOps: Set<string>; erros: (string | null)[]; semTaxas: boolean; ratesErr: string | null; historico: Record<string, unknown>;
+function Painel({ c, comOps, erros, semTaxas, ratesErr, rates, historico }: {
+  c: Composicao; comOps: Set<string>; erros: (string | null)[]; semTaxas: boolean; ratesErr: string | null; rates: TaxasBCB | null; historico: Record<string, unknown>;
 }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const arquivo = useRef<HTMLInputElement>(null);
-  const [rfEditId, setRfEditId] = useState<string | null>(null);
+  const [resgateId, setResgateId] = useState<string | null>(null);
   const share = (v: number | null) => c.total && v ? v / c.total * 100 : 0;
   const { vAcoes, vFiis, vCripto, vRf, vFx, vBens, vExt, total } = c;
 
@@ -100,26 +105,14 @@ function Painel({ c, comOps, erros, semTaxas, ratesErr, historico }: {
     { name: "Moedas", color: "--s4", value: vFx, items: c.mo.filter(r => r.value).map(r => ({ name: r.c, sub: moneyC(r.q, r.c), value: r.value! })), note: "valores convertidos para reais" },
   ].filter(x => x.value > 0);
 
-  const remover = (r: LinhaRV) => carteiraStore.atualizar(d => r.kind === "cr"
-    ? { ...d, cripto: ((d.cripto ?? []) as Posicao[]).filter(x => x.t !== r.t) }
-    : { ...d, acoesFiis: ((d.acoesFiis ?? []) as Posicao[]).filter(x => x.t !== r.t) });
-  const mudarQtd = (r: LinhaRV, valor: string) => {
-    const q = Math.max(0, Number(valor) || 0), campo = r.kind === "cr" ? "cripto" : "acoesFiis";
-    carteiraStore.atualizar(d => ({ ...d, [campo]: ((d[campo] ?? []) as Posicao[]).map(x => x.t === r.t ? { ...x, q } : x) }));
-  };
-  const removerRf = (id: string) => {
-    const e = c.rf.find(x => x.id === id);
-    if (e && !confirm(`Remover "${e.nome}" da carteira?`)) return;
-    if (rfEditId === id) setRfEditId(null);
-    carteiraStore.atualizar(d => ({ ...d, rendaFixa: ((d.rendaFixa ?? []) as TituloRF[]).filter(x => x.id !== id) }));
-  };
   const importar = async (f: File) => {
     if (!(await importarBackup(f))) return;
-    setRfEditId(null);
+    setResgateId(null);
     await carteiraStore.recarregar();
     void qc.invalidateQueries(); // histórico, taxas e cotações dos ativos novos
   };
 
+  const resgate = c.rf.find(x => x.id === resgateId) ?? null;
   const rvRows = [...c.rv, ...c.cr].sort((a, b) => (b.value || 0) - (a.value || 0));
   const rfRows = [...c.rf].sort((a, b) => (b.calc?.liquido || 0) - (a.calc?.liquido || 0));
   const Alloc = ({ v }: { v: number | null | undefined }) => (
@@ -163,13 +156,13 @@ function Painel({ c, comOps, erros, semTaxas, ratesErr, historico }: {
       {rvRows.length > 0 && (
         <Acordeao k="rv" resumo={<Resumo titulo="Ações, FIIs e cripto" n={rvRows.length} v={vAcoes + vFiis + vCripto} />}>
           <div className="table-wrap"><table className="w-table">
-            <thead><tr><th>Ativo</th><th>Quantidade</th><th>Preço</th><th>Valor</th><th>% da carteira</th><th>Hoje</th><th>Proventos 12m</th><th>Por mês</th><th></th></tr></thead>
+            <thead><tr><th>Ativo</th><th>Quantidade</th><th>Preço</th><th>Valor</th><th>% da carteira</th><th>Hoje</th><th>Proventos 12m</th><th>Por mês</th></tr></thead>
             <tbody>{rvRows.map(r => (
               <tr key={r.kind + r.t}>
                 <td><span className="tk">{r.t}</span> <span className="muted">{r.rotulo}</span></td>
                 <td>{comOps.has(r.t)
                   ? <Link to="/operacoes" title="A quantidade vem das operações">{brl(r.q, r.q % 1 ? 4 : 0)}</Link>
-                  : <CampoQtd r={r} onQtd={v => mudarQtd(r, v)} />}</td>
+                  : <>{brl(r.q, r.q % 1 ? 4 : 0)} <Link to="/operacoes" className="muted" title="Este ativo ainda não tem operações">sem histórico</Link></>}</td>
                 <td>{r.price != null ? moneyC(r.price, r.cur || "BRL") : <span className="muted">{r.err ? "não encontrado" : "carregando…"}</span>}</td>
                 <td>{money(r.value)}</td>
                 <td><Alloc v={r.value} /></td>
@@ -177,10 +170,10 @@ function Painel({ c, comOps, erros, semTaxas, ratesErr, historico }: {
                   {signedMoney(r.dayChg)}{r.kind === "cr" && r.dayChg != null && <> <span className="muted">24h</span></>}</td>
                 <td>{r.div12 ? money(r.div12) : "—"}</td>
                 <td>{r.div12 ? money(r.div12 / 12) : "—"}</td>
-                <td>{!comOps.has(r.t) && <button className="x" title="Remover" aria-label={`Remover ${r.t}`} onClick={() => remover(r)}>×</button>}</td>
               </tr>
             ))}</tbody>
           </table></div>
+          <div className="status">Para mudar a quantidade, lance uma compra ou venda em <Link to="/operacoes">Operações</Link>.</div>
         </Acordeao>
       )}
 
@@ -191,7 +184,7 @@ function Painel({ c, comOps, erros, semTaxas, ratesErr, historico }: {
             <tbody>{rfRows.map(r => {
               const k = r.calc, rendLiq = k ? k.liquido - r.aplicado : null;
               return (
-                <tr key={r.id} className={r.id === rfEditId ? "editing" : undefined}>
+                <tr key={r.id} className={r.id === resgateId ? "editing" : undefined}>
                   <td><span className="tk">{r.nome}</span> <span className="muted">{r.tipo}</span></td>
                   <td>{rfTaxa(r)}</td>
                   <td>{money(r.aplicado)}</td>
@@ -202,14 +195,13 @@ function Painel({ c, comOps, erros, semTaxas, ratesErr, historico }: {
                   <td>{k ? money(k.liquido) : "—"}</td>
                   <td className={signCls(rendLiq ?? 0)}>{k ? <>{signedMoney(rendLiq)} <span className="muted">{pct(rendLiq! / r.aplicado * 100)}</span></> : "—"}</td>
                   <td><Alloc v={k?.liquido} /></td>
-                  <td style={{ whiteSpace: "nowrap" }}>
-                    <button className="x" title="Editar" aria-label={`Editar ${r.nome}`} onClick={() => setRfEditId(r.id)}>✎</button>
-                    <button className="x" title="Remover" aria-label={`Remover ${r.nome}`} onClick={() => removerRf(r.id)}>×</button>
-                  </td>
+                  <td><button type="button" aria-label={`Resgatar ${r.nome}`} onClick={() => setResgateId(r.id)}>Resgatar</button></td>
                 </tr>
               );
             })}</tbody>
           </table></div>
+          {resgate && <FormResgate key={resgate.id} titulo={resgate} rates={rates} aoTerminar={() => setResgateId(null)} />}
+          <div className="status">Errou algum dado do título? Estorne a aplicação em <Link to="/operacoes">Operações</Link> e aplique de novo.</div>
         </Acordeao>
       )}
 
@@ -221,7 +213,7 @@ function Painel({ c, comOps, erros, semTaxas, ratesErr, historico }: {
                 <td>{r.ok ? "R$ " + brl(r.rate!, r.rate! < 0.1 ? 5 : 4) : "—"}</td><td>{money(r.value)}</td><td><Alloc v={r.value} /></td>
                 <td className={signCls(r.dayChg ?? 0)}>{signedMoney(r.dayChg)}</td></tr>
             ))}</tbody></table></div>
-          <div className="status">Para alterar, use a página <Link to="/moedas">Moedas</Link>.</div>
+          <div className="status">Para comprar ou vender, use a página <Link to="/moedas">Moedas</Link>.</div>
         </Acordeao>
       )}
 
@@ -236,7 +228,7 @@ function Painel({ c, comOps, erros, semTaxas, ratesErr, historico }: {
         </Acordeao>
       )}
 
-      <Adicionar rf={c.rf} rfEditId={rfEditId} setRfEditId={setRfEditId} />
+      <Adicionar />
     </div>
   );
 }
@@ -245,13 +237,4 @@ function Painel({ c, comOps, erros, semTaxas, ratesErr, historico }: {
 function Acordeao({ k, resumo, children }: { k: string; resumo: React.ReactNode; children: React.ReactNode }) {
   const [aberto, setAberto] = useAberto("acc_" + k, "1");
   return <details className="acc" open={aberto} onToggle={e => setAberto(e.currentTarget.open)}>{resumo}{children}</details>;
-}
-
-// Quantidade na tabela: vale ao sair do campo (ou com Enter)
-function CampoQtd({ r, onQtd }: { r: LinhaRV; onQtd: (v: string) => void }) {
-  return (
-    <input type="number" min="0" step={r.kind === "cr" ? "any" : "1"} defaultValue={r.q} key={r.q} aria-label={`Quantidade de ${r.t}`}
-      onBlur={e => { if (Number(e.target.value) !== r.q) onQtd(e.target.value); }}
-      onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }} />
-  );
 }

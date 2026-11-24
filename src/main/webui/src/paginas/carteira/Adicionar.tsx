@@ -1,15 +1,15 @@
-// "Adicionar" da Carteira: abas Ação / FII, Cripto e Renda fixa (a aba fica guardada em addTab). O formulário de renda fixa
-// também edita um título existente (rfEditId). Se o ativo já estiver na carteira, a quantidade é substituída.
+// "Adicionar" da Carteira: abas Ação / FII, Cripto e Renda fixa (a aba fica guardada em addTab). Tudo entra como operação:
+// compra (ações, FIIs, exterior e cripto) ou aplicação (renda fixa). O resgate de um título fica em FormResgate.
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
-import { comOperacoes, novoIdOp } from "../../lib/operacoes";
+import { novoIdOp, operacoesStore } from "../../lib/operacoes";
 import { COINS } from "../operacoes/FormOperacao";
 import { carteiraStore } from "../../lib/carteira";
 import { store } from "../../lib/store";
-import { hojeISO } from "../../lib/dados";
+import { hojeISO, isoBR } from "../../lib/dados";
+import { money } from "../../lib/formato";
 import type { Posicao } from "../../lib/composicao";
-import { NOME_CLASSE, type Classe, type Indexador, type Operacao, type TituloRF } from "../../motor";
-
+import { NOME_CLASSE, rfCalc, type Classe, type Indexador, type Operacao, type TaxasBCB, type TituloRF } from "../../motor";
 const RF_TIPOS = ["CDB", "LCI", "LCA", "CRI", "CRA", "Tesouro Selic", "Tesouro Prefixado", "Tesouro IPCA+", "Debênture", "Poupança/Outro"];
 const RF_ISENTOS = ["LCI", "LCA", "CRI", "CRA"];
 type Aba = "rv" | "cr" | "rf";
@@ -23,12 +23,9 @@ export function useAberto(chave: string, padrao: "1" | "0"): [boolean, (v: boole
   return [v, novo => { setV(novo); store.set(chave, novo ? "1" : "0"); }];
 }
 
-export function Adicionar({ rf, rfEditId, setRfEditId }: { rf: TituloRF[]; rfEditId: string | null; setRfEditId: (id: string | null) => void }) {
+export function Adicionar() {
   const [aba, setAbaState] = useState<Aba>(() => (["rv", "cr", "rf"].includes(store.get("addTab", "rv")) ? store.get("addTab", "rv") : "rv") as Aba);
-  const setAba = (a: Aba) => { setAbaState(a); setRfEditId(null); store.set("addTab", a); };
-  // Editar um título leva para a aba de renda fixa
-  useEffect(() => { if (rfEditId) { setAbaState("rf"); store.set("addTab", "rf"); } }, [rfEditId]);
-  const editando = rfEditId ? rf.find(x => x.id === rfEditId) ?? null : null;
+  const setAba = (a: Aba) => { setAbaState(a); store.set("addTab", a); };
 
   return <>
     <h3>Adicionar</h3>
@@ -39,7 +36,7 @@ export function Adicionar({ rf, rfEditId, setRfEditId }: { rf: TituloRF[]; rfEdi
     </div>
     {aba === "rv" && <FormAcao />}
     {aba === "cr" && <FormCripto />}
-    {aba === "rf" && <FormRendaFixa key={rfEditId ?? "novo"} editando={editando} aoTerminar={() => setRfEditId(null)} />}
+    {aba === "rf" && <FormRendaFixa />}
   </>;
 }
 
@@ -91,29 +88,24 @@ function FormCripto() {
 
 // Ativo que estava na carteira sem histórico ganha antes um saldo inicial com o preço da compra nova (dá para corrigir em Operações)
 function comprar({ classe, ativo, qtd, preco, data }: { classe: Classe; ativo: string; qtd: number; preco: number; data: string }) {
-  carteiraStore.atualizar(d => {
-    const ops = d.operacoes ?? [];
-    const lista = ((classe === "cripto" ? d.cripto : d.acoesFiis) ?? []) as Posicao[];
-    const antes = lista.find(p => p.t === ativo);
-    const novas: Operacao[] = [];
-    if (antes && antes.q > 0 && !ops.some(o => o.ativo === ativo)) {
-      novas.push({ id: novoIdOp(), data, tipo: "compra", classe, ativo, qtd: antes.q, preco, inicial: true, obs: "saldo que já estava na carteira" });
-    }
-    novas.push({ id: novoIdOp(), data, tipo: "compra", classe, ativo, qtd, preco });
-    return comOperacoes(d, [...ops, ...novas]);
-  });
+  const d = carteiraStore.get().doc;
+  if (!d) return;
+  const lista = ((classe === "cripto" ? d.cripto : d.acoesFiis) ?? []) as Posicao[];
+  const antes = lista.find(p => p.t === ativo);
+  const novas: Operacao[] = [];
+  if (antes && antes.q > 0 && !(d.operacoes ?? []).some(o => o.ativo === ativo)) {
+    novas.push({ id: novoIdOp(), data, tipo: "compra", classe, ativo, qtd: antes.q, preco, inicial: true, obs: "saldo que já estava na carteira" });
+  }
+  novas.push({ id: novoIdOp(), data, tipo: "compra", classe, ativo, qtd, preco });
+  operacoesStore.lancar(...novas);
 }
 
 type CamposRF = { nome: string; tipo: string; idx: Indexador; taxa: string; aplicado: string; data: string; venc: string; isento: boolean; instituicao: string; liquidez: boolean };
 const VAZIO: CamposRF = { nome: "", tipo: RF_TIPOS[0], idx: "cdi", taxa: "", aplicado: "", data: "", venc: "", isento: false, instituicao: "", liquidez: false };
 
-function FormRendaFixa({ editando, aoTerminar }: { editando: TituloRF | null; aoTerminar: () => void }) {
-  const [f, setF] = useState<CamposRF>(() => editando
-    ? { nome: editando.nome, tipo: editando.tipo, idx: editando.idx, taxa: String(editando.taxa), aplicado: String(editando.aplicado), data: editando.data, venc: editando.venc || "", isento: !!editando.isento, instituicao: editando.instituicao || "", liquidez: !!editando.liquidezDiaria }
-    : VAZIO);
+function FormRendaFixa() {
+  const [f, setF] = useState<CamposRF>(VAZIO);
   const muda = (p: Partial<CamposRF>) => setF(x => ({ ...x, ...p }));
-  const form = useRef<HTMLFormElement>(null);
-  useEffect(() => { if (editando) form.current?.scrollIntoView?.({ behavior: "smooth", block: "center" }); }, [editando]);
 
   // O tipo sugere a isenção e o indexador (Tesouro Selic = 100% do CDI)
   const mudaTipo = (tipo: string) => {
@@ -123,23 +115,23 @@ function FormRendaFixa({ editando, aoTerminar }: { editando: TituloRF | null; ao
     if (tipo === "Tesouro IPCA+") p.idx = "ipca";
     muda(p);
   };
+  // Cada aplicação é um título novo, com o valor que saiu da conta como principal
   const salvar = (e: React.FormEvent) => {
     e.preventDefault();
-    const entry = {
-      nome: f.nome.trim(), tipo: f.tipo, idx: f.idx, taxa: Number(f.taxa), aplicado: Number(f.aplicado), data: f.data,
-      venc: f.venc || null, isento: f.isento, instituicao: f.instituicao.trim() || null, liquidezDiaria: f.liquidez,
-    };
-    carteiraStore.atualizar(d => {
-      const lista = (d.rendaFixa ?? []) as TituloRF[];
-      const existe = editando && lista.some(x => x.id === editando.id);
-      return { ...d, rendaFixa: existe ? lista.map(x => x.id === editando.id ? { ...x, ...entry } : x) : [...lista, { id: Date.now().toString(36), ...entry }] };
+    const aplicado = Number(f.aplicado);
+    if (!(aplicado > 0)) return;
+    operacoesStore.lancar({
+      id: novoIdOp(), data: f.data, tipo: "aplicacao", classe: "rf", ativo: novoIdOp(), qtd: aplicado, valor: aplicado, valorPresente: 0,
+      titulo: {
+        nome: f.nome.trim(), tipo: f.tipo, idx: f.idx, taxa: Number(f.taxa), venc: f.venc || null, isento: f.isento,
+        instituicao: f.instituicao.trim() || null, liquidezDiaria: f.liquidez,
+      },
     });
     setF(VAZIO);
-    aoTerminar();
   };
 
   return <>
-    <form className="w-add rf-form" ref={form} onSubmit={salvar}>
+    <form className="w-add rf-form" onSubmit={salvar}>
       <label>Nome<input name="nome" placeholder="Ex.: CDB Banco Inter" required value={f.nome} onChange={e => muda({ nome: e.target.value })} /></label>
       <label>Tipo<select name="tipo" value={f.tipo} onChange={e => mudaTipo(e.target.value)}>{RF_TIPOS.map(t => <option key={t}>{t}</option>)}</select></label>
       <label>Rentabilidade<span className="pair">
@@ -148,16 +140,53 @@ function FormRendaFixa({ editando, aoTerminar }: { editando: TituloRF | null; ao
         </select>
         <input name="taxa" type="number" step="any" min="0" placeholder="Ex.: 110" required value={f.taxa} onChange={e => muda({ taxa: e.target.value })} aria-label="Taxa" />
       </span></label>
-      <label>Valor aplicado (R$) — quanto saiu da sua conta no dia<input name="aplicado" type="number" step="0.01" min="0" required value={f.aplicado} onChange={e => muda({ aplicado: e.target.value })} /></label>
+      <label>Valor aplicado (R$) — quanto saiu da sua conta no dia<input name="aplicado" type="number" step="0.01" min="0.01" required value={f.aplicado} onChange={e => muda({ aplicado: e.target.value })} /></label>
       <label>Data da aplicação<input name="data" type="date" max={hojeISO()} required value={f.data} onChange={e => muda({ data: e.target.value })} /></label>
       <label>Vencimento<input name="venc" type="date" value={f.venc} onChange={e => muda({ venc: e.target.value })} /></label>
       <label>Banco ou corretora (para o limite do FGC)<input name="instituicao" placeholder="Ex.: Banco Inter" value={f.instituicao} onChange={e => muda({ instituicao: e.target.value })} /></label>
       <label className="chk"><input name="isento" type="checkbox" checked={f.isento} onChange={e => muda({ isento: e.target.checked })} /> Isento de IR</label>
       <label className="chk"><input name="liquidez" type="checkbox" checked={f.liquidez} onChange={e => muda({ liquidez: e.target.checked })} /> Liquidez diária (conta na reserva de emergência)</label>
-      {editando
-        ? <span className="pair"><button className="primary" type="submit">Salvar alterações</button><button type="button" onClick={aoTerminar}>Cancelar</button></span>
-        : <button className="primary" type="submit">Adicionar</button>}
+      <button className="primary" type="submit">Aplicar</button>
     </form>
-    <div className="status" style={{ marginTop: 6 }}>{editando && <><b>Editando um título.</b> </>}Valor estimado "na curva" com o CDI e o IPCA do Banco Central, descontando o IR (tabela regressiva). Não considera IOF (só vale para menos de 30 dias) nem a marcação a mercado do Tesouro.</div>
+    <div className="status" style={{ marginTop: 6 }}>Entra como uma aplicação em <Link to="/operacoes">Operações</Link>. Valor estimado "na curva" com o CDI e o IPCA do Banco Central, descontando o IR (tabela regressiva). Não considera IOF (só vale para menos de 30 dias) nem a marcação a mercado do Tesouro.</div>
   </>;
+}
+
+// Resgate de um título: total ou parcial. O valor presente (o título na curva, líquido, no dia do resgate) vem calculado e
+// pode ser trocado pelo do extrato; no parcial, sai do principal a mesma fração que o valor recebido é do valor presente.
+export function FormResgate({ titulo, rates, aoTerminar }: { titulo: TituloRF; rates: TaxasBCB | null; aoTerminar: () => void }) {
+  const [data, setData] = useState(hojeISO());
+  const [total, setTotal] = useState(true);
+  const estimado = rates && data >= titulo.data ? +rfCalc(titulo, rates, data).liquido.toFixed(2) : null;
+  const [presente, setPresente] = useState<string>("");
+  const [valor, setValor] = useState<string>("");
+  const form = useRef<HTMLFormElement>(null);
+  useEffect(() => { form.current?.scrollIntoView?.({ behavior: "smooth", block: "center" }); }, []);
+  const vp = presente !== "" ? Number(presente) : estimado ?? 0;
+  const recebido = valor !== "" ? Number(valor) : total ? vp : 0;
+
+  const salvar = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!(recebido > 0) || data < titulo.data) return;
+    const fracao = total || !(vp > 0) ? 1 : Math.min(1, recebido / vp);
+    const qtd = fracao >= 0.999 ? titulo.aplicado : Math.round(titulo.aplicado * fracao * 100) / 100;
+    operacoesStore.lancar({ id: novoIdOp(), data, tipo: "resgate", classe: "rf", ativo: titulo.id, qtd, valor: recebido, valorPresente: vp });
+    aoTerminar();
+  };
+
+  return (
+    <form className="w-add rf-form" ref={form} onSubmit={salvar} aria-label={`Resgate de ${titulo.nome}`}>
+      <b style={{ gridColumn: "1 / -1" }}>Resgatar {titulo.nome} <span className="muted">aplicado {money(titulo.aplicado)} em {isoBR(titulo.data)}</span></b>
+      <label>Data do resgate<input name="data" type="date" min={titulo.data} max={hojeISO()} required value={data} onChange={e => setData(e.target.value)} /></label>
+      <label className="chk"><input name="total" type="checkbox" checked={total} onChange={e => setTotal(e.target.checked)} /> Resgate total (o título sai da carteira)</label>
+      <label>Valor presente (R$) — o título líquido no dia, antes do resgate
+        <input name="valorPresente" type="number" step="0.01" min="0" required placeholder={estimado != null ? String(estimado) : "do extrato"}
+          value={presente !== "" ? presente : estimado != null ? String(estimado) : ""} onChange={e => setPresente(e.target.value)} /></label>
+      <label>Valor recebido (R$) — o que entrou na conta
+        <input name="valor" type="number" step="0.01" min="0.01" required={!total} placeholder={total ? String(vp || "") : ""}
+          value={valor} onChange={e => setValor(e.target.value)} /></label>
+      <span className="pair"><button className="primary" type="submit">Resgatar</button><button type="button" onClick={aoTerminar}>Cancelar</button></span>
+      <span className="status" style={{ gridColumn: "1 / -1" }}>Entra como um resgate em <Link to="/operacoes">Operações</Link>. O valor presente vem da curva (CDI e IPCA do Banco Central); se o extrato mostrar outro, use o do extrato.</span>
+    </form>
+  );
 }

@@ -1,6 +1,8 @@
-// Operações: compras, vendas e eventos de ações, FIIs, ETFs, BDRs, exterior e cripto. Daqui saem o preço médio, o lucro
+// Operações: compras, vendas e eventos de ações, FIIs, ETFs, BDRs, exterior e cripto, e o histórico de tudo o que mudou a
+// carteira (também aplicações e resgates de renda fixa e compras e vendas de moedas). Daqui saem o preço médio, o lucro
 // realizado, o imposto de renda mensal, os proventos e a declaração anual (contas em motor/operacoes.ts).
-// Ativos que já estavam na carteira antes das operações pedem um saldo inicial (data e preço médio).
+// Operação lançada não se edita nem se apaga: estornar deixa as duas no histórico. Ativos que já estavam na carteira
+// antes das operações pedem um saldo inicial (data e preço médio).
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTitulo } from "../../lib/useTitulo";
@@ -9,10 +11,10 @@ import { useCambio } from "../../lib/cambio";
 import { hojeISO, isoBR } from "../../lib/dados";
 import { brl, money, pct, signCls } from "../../lib/formato";
 import { operacoesStore, useOperacoes } from "../../lib/operacoes";
-import { NOME_CLASSE, NOME_TIPO, processar, type Classe, type Operacao } from "../../motor";
+import { NOME_CLASSE, NOME_CLASSE_OP, NOME_TIPO, ehRV, estornadas, processar, valorDaOperacao, type Classe, type Operacao } from "../../motor";
 import type { ItemAtivo, PrecoCripto } from "../../lib/composicao";
 import { ErroCarteira } from "../../componentes/ErroCarteira";
-import { FormOperacao } from "./FormOperacao";
+import { FormOperacao, deOperacao, type CamposOperacao } from "./FormOperacao";
 import { Impostos } from "./Impostos";
 import { Proventos } from "./Proventos";
 import { Declaracao } from "./Declaracao";
@@ -23,7 +25,7 @@ type ItemComProventos = ItemAtivo & { dividends?: { date: number; amount: number
 export function Operacoes() {
   useTitulo("Operações");
   const { doc, erro, operacoes, proventos } = useOperacoes();
-  const [editando, setEditando] = useState<Operacao | null>(null);
+  const [refazer, setRefazer] = useState<Partial<CamposOperacao> | null>(null); // operação estornada, para lançar corrigida
   const [anoLista, setAnoLista] = useState<number | "todos">("todos");
 
   const acoes = (doc?.acoesFiis ?? []) as Pos[], cripto = (doc?.cripto ?? []) as Pos[];
@@ -54,26 +56,34 @@ export function Operacoes() {
   const comOps = new Set(operacoes.map(o => o.ativo));
   const pendentes = [...acoes.map(p => ({ ...p, cripto: false })), ...cripto.map(p => ({ ...p, cripto: true }))].filter(p => p.q > 0 && !comOps.has(p.t));
   const classeDe = (ativo: string): Classe | undefined => {
-    const ult = [...operacoes].reverse().find(o => o.ativo === ativo);
-    if (ult) return ult.classe;
+    const ult = [...operacoes].reverse().find(o => o.ativo === ativo && ehRV(o));
+    if (ult) return ult.classe as Classe;
     const t = itens[ativo]?.type;
     return t === "FII" ? "fii" : t === "Exterior" ? "exterior" : undefined;
   };
   const historico = Object.fromEntries(Object.values(itens).map(i => [i.ticker, (i.dividends ?? []).map(d => ({ date: new Date(d.date).toLocaleDateString("sv-SE"), amount: d.amount }))]));
 
   const salvar = (o: Operacao) => {
-    operacoesStore.mudar(ops => ops.some(x => x.id === o.id) ? ops.map(x => x.id === o.id ? o : x) : [...ops, o]);
-    setEditando(null);
+    operacoesStore.lancar(o);
+    setRefazer(null);
   };
-  const remover = (o: Operacao) => {
-    if (!confirm(`Remover ${NOME_TIPO[o.tipo].toLowerCase()} de ${o.ativo} de ${isoBR(o.data)}?`)) return;
-    if (editando?.id === o.id) setEditando(null);
-    operacoesStore.mudar(ops => ops.filter(x => x.id !== o.id));
+  // Estornar: pede o motivo (opcional); cancelar a pergunta desiste. Ação, FII ou cripto volta preenchida no formulário.
+  const estornar = (o: Operacao) => {
+    const motivo = prompt(`Estornar ${NOME_TIPO[o.tipo].toLowerCase()} de ${nomeAtivo(o)} de ${isoBR(o.data)}?\n\nA operação continua no histórico, marcada como estornada. Motivo (opcional):`, "");
+    if (motivo === null) return;
+    operacoesStore.estornar(o, motivo);
+    if (ehRV(o)) setRefazer({ ...deOperacao(o), data: o.data });
   };
 
   const linhas = Object.values(posicoes).filter(p => p.qtd > 0 || p.realizado);
   const recebido = (ativo: string) => proventos.filter(p => p.ativo === ativo).reduce((s, p) => s + p.valor, 0);
-  const lista = [...operacoes].filter(o => anoLista === "todos" || o.data.startsWith(String(anoLista))).sort((a, b) => b.data.localeCompare(a.data) || a.ativo.localeCompare(b.ativo));
+  const estornadasIds = estornadas(operacoes);
+  const estornoDe = new Map(operacoes.filter(o => o.tipo === "estorno").map(o => [o.estorna!, o]));
+  const porId = new Map(operacoes.map(o => [o.id, o]));
+  const titulos = new Map<string, string>(operacoes.filter(o => o.titulo).map(o => [o.ativo, o.titulo!.nome]));
+  const nomeAtivo = (o: Operacao) => o.classe === "rf" ? titulos.get(o.ativo) ?? "título" : o.ativo;
+  const lista = [...operacoes].filter(o => anoLista === "todos" || o.data.startsWith(String(anoLista)))
+    .sort((a, b) => b.data.localeCompare(a.data) || (b.registrado ?? "").localeCompare(a.registrado ?? "") || a.ativo.localeCompare(b.ativo));
   const anos = [...new Set(operacoes.map(o => +o.data.slice(0, 4)))].sort((a, b) => b - a);
   const totais = linhas.reduce((t, p) => {
     const atual = precoAtual(p.classe, p.ativo);
@@ -83,7 +93,7 @@ export function Operacoes() {
   return <>
     <div className="panel">
       <div className="w-head">
-        <div><h2>Operações</h2><div className="hint" style={{ margin: 0 }}>Compras, vendas e eventos (desdobramento, grupamento, bonificação). A quantidade de cada ativo na Carteira passa a vir daqui.</div></div>
+        <div><h2>Operações</h2><div className="hint" style={{ margin: 0 }}>Compras, vendas e eventos (desdobramento, grupamento, bonificação). A carteira só muda por operações: a quantidade de cada ativo vem daqui.</div></div>
       </div>
       {alertas.map(a => <div key={a} className="err" style={{ marginTop: 8 }}>{a}</div>)}
       {operacoes.length > 0 && <div className="tiles">
@@ -93,10 +103,11 @@ export function Operacoes() {
         <div className="tile"><div className="k">Lucro realizado</div><div className={"v " + signCls(totais.realizado)}>{money(totais.realizado)}</div><div className="s">vendas, líquido de taxas</div></div>
       </div>}
       {pendentes.length > 0 && <SaldosIniciais pendentes={pendentes} classeDe={classeDe} />}
-      <h3>{editando ? "Editar operação" : "Lançar operação"}</h3>
-      <FormOperacao key={editando?.id ?? "nova"} editando={editando} classeDe={classeDe}
+      <h3>{refazer ? "Lançar de novo, corrigida" : "Lançar operação"}</h3>
+      {refazer && <div className="hint">Operação estornada. Corrija o que estava errado e lance de novo (ou cancele).</div>}
+      <FormOperacao key={refazer ? JSON.stringify(refazer) : "nova"} inicial={refazer ?? undefined} classeDe={classeDe}
         cambioDe={(_c, a) => fx(itens[a]?.currency ?? "USD") ?? undefined}
-        pendente={a => pendentes.some(p => p.t === a)} onSalvar={salvar} onCancelar={() => setEditando(null)} />
+        pendente={a => pendentes.some(p => p.t === a)} onSalvar={salvar} onCancelar={() => setRefazer(null)} />
     </div>
 
     {linhas.length > 0 && <div className="panel">
@@ -126,24 +137,36 @@ export function Operacoes() {
         <label className="status">Ano <select value={String(anoLista)} onChange={e => setAnoLista(e.target.value === "todos" ? "todos" : +e.target.value)} aria-label="Ano das operações">
           <option value="todos">todos</option>{anos.map(a => <option key={a}>{a}</option>)}</select></label>
       </div>
+      <div className="hint">Tudo o que mudou a carteira: ações, FIIs, cripto, renda fixa e moedas. Operação não se edita nem se apaga; o estorno desfaz e as duas ficam aqui.</div>
       <div className="table-wrap"><table className="w-table">
-        <thead><tr><th>Data</th><th>Tipo</th><th>Ativo</th><th>Quantidade</th><th>Preço</th><th>Taxas</th><th>Total</th><th></th></tr></thead>
+        <thead><tr><th>Data</th><th>Tipo</th><th>Ativo</th><th>Quantidade</th><th>Preço</th><th>Taxas</th><th>Valor (R$)</th><th>Valor presente</th><th>Lançada em</th><th></th></tr></thead>
         <tbody>{lista.map(o => {
+          if (o.tipo === "estorno") {
+            const alvo = o.estorna ? porId.get(o.estorna) : undefined;
+            return (
+              <tr key={o.id} className="estorno">
+                <td>{isoBR(o.data)}</td><td>Estorno</td>
+                <td><span className="tk">{nomeAtivo(o)}</span> <span className="muted">{NOME_CLASSE_OP[o.classe]}</span></td>
+                <td colSpan={5} className="muted">{alvo ? `desfaz ${NOME_TIPO[alvo.tipo].toLowerCase()} de ${isoBR(alvo.data)}` : "desfaz uma operação"}{o.obs ? ` · ${o.obs}` : ""}</td>
+                <td className="muted">{registradoBR(o.registrado)}</td><td></td>
+              </tr>
+            );
+          }
           const evento = o.tipo === "desdobramento" || o.tipo === "grupamento";
-          const total = evento ? null : (o.qtd ?? 0) * (o.preco ?? 0) * (o.cambio ?? 1) + (o.tipo === "compra" ? 1 : o.tipo === "venda" ? -1 : 0) * (o.taxas ?? 0);
+          const estornada = estornadasIds.has(o.id), est = estornoDe.get(o.id);
+          const rotulo = o.inicial ? "Saldo inicial" : NOME_TIPO[o.tipo];
           return (
-            <tr key={o.id} className={editando?.id === o.id ? "editing" : undefined}>
+            <tr key={o.id} className={estornada ? "estornada" : undefined}>
               <td>{isoBR(o.data)}</td>
-              <td>{o.inicial ? "Saldo inicial" : NOME_TIPO[o.tipo]}</td>
-              <td><span className="tk">{o.ativo}</span> <span className="muted">{NOME_CLASSE[o.classe]}</span></td>
-              <td>{evento ? `fator ${brl(o.fator ?? 0, (o.fator ?? 0) % 1 ? 2 : 0)}` : qtd(o.qtd ?? 0)}</td>
-              <td>{evento ? "—" : o.cambio ? `${brl(o.preco ?? 0)} × ${brl(o.cambio, 4)}` : money(o.preco)}</td>
+              <td>{rotulo}{estornada && <> <span className="muted">(estornada{est ? ` em ${isoBR(est.data)}` : ""})</span></>}</td>
+              <td><span className="tk">{nomeAtivo(o)}</span> <span className="muted">{NOME_CLASSE_OP[o.classe]}</span></td>
+              <td>{evento ? `fator ${brl(o.fator ?? 0, (o.fator ?? 0) % 1 ? 2 : 0)}` : o.classe === "rf" ? <span className="muted">principal {money(o.qtd)}</span> : qtd(o.qtd ?? 0)}</td>
+              <td>{evento || o.classe === "rf" ? "—" : o.classe === "moeda" ? (o.qtd ? "R$ " + brl(valorDaOperacao(o) / o.qtd, 4) : "—") : o.cambio ? `${brl(o.preco ?? 0)} × ${brl(o.cambio, 4)}` : money(o.preco)}</td>
               <td>{o.taxas ? money(o.taxas) : "—"}</td>
-              <td>{total != null ? money(total) : "—"}</td>
-              <td style={{ whiteSpace: "nowrap" }}>
-                <button className="x" title="Editar" aria-label={`Editar operação de ${o.ativo} de ${isoBR(o.data)}`} onClick={() => setEditando(o)}>✎</button>
-                <button className="x" title="Remover" aria-label={`Remover operação de ${o.ativo} de ${isoBR(o.data)}`} onClick={() => remover(o)}>×</button>
-              </td>
+              <td>{evento ? "—" : money(valorDaOperacao(o))}</td>
+              <td>{o.valorPresente != null ? money(o.valorPresente) : <span className="muted">—</span>}</td>
+              <td className="muted">{registradoBR(o.registrado)}</td>
+              <td>{!estornada && <button type="button" className="x" title="Estornar" aria-label={`Estornar operação de ${nomeAtivo(o)} de ${isoBR(o.data)}`} onClick={() => estornar(o)}>↺</button>}</td>
             </tr>
           );
         })}</tbody>
@@ -156,6 +179,9 @@ export function Operacoes() {
   </>;
 }
 
+// Quando o servidor recebeu a operação (dd/mm/aaaa hh:mm); operações antigas não têm
+const registradoBR = (iso?: string) => iso ? new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "—";
+
 const qtd = (q: number) => brl(q, q % 1 ? Math.min(8, String(q).split(".")[1]?.length ?? 2) : 0);
 
 // Ativos que já estavam na carteira: um "saldo inicial" com a data e o preço médio de hoje em diante
@@ -166,7 +192,7 @@ function SaldosIniciais({ pendentes, classeDe }: { pendentes: (Pos & { cripto: b
   const salvar = (p: Pos & { cripto: boolean }) => {
     const c = de(p), pm = Number(c.pm);
     if (!(pm > 0)) return;
-    operacoesStore.mudar(ops => [...ops, { id: Date.now().toString(36) + p.t, data: c.data, tipo: "compra", classe: c.classe, ativo: p.t, qtd: p.q, preco: pm, inicial: true }]);
+    operacoesStore.lancar({ id: Date.now().toString(36) + p.t, data: c.data, tipo: "compra", classe: c.classe, ativo: p.t, qtd: p.q, preco: pm, inicial: true });
   };
   return <>
     <h3>Saldo inicial</h3>

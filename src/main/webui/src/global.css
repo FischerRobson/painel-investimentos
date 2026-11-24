@@ -386,3 +386,9 @@ body.busy #topbar { opacity: 1; }
 .saude-lista li { margin-bottom: 4px; }
 .w-table .txt { text-align: left; white-space: normal; min-width: 180px; max-width: 420px; }
 .w-table .txt-sm { text-align: left; white-space: normal; }
+tr.estornada td { color: var(--text-3); text-decoration: line-through; }
+tr.estornada td:nth-child(2), tr.estornada td:last-child { text-decoration: none; }
+tr.estorno td { color: var(--text-3); font-style: italic; }
+.fx-op { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; margin-top: 8px; }
+.fx-op label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--text-3); }
+.fx-op input, .fx-op select { width: 120px; padding: 7px 10px; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }

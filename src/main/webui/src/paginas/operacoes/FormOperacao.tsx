@@ -1,22 +1,24 @@
-// Lançar ou editar uma operação: compra, venda, desdobramento, grupamento ou bonificação.
+// Lançar uma operação: compra, venda, desdobramento, grupamento ou bonificação. Operação lançada não se edita: para
+// corrigir, estorne no histórico e lance de novo (o formulário pode vir preenchido com a operação estornada).
 import { useEffect, useRef, useState } from "react";
 import { hojeISO } from "../../lib/dados";
-import { NOME_CLASSE, NOME_TIPO, type Classe, type Operacao, type TipoOperacao } from "../../motor";
+import { NOME_CLASSE, NOME_TIPO, TIPOS_RV, type Classe, type Operacao, type TipoOperacao } from "../../motor";
 import { parseTickers } from "../carteira/Adicionar";
 
 export const COINS = ["BTC", "ETH", "SOL", "USDT", "USDC", "XRP", "BNB", "ADA", "DOGE", "LINK"];
 const CLASSES = Object.keys(NOME_CLASSE) as Classe[];
-const TIPOS = Object.keys(NOME_TIPO) as TipoOperacao[];
+const TIPOS = TIPOS_RV;
 
 type Campos = { tipo: TipoOperacao; data: string; classe: Classe; ativo: string; qtd: string; preco: string; taxas: string; cambio: string; fator: string; obs: string };
 
-const deOperacao = (o: Operacao): Campos => ({
-  tipo: o.tipo, data: o.data, classe: o.classe, ativo: o.ativo, qtd: o.qtd != null ? String(o.qtd) : "", preco: o.preco != null ? String(o.preco) : "",
+export const deOperacao = (o: Operacao): Campos => ({
+  tipo: o.tipo, data: o.data, classe: o.classe as Classe, ativo: o.ativo, qtd: o.qtd != null ? String(o.qtd) : "", preco: o.preco != null ? String(o.preco) : "",
   taxas: o.taxas ? String(o.taxas) : "", cambio: o.cambio ? String(o.cambio) : "", fator: o.fator ? String(o.fator) : "", obs: o.obs ?? "",
 });
 
-export function FormOperacao({ editando, inicial, classeDe, cambioDe, pendente, onSalvar, onCancelar }: {
-  editando: Operacao | null;
+export type CamposOperacao = Campos;
+
+export function FormOperacao({ inicial, classeDe, cambioDe, pendente, onSalvar, onCancelar }: {
   inicial?: Partial<Campos>;
   classeDe: (ativo: string) => Classe | undefined;   // classe que o ativo já tem (operações anteriores ou cotação)
   cambioDe: (classe: Classe, ativo: string) => number | undefined; // câmbio de hoje para ativos do exterior
@@ -24,14 +26,14 @@ export function FormOperacao({ editando, inicial, classeDe, cambioDe, pendente, 
   onSalvar: (o: Operacao) => void; onCancelar: () => void;
 }) {
   const vazio: Campos = { tipo: "compra", data: hojeISO(), classe: "acao", ativo: "", qtd: "", preco: "", taxas: "", cambio: "", fator: "", obs: "" };
-  const [f, setF] = useState<Campos>(() => editando ? deOperacao(editando) : { ...vazio, ...inicial });
+  const [f, setF] = useState<Campos>(() => ({ ...vazio, ...inicial }));
   const muda = (p: Partial<Campos>) => setF(x => ({ ...x, ...p }));
   const form = useRef<HTMLFormElement>(null);
-  useEffect(() => { if (editando || inicial) form.current?.scrollIntoView?.({ behavior: "smooth", block: "center" }); }, [editando, inicial]);
+  useEffect(() => { if (inicial) form.current?.scrollIntoView?.({ behavior: "smooth", block: "center" }); }, [inicial]);
 
   const evento = f.tipo === "desdobramento" || f.tipo === "grupamento";
   const ativo = f.classe === "cripto" ? f.ativo : parseTickers(f.ativo)[0] ?? "";
-  const bloqueado = !editando && ativo && pendente(ativo);
+  const bloqueado = ativo && pendente(ativo);
   const mudaAtivo = (texto: string) => {
     const t = f.classe === "cripto" ? texto : parseTickers(texto)[0] ?? "";
     const c = classeDe(t);
@@ -49,16 +51,15 @@ export function FormOperacao({ editando, inicial, classeDe, cambioDe, pendente, 
     if (!ativo || bloqueado) return;
     const num = (s: string) => s === "" ? undefined : Number(s);
     const o: Operacao = {
-      id: editando?.id ?? Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       data: f.data, tipo: f.tipo, classe: f.classe, ativo,
       ...(evento ? { fator: num(f.fator) } : { qtd: num(f.qtd), preco: num(f.preco) }),
       ...(f.tipo === "compra" || f.tipo === "venda" ? { taxas: num(f.taxas) } : {}),
       ...(f.classe === "exterior" && !evento ? { cambio: num(f.cambio) } : {}),
-      ...(editando?.inicial ? { inicial: true } : {}),
       ...(f.obs.trim() ? { obs: f.obs.trim() } : {}),
     };
     onSalvar(o);
-    if (!editando) setF({ ...vazio, tipo: f.tipo, classe: f.classe, data: f.data });
+    setF({ ...vazio, tipo: f.tipo, classe: f.classe, data: f.data });
   };
 
   return <>
@@ -83,12 +84,12 @@ export function FormOperacao({ editando, inicial, classeDe, cambioDe, pendente, 
         </>}
       <label>Observação<input name="obs" maxLength={200} placeholder="Opcional" value={f.obs} onChange={e => muda({ obs: e.target.value })} /></label>
       <span className="pair">
-        <button className="primary" type="submit" disabled={!!bloqueado}>{editando ? "Salvar alteração" : "Lançar"}</button>
-        {(editando || inicial) && <button type="button" onClick={onCancelar}>Cancelar</button>}
+        <button className="primary" type="submit" disabled={!!bloqueado}>Lançar</button>
+        {inicial && <button type="button" onClick={onCancelar}>Cancelar</button>}
       </span>
     </form>
     {bloqueado && <div className="err" style={{ marginTop: 8 }}>{ativo} está na carteira sem histórico. Informe o saldo inicial dele (acima) antes de lançar operações.</div>}
-    <div className="status" style={{ marginTop: 6 }}>{editando?.inicial ? <><b>Saldo inicial.</b> </> : ""}O preço médio soma as taxas da compra; na venda, as taxas saem do valor recebido.
+    <div className="status" style={{ marginTop: 6 }}>O valor em reais e o valor presente da posição (logo antes da operação) ficam guardados com a operação. O preço médio soma as taxas da compra; na venda, as taxas saem do valor recebido.
       Exterior: informe o câmbio do dia da operação (PTAX), que é o que vale para o imposto.</div>
   </>;
 }

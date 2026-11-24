@@ -115,11 +115,24 @@ Próximas etapas: aportes automáticos vindos da Carteira (com correção do val
 
 ### Operações e imposto de renda
 
-A página **Operações** guarda compras, vendas, desdobramentos, grupamentos e bonificações de ações, FIIs, ETFs, BDRs,
-ações do exterior e cripto, além dos proventos recebidos. Tudo fica no próprio `carteira.json` (`operacoes` e
-`proventos`). A cada mudança, a página recalcula a quantidade dos ativos com operações na mesma gravação, então a foto
-diária e a Carteira continuam lendo `acoesFiis` e `cripto`. Ativos que já estavam na carteira pedem um saldo inicial
-(data e preço médio).
+**A carteira só muda por operações.** Nada se inclui, altera ou remove direto nas tabelas: ações, FIIs, ETFs, BDRs,
+exterior e cripto mudam por compra, venda, desdobramento, grupamento e bonificação; renda fixa por **aplicação** e
+**resgate** (parcial ou total); moedas por compra e venda. Bens e proventos continuam como antes.
+
+- Cada operação guarda a data, a **quantidade** do ativo (na renda fixa, o principal em reais que entra ou sai), o
+  **valor** em reais que saiu ou entrou na conta (`valor`) e o **valor presente** da posição no dia, logo antes da
+  operação (`valorPresente`; na renda fixa, o título líquido na curva, que pode ser trocado pelo do extrato). O servidor
+  grava quando recebeu cada uma (`registrado`).
+- **Operação lançada não se edita nem se apaga**: um erro se desfaz com um **estorno** (`tipo: "estorno"`, `estorna`:
+  id da original, com motivo opcional). As duas ficam no histórico; a estornada aparece riscada e sai de todas as contas.
+  Na página Operações, estornar uma compra ou venda devolve os dados no formulário para lançar a versão corrigida.
+- O servidor (`WalletLedger`) recusa um `PUT /api/carteira` que altere ou remova operações salvas e monta `acoesFiis`,
+  `cripto`, `rendaFixa` e `moedas` a partir delas. Ativos de antes das operações (sem nenhuma) ficam como estavam até
+  ganhar um saldo inicial; não podem ser mudados à mão. Títulos de renda fixa antigos viram, sozinhos, uma aplicação de
+  saldo inicial com os mesmos dados ao abrir a Carteira; moedas antigas pedem quanto custaram.
+
+Tudo fica no próprio `carteira.json` (`operacoes` e `proventos`), então a foto diária e a Carteira continuam lendo as
+listas de sempre. Ativos que já estavam na carteira pedem um saldo inicial (data e preço médio).
 
 As contas ficam em `src/main/webui/src/motor/operacoes.ts`, com testes no Vitest:
 - **Preço médio**: inclui as taxas; venda não muda o preço médio. Day trade (compra e venda no mesmo dia) é apurado à parte.

@@ -3,7 +3,7 @@
 // Dias em que uma cotação falhou usam o último valor conhecido e ficam marcados no gráfico.
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { addDays, fluxosDasOperacoes, rentabilidade, type TituloRF } from "../../motor";
+import { addDays, fluxosDasOperacoes, governados, rentabilidade, type TituloRF } from "../../motor";
 import { apiFetch } from "../../lib/api";
 import { useCarteira } from "../../lib/carteira";
 import { hojeISO, isoBR, useDatasPosicoes, usePosicoes, type DiaPosicoes, type LinhaPosicao } from "../../lib/dados";
@@ -100,11 +100,12 @@ export function Historico({ hist: bruto }: { hist: Record<string, unknown> }) {
   );
 }
 
-// Retorno da carteira sem contar o dinheiro que entrou ou saiu (compras, vendas, proventos e aplicações em renda fixa).
+// Retorno da carteira sem contar o dinheiro que entrou ou saiu (compras, vendas, proventos, aplicações e resgates).
 // Só faz sentido com as operações lançadas: sem elas, cada compra pareceria rendimento.
 function rentabilidadeSemAportes(pontos: { data: string; valor: number }[], doc: ReturnType<typeof useCarteira>["doc"]) {
   if (!doc?.operacoes?.length) return { total: null };
-  const rf = ((doc.rendaFixa ?? []) as TituloRF[]).map(t => ({ data: t.data, aplicado: t.aplicado }));
+  const comOps = governados(doc.operacoes).rf;
+  const rf = ((doc.rendaFixa ?? []) as TituloRF[]).filter(t => !comOps.has(t.id)).map(t => ({ data: t.data, aplicado: t.aplicado }));
   return rentabilidade(pontos, fluxosDasOperacoes(doc.operacoes, doc.proventos ?? [], rf));
 }
 
