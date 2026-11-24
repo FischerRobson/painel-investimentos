@@ -119,6 +119,12 @@ Próximas etapas: aportes automáticos vindos da Carteira (com correção do val
 exterior e cripto mudam por compra, venda, desdobramento, grupamento e bonificação; renda fixa por **aplicação** e
 **resgate** (parcial ou total); moedas por compra e venda. Bens e proventos continuam como antes.
 
+Tudo se lança num formulário só, na página Operações (moedas, na página Moedas): primeiro a classe (ações, FIIs e
+exterior; cripto; renda fixa), depois a operação. Na compra o ticker é digitado; na **venda, no evento e no resgate o
+ativo é escolhido na lista do que você tem**, com a quantidade disponível na data (botão "Tudo"; vender mais do que tem
+não passa). Na Carteira, a quantidade de um ativo e o "Resgatar" de um título abrem esse formulário já no caso certo
+(`/operacoes?classe=rv|cripto|rf&mov=entrada|saida|evento&ativo=...`).
+
 - Cada operação guarda a data, a **quantidade** do ativo (na renda fixa, o principal em reais que entra ou sai), o
   **valor** em reais que saiu ou entrou na conta (`valor`) e o **valor presente** da posição no dia, logo antes da
   operação (`valorPresente`; na renda fixa, o título líquido na curva, que pode ser trocado pelo do extrato). O servidor

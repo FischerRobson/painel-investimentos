@@ -35,52 +35,51 @@ test.describe("app", () => {
     await expect(tip).toBeHidden();
   });
 
-  test("Carteira: adicionar ação vira uma compra em Operações", async ({ page }) => {
+  test("Carteira: nada se adiciona à mão; a quantidade abre a venda em Operações", async ({ page }) => {
     await ir(page, "/carteira");
     await expect(linha(page, "ITSA4")).toBeVisible();
-    // a quantidade de quem tem operações vem de lá: não é editável nem removível aqui
-    await expect(linha(page, "ITSA4").getByRole("link", { name: "400" })).toHaveAttribute("href", "/operacoes");
+    await expect(page.getByPlaceholder(/^Ticker/)).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Adicionar" })).toHaveCount(0);
     await expect(linha(page, "ITSA4").getByRole("button", { name: /Remover/ })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Lançar operação" })).toHaveAttribute("href", "/operacoes");
 
-    await page.getByPlaceholder("Ticker (ex.: BBDC4, AAPL)").fill("bbas3");
-    await page.getByPlaceholder("Quantidade", { exact: true }).fill("10");
-    await page.getByLabel("Preço", { exact: true }).fill("25");
-    await page.getByRole("button", { name: "Adicionar", exact: true }).click();
-    await expect(page.getByText("Salvo ✓")).toBeVisible();
-    await expect(linha(page, "BBAS3")).toContainText(/R\$ [\d.]+,\d\d/);
-    await expect(tabela(page, "Ações, FIIs e cripto")).toContainText("9 ativos");
-
-    await page.getByRole("navigation", { name: "Páginas" }).getByRole("link", { name: "Operações" }).click();
-    await expect(page.getByRole("row").filter({ hasText: "BBAS3" }).first()).toContainText("R$ 25,00");
+    await linha(page, "ITSA4").getByRole("link", { name: "400" }).click();
+    await expect(page).toHaveURL(/\/operacoes\?classe=rv&mov=saida&ativo=ITSA4/);
+    const venda = page.getByRole("form", { name: /Venda de ações/ });
+    await expect(venda.getByLabel("Ativo")).toHaveValue("ITSA4");
+    await expect(venda).toContainText("você tem 400");
   });
 
-  test("Carteira: aplicação em renda fixa e resgate total", async ({ page }) => {
-    await ir(page, "/carteira");
-    await page.getByRole("button", { name: "Renda fixa", exact: true }).click();
-    await page.getByPlaceholder("Ex.: CDB Banco Inter").fill("CDB Teste");
-    await page.getByLabel("Tipo").selectOption("LCA");
-    await expect(page.getByLabel("Isento de IR")).toBeChecked();
-    await page.getByPlaceholder("Ex.: 110").fill("95");
-    await page.getByLabel(/^Valor aplicado/).fill("1000");
-    await page.getByLabel("Data da aplicação").fill("2026-01-02");
-    await page.getByRole("button", { name: "Aplicar", exact: true }).click();
+  test("Carteira: renda fixa entra e sai por Operações (aplicação e resgate)", async ({ page }) => {
+    await ir(page, "/operacoes");
+    await page.getByRole("group", { name: "Classe do ativo" }).getByRole("button", { name: "Renda fixa" }).click();
+    const ap = page.getByRole("form", { name: "Aplicação em renda fixa" });
+    await ap.getByPlaceholder("Ex.: CDB Banco Inter").fill("CDB Teste");
+    await ap.getByLabel("Tipo do título").selectOption("LCA");
+    await expect(ap.getByLabel("Isento de IR")).toBeChecked();
+    await ap.getByPlaceholder("Ex.: 110").fill("95");
+    await ap.getByLabel(/^Valor aplicado/).fill("1000");
+    await ap.getByLabel("Data da aplicação").fill("2026-01-02");
+    await ap.getByRole("button", { name: "Aplicar", exact: true }).click();
+    await expect(page.getByRole("row").filter({ hasText: /Aplicação/ }).filter({ hasText: "CDB Teste" })).toContainText("R$ 1.000,00");
+
+    await page.getByRole("navigation", { name: "Páginas" }).getByRole("link", { name: "Carteira" }).click();
     await expect(tabela(page, "Renda fixa")).toContainText("5 títulos");
     await expect(linha(page, "CDB Teste")).toContainText("95% do CDI");
-    // sem editar nem remover direto na tabela: só resgate
     await expect(linha(page, "CDB Banco Exemplo").getByRole("button", { name: /Editar|Remover/ })).toHaveCount(0);
 
-    await page.getByRole("button", { name: "Resgatar CDB Banco Exemplo" }).click();
-    const resgate = page.getByRole("form", { name: "Resgate de CDB Banco Exemplo" });
+    // Resgatar leva para Operações com o título já escolhido
+    await page.getByRole("link", { name: "Resgatar CDB Banco Exemplo" }).click();
+    const resgate = page.getByRole("form", { name: "Resgate de renda fixa" });
+    await expect(resgate.getByRole("combobox")).toHaveValue("demo-cdb");
     await expect(resgate.getByLabel(/^Valor presente/)).not.toHaveValue(""); // vem da curva
     await resgate.getByLabel(/^Valor recebido/).fill("16000");
     await resgate.getByRole("button", { name: "Resgatar", exact: true }).click();
+    await expect(page.getByRole("row").filter({ hasText: /Resgate/ }).filter({ hasText: "CDB Banco Exemplo" })).toContainText("R$ 16.000,00");
+
+    await page.getByRole("navigation", { name: "Páginas" }).getByRole("link", { name: "Carteira" }).click();
     await expect(tabela(page, "Renda fixa")).toContainText("4 títulos");
     await expect(linha(page, "CDB Banco Exemplo")).toHaveCount(0);
-
-    await page.getByRole("navigation", { name: "Páginas" }).getByRole("link", { name: "Operações" }).click();
-    const resg = page.getByRole("row").filter({ hasText: /Resgate/ }).filter({ hasText: "CDB Banco Exemplo" });
-    await expect(resg).toContainText("R$ 16.000,00");
-    await expect(page.getByRole("row").filter({ hasText: /Aplicação/ }).filter({ hasText: "CDB Teste" })).toContainText("R$ 1.000,00");
   });
 
   test("Carteira: comparativo com o mercado abre e troca o período", async ({ page }) => {

@@ -9,7 +9,7 @@ import type { Composicao, ItemAtivo } from "../../lib/composicao";
 import { configLinha, css } from "../../lib/graficos";
 import { Grafico } from "../../componentes/Grafico";
 import { Legenda } from "../../componentes/Campos";
-import { useAberto } from "./Adicionar";
+import { useAberto } from "../../lib/useAberto";
 
 const RANGES: [string, string][] = [["6mo", "6 meses"], ["1y", "1 ano"], ["5y", "5 anos"]];
 const SERIES: [ChaveSerie, string, string, boolean?][] = [["carteira", "Sua carteira", "--s1"], ["CDI", "CDI", "--s2", true], ["IBOV", "Ibovespa", "--s3"], ["IFIX", "IFIX", "--s4"]];

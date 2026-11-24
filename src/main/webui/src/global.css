@@ -51,7 +51,7 @@ button {
   font: inherit; cursor: pointer; padding: 8px 14px; border-radius: 8px;
   border: 1px solid var(--border); background: var(--surface); color: var(--text);
 }
-button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+button.primary, a.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
 .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .seg button { border: 0; border-radius: 0; padding: 8px 12px; color: var(--text-2); }
 .seg button.on { background: var(--text); color: var(--surface); }
@@ -392,3 +392,5 @@ tr.estorno td { color: var(--text-3); font-style: italic; }
 .fx-op { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; margin-top: 8px; }
 .fx-op label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--text-3); }
 .fx-op input, .fx-op select { width: 120px; padding: 7px 10px; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+a.btn { display: inline-block; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); text-decoration: none; white-space: nowrap; }
+.op-segs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }

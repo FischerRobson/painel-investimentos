@@ -27,3 +27,7 @@ export const arrow = (v: number): string => v > 0 ? "▲" : v < 0 ? "▼" : "•
 
 // Fundamentus usa 0 quando não tem o dado
 export const nz = (v: number | null | undefined): number | null => v == null || v === 0 ? null : v;
+
+// "bbdc4, itsa4.sa  WEGE3" -> ["BBDC4", "ITSA4", "WEGE3"]
+export const parseTickers = (s: string) =>
+  [...new Set(s.split(/[,\s;]+/).map(t => t.trim().toUpperCase().replace(/\.SA$/, "")).filter(Boolean))];
