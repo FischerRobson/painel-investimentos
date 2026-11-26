@@ -16,6 +16,7 @@ import { Aportar } from "./Aportar";
 import { Ranking } from "./Ranking";
 import { Sinais } from "./Sinais";
 import { Metas } from "./Metas";
+import { Rebalancear } from "./Rebalancear";
 import { HistoricoSaude } from "./HistoricoSaude";
 import type { TaxasBCB } from "../../motor";
 
@@ -100,6 +101,7 @@ export function Saude() {
     <Ranking saude={saude} />
     <Sinais saude={saude} prefs={prefs} setPrefs={setPrefs} />
     <Metas saude={saude} prefs={prefs} setPrefs={setPrefs} />
+    <Rebalancear saude={saude} prefs={prefs} setPrefs={setPrefs} operacoes={doc.operacoes ?? []} hoje={hoje} />
     <HistoricoSaude hist={prefs.hist} />
   </>;
 }

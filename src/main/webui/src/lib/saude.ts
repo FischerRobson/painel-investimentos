@@ -2,17 +2,17 @@
 // Função pura (calcularSaude); a página busca os dados.
 import {
   analisaAcao, analisaFii, avaliaFluxos, CLASSES_META, custoDeVender, distribuicao, escolheAtivos, fgc, fluxosDoAtivo, MESES_RESERVA_PADRAO,
-  METAS_PADRAO, notaConcentracao, notaGeral, notaLinear, notaMetas, planoAporte, precoGraham, processar, reserva, sinaisDoAtivo, sinaisRF,
+  BANDA_PADRAO, METAS_PADRAO, notaConcentracao, notaGeral, notaLinear, notaMetas, planoAporte, precoGraham, processar, reserva, sinaisDoAtivo, sinaisRF,
   sugerirTrocas, tipoFii, vencimentos,
   type Avaliacao, type Candidato, type Classe, type ClasseMeta, type Compra, type Fundamentos, type LinhaClasse, type Operacao, type ParteAporte,
-  type Provento, type Sinal, type SubNota, type TaxasBCB, type Troca,
+  type Provento, type Sinal, type SubNota, type TaxasBCB, type Troca, type Vendavel,
 } from "../motor";
 import type { Composicao } from "./composicao";
 
 export type ItemFund = { ticker: string; name?: string; sector?: string; industry?: string; price?: number | null; fund?: (Fundamentos & { kind?: string }) | null; error?: string };
 export type RegistroMes = { geral: number | null; ativos: Record<string, number> };
-export type PrefSaude = { metas: Record<ClasseMeta, number>; meses: number; candidatos: string; aporte: string; hist: Record<string, RegistroMes> };
-export const PREF_SAUDE: PrefSaude = { metas: METAS_PADRAO, meses: MESES_RESERVA_PADRAO, candidatos: "", aporte: "", hist: {} };
+export type PrefSaude = { metas: Record<ClasseMeta, number>; meses: number; candidatos: string; aporte: string; banda: number; hist: Record<string, RegistroMes> };
+export const PREF_SAUDE: PrefSaude = { metas: METAS_PADRAO, meses: MESES_RESERVA_PADRAO, candidatos: "", aporte: "", banda: BANDA_PADRAO, hist: {} };
 
 export type LinhaAtivo = {
   ticker: string; nome: string; kind: "acao" | "fii" | "cripto" | "exterior" | "rf"; valor: number; peso: number; nota: number | null; cobertura: number | null;
@@ -26,10 +26,15 @@ export type Saude = {
   aporte: { partes: ParteAporte[]; compras: Record<string, Compra[]> } | null;
   renda: { proventos12m: number; dyCarteira: number | null };
   registro: RegistroMes;
+  vendaveis: Vendavel[];
+  semCotacao: string[]; // ativos sem valor agora: com eles fora da conta, o rebalanceamento sairia errado
 };
 
 export const mesDaData = (iso: string) => iso.slice(0, 7);
 const ORDEM = { alta: 0, media: 1, info: 2 } as const;
+// Reserva de emergência: Tesouro Selic ou título com liquidez diária que ainda não venceu
+const contaNaReserva = (t: { tipo: string; liquidezDiaria?: boolean; venc?: string | null }, hoje: string): boolean =>
+  (t.tipo === "Tesouro Selic" || !!t.liquidezDiaria) && !(t.venc && t.venc <= hoje);
 
 export function calcularSaude({ comp, itens, rates, hoje, custoFixo, prefs, operacoes, proventos }: {
   comp: Composicao; itens: Record<string, ItemFund>; rates: TaxasBCB | null; hoje: string; custoFixo: number | null;
@@ -58,6 +63,7 @@ export function calcularSaude({ comp, itens, rates, hoje, custoFixo, prefs, oper
 
   // ---------- Ativos de renda variável e cripto ----------
   const ativos: LinhaAtivo[] = [];
+  const vendaveis: Vendavel[] = [];
   for (const r of [...comp.rv, ...comp.cr]) {
     if (!r.value) continue;
     const cripto = r.kind === "cr", fii = r.type === "FII", ext = r.type === "Exterior";
@@ -74,6 +80,11 @@ export function calcularSaude({ comp, itens, rates, hoje, custoFixo, prefs, oper
       ticker: r.t, kind: fii ? "fii" : cripto || ext ? "outro" : "acao", nota, notasAnteriores: anteriores(r.t), peso: peso(r.value),
       fund: it?.fund ?? null, preco: r.price, av,
     });
+    vendaveis.push({
+      id: r.t, nome: r.t, classe: kind as ClasseMeta, valor: r.value, nota, unidades: r.q, fracionavel: cripto, classeIR: classe,
+      custo: temOps && pos ? pos.custo : null, irRetido: 0, reserva: false, bloqueio: null,
+      aviso: incompleto ? "o preço médio vem do saldo inicial lançado: confira antes de vender" : null,
+    });
     ativos.push({ ticker: r.t, nome: it?.name ?? r.t, kind, valor: r.value, peso: peso(r.value), nota, cobertura: a?.cobertura ?? null, av, semOperacoes: !temOps, incompleto, sinais, liquidoVenda: venda?.liquido ?? null });
   }
 
@@ -83,6 +94,13 @@ export function calcularSaude({ comp, itens, rates, hoje, custoFixo, prefs, oper
     const valor = t.calc.liquido;
     const av = avaliaFluxos([{ data: t.data, valor: -t.aplicado }], valor, cdi, hoje);
     const sinais = rates ? sinaisRF(t, rates, hoje, valor) : [];
+    const venceu = !!t.venc && t.venc <= hoje, tesouro = t.tipo.startsWith("Tesouro");
+    vendaveis.push({
+      id: t.id, nome: t.nome, classe: "rf", valor, nota: null, unidades: null, fracionavel: false, classeIR: null, custo: null,
+      irRetido: t.calc.ir, reserva: contaNaReserva(t, hoje),
+      bloqueio: venceu || tesouro || t.liquidezDiaria ? null : "título sem liquidez diária (só sai no vencimento)",
+      aviso: !venceu && tesouro && t.tipo !== "Tesouro Selic" ? "valor na curva: antes do vencimento o preço é o de mercado (veja Marcação a mercado)" : null,
+    });
     ativos.push({ ticker: t.nome, nome: t.nome, kind: "rf", valor, peso: peso(valor), nota: null, cobertura: null, av, semOperacoes: false, incompleto: false, sinais, liquidoVenda: valor });
   }
 
@@ -97,7 +115,7 @@ export function calcularSaude({ comp, itens, rates, hoje, custoFixo, prefs, oper
   const [setorMax, maiorSetor] = [...porSetor.entries()].sort((a, b) => b[1] - a[1])[0] ?? ["", 0];
 
   // ---------- Reserva, FGC, vencimentos, qualidade ----------
-  const liquidez = comp.rf.filter(t => t.calc && (t.tipo === "Tesouro Selic" || t.liquidezDiaria) && !(t.venc && t.venc <= hoje)).reduce((s, t) => s + t.calc!.liquido, 0);
+  const liquidez = comp.rf.filter(t => t.calc && contaNaReserva(t, hoje)).reduce((s, t) => s + t.calc!.liquido, 0);
   const res = { ...reserva(liquidez, custoFixo ?? 0, prefs.meses), liquidez, meses: prefs.meses };
   const fg = fgc(comp.rf.filter(t => t.calc).map(t => ({ instituicao: t.instituicao, tipo: t.tipo, valor: t.calc!.liquido })));
   const venc = vencimentos(comp.rf.filter(t => t.calc).map(t => ({ venc: t.venc, valor: t.calc!.liquido })));
@@ -186,5 +204,6 @@ export function calcularSaude({ comp, itens, rates, hoje, custoFixo, prefs, oper
   const sinais = ativos.flatMap(a => a.sinais).sort((a, b) => ORDEM[a.severidade] - ORDEM[b.severidade]);
   const registro: RegistroMes = { geral, ativos: Object.fromEntries(ativos.filter(a => a.nota != null).map(a => [a.ticker, a.nota!])) };
   void tem; void CLASSES_META;
-  return { valores, linhas: dist.linhas, total, subs, geral, reserva: res, fgc: fg, venc, ativos, sinais, trocas, aporte, renda, registro };
+  const semCotacao = [...[...comp.rv, ...comp.cr].filter(r => r.q > 0 && r.value == null).map(r => r.t), ...comp.rf.filter(t => !t.calc).map(t => t.nome)];
+  return { valores, linhas: dist.linhas, total, subs, geral, reserva: res, fgc: fg, venc, ativos, sinais, trocas, aporte, renda, registro, vendaveis, semCotacao };
 }

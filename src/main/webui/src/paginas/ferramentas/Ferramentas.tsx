@@ -12,6 +12,8 @@ import { Comparador } from "./Comparador";
 import { Marcacao } from "./Marcacao";
 import { Analisador } from "./Analisador";
 import { Planejador } from "./Planejador";
+import { AlugarFinanciar } from "./AlugarFinanciar";
+import { MonteCarlo } from "./MonteCarlo";
 
 type Ferramenta = { id: string; nome: string; desc: string; Componente: ComponentType };
 
@@ -24,6 +26,8 @@ export const TOOLS: Ferramenta[] = [
   { id: "marcacao", nome: "Marcação a mercado", desc: "Quanto você recebe vendendo um Tesouro antes do vencimento, e se compensa mais que manter.", Componente: Marcacao },
   { id: "analisador", nome: "Analisador de ações e FIIs", desc: "Pontuação de 0 a 100 de ações e FIIs pelos fundamentos, com o peso de cada critério.", Componente: Analisador },
   { id: "planejador", nome: "Planejador de metas", desc: "Quanto aportar por mês para chegar na sua meta, comparado com o que sobra do seu orçamento.", Componente: Planejador },
+  { id: "moradia", nome: "Alugar × Financiar", desc: "Quem termina com mais patrimônio: financiando o imóvel ou alugando e investindo a diferença.", Componente: AlugarFinanciar },
+  { id: "monte-carlo", nome: "Monte Carlo", desc: "Milhares de futuros de inflação e juros: a faixa de resultados do pós-fixado, do IPCA+ e do prefixado.", Componente: MonteCarlo },
 ];
 
 export function Ferramentas() {

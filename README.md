@@ -157,6 +157,16 @@ acumulado, o extrato do mês com o saldo depois de cada lançamento, quanto do c
 dia até o próximo crédito e o histórico mês a mês. Fica em `users/{sub}/budget/vr.json` (`GET`/`PUT /api/budget/vr`,
 com ETag) e entra no backup. Contas em `src/main/webui/src/motor/vr.ts`.
 
+### Alugar × Financiar, Monte Carlo e rebalanceamento
+
+- **Alugar × Financiar** (`motor/moradia.ts`): SAC ou Price, CET e aluguel de equilíbrio. Os dois lados gastam o mesmo por
+  mês e quem paga menos investe a diferença. Não trata TR/IPCA no saldo, FGTS nem os custos de vender o imóvel.
+- **Monte Carlo** (`motor/montecarlo.ts`): 2.000 sorteios com semente fixa de inflação e juro real (reversão à média), com
+  pós-fixado, IPCA+ e prefixado nos mesmos cenários. As médias e variações são premissas editáveis, não previsões.
+- **Rebalancear vendendo** (página Saúde, `motor/rebalancear.ts`): vende o que passa da meta além da tolerância. O IR é a
+  diferença entre as apurações da página Operações com e sem as vendas. Não vende a reserva de emergência nem título sem
+  liquidez diária, e fica suspenso se algum ativo estiver sem cotação.
+
 ### Modo demonstração
 
 O botão **"Modo demonstração"** (topo da página) faz o app mostrar dados fictícios, para testar ou apresentar
