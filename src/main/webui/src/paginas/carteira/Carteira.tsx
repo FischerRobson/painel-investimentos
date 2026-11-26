@@ -1,63 +1,30 @@
-// Carteira: ações, FIIs, cripto, renda fixa, moedas e bens, com os totais, a divisão por classe, o comparativo com o mercado e a
+// Carteira: ações, FIIs, cripto, renda fixa, moedas e bens, com os totais, a divisão por classe, o desempenho de cada ativo e a
 // evolução do patrimônio. Contas em lib/composicao.ts e no motor.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTitulo } from "../../lib/useTitulo";
-import { apiFetch, getJson } from "../../lib/api";
-import { carteiraStore, useCarteira } from "../../lib/carteira";
+import { carteiraStore } from "../../lib/carteira";
+import { useComposicao } from "../../lib/useComposicao";
 import { aplicacoesDosTitulosAntigos, operacoesStore } from "../../lib/operacoes";
-import { moneyC, useCambio } from "../../lib/cambio";
-import { bemNome, usePrecosBens } from "../../lib/bens";
-import { hojeISO, isoBR, useHistorico, useRendaFixa } from "../../lib/dados";
+import { moneyC } from "../../lib/cambio";
+import { bemNome } from "../../lib/bens";
+import { isoBR, useHistorico } from "../../lib/dados";
 import { arrow, brl, money, pct, signCls } from "../../lib/formato";
-import { montarComposicao, type Composicao, type ItemAtivo, type Posicao, type PrecoCripto } from "../../lib/composicao";
+import type { Composicao } from "../../lib/composicao";
 import { rfTaxa } from "../ferramentas/ProjecaoRF";
 import { ErroCarteira } from "../../componentes/ErroCarteira";
 import { Distribuicao, type Categoria } from "./Distribuicao";
 import { useAberto } from "../../lib/useAberto";
-import { Comparativo } from "./Comparativo";
+import { UltimosDias } from "./UltimosDias";
 import { Historico } from "./Historico";
 import { exportarBackup, importarBackup } from "./backup";
-
-const ERRO_CRIPTO = "Não consegui o preço das criptos agora (CoinGecko).";
 
 export const signedMoney = (v: number | null) => v == null ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "") + money(Math.abs(v));
 
 export function Carteira() {
   useTitulo("Carteira");
-  const carteira = useCarteira();
-  const doc = carteira.doc;
-  const acoes = (doc?.acoesFiis ?? []) as Posicao[];
-  const criptoW = (doc?.cripto ?? []) as Posicao[];
-
-  // Cotações de 1 mês (só a brapi, a consulta mais barata). Remover um ativo não busca de novo; um ticker novo busca todos.
-  const tickers = acoes.map(w => w.t);
-  const [pedidos, setPedidos] = useState<string[]>([]);
-  const faltaTicker = tickers.some(t => !pedidos.includes(t));
-  useEffect(() => { if (faltaTicker) setPedidos(tickers); }, [faltaTicker, tickers.join(",")]);
-  const dados = useQuery({
-    queryKey: ["data", "1mo", pedidos.join(",")],
-    enabled: pedidos.length > 0,
-    queryFn: () => getJson<{ items: ItemAtivo[] }>(`/api/data?range=1mo&symbols=${encodeURIComponent(pedidos.join(","))}`),
-    placeholderData: prev => prev, // ticker novo: os outros continuam na tela até chegar a resposta
-  });
-  const ativos = Object.fromEntries((dados.data?.items ?? []).map(it => [it.ticker, it]));
-
-  const coins = criptoW.map(c => c.t).join(",");
-  const cripto = useQuery({
-    queryKey: ["crypto", coins],
-    enabled: !!coins,
-    queryFn: async () => (await (await apiFetch(`/api/crypto?coins=${coins}`)).json()) as { prices?: Record<string, PrecoCripto>; error?: string },
-    placeholderData: prev => prev,
-    retry: false,
-  });
-  const cryptoErr = cripto.isError || cripto.data?.error ? ERRO_CRIPTO : null;
-
-  const precisaFx = !!doc?.moedas?.length || Object.values(ativos).some(it => it.currency && it.currency !== "BRL");
-  const cambio = useCambio(30, precisaFx);
-  const rf = useRendaFixa();
-  const bens = usePrecosBens();
+  const { carteira, doc, composicao, pronta, erroCripto, rf, itens } = useComposicao();
   const historico = useHistorico();
 
   // Títulos de renda fixa de antes das operações viram uma aplicação com os mesmos dados (uma vez)
@@ -65,21 +32,15 @@ export function Carteira() {
   useEffect(() => { if (migrar) operacoesStore.migrarTitulos(); }, [migrar]);
 
   if (carteira.erro) return <ErroCarteira msg={carteira.erro} />;
-  if (!doc) return <div className="panel muted">Carregando sua carteira…</div>;
-
-  const c = montarComposicao({
-    doc, ativos, cripto: cripto.data?.prices ?? {}, fx: cambio.data, rates: rf.rates, hoje: hojeISO(), valorBem: bens.valor,
-  });
-  // Tudo o que entra no valor da carteira já chegou (ou falhou): só então o comparativo busca os históricos
-  const pronta = !(pedidos.length && dados.isPending) && !(coins && cripto.isPending)
-    && !(rf.titulos.length && !rf.rates && !rf.ratesErr) && !(precisaFx && cambio.isPending);
+  if (!doc || !composicao) return <div className="panel muted">Carregando sua carteira…</div>;
+  const c = composicao;
 
   return <>
-    <Painel c={c} comOps={new Set((doc.operacoes ?? []).map(o => o.ativo))} erros={[cryptoErr, rf.ratesErr]} semTaxas={!!rf.titulos.length && !rf.rates} ratesErr={rf.ratesErr}
+    <Painel c={c} comOps={new Set((doc.operacoes ?? []).map(o => o.ativo))} erros={[erroCripto, rf.ratesErr]} semTaxas={!!rf.titulos.length && !rf.rates} ratesErr={rf.ratesErr}
       historico={historico.data ?? {}} />
-    {!c.vazia && <Comparativo c={c} pronta={pronta} />}
+    {!c.vazia && <UltimosDias c={c} itens={itens} pronta={pronta} />}
     {/* sem /api/historico (erro), o painel trata como histórico vazio */}
-    {!c.vazia && !historico.isPending && <Historico hist={historico.data ?? {}} />}
+    {!c.vazia && !historico.isPending && <Historico hist={historico.data ?? {}} tipos={Object.fromEntries(c.rv.map(r => [r.t, r.type]))} />}
   </>;
 }
 
@@ -231,8 +192,9 @@ function Painel({ c, comOps, erros, semTaxas, ratesErr, historico }: {
   );
 }
 
-// Seção recolhível; aberta ou fechada fica guardado (acc_rv, acc_rf, acc_fx, acc_bens)
+// Seção recolhível, fechada por padrão; o que você abrir fica guardado (acc2_rv, acc2_rf, acc2_fx, acc2_bens). As chaves
+// antigas (acc_*) são ignoradas: o navegador as gravava como "aberto" mesmo sem clique, quando esse era o padrão.
 function Acordeao({ k, resumo, children }: { k: string; resumo: React.ReactNode; children: React.ReactNode }) {
-  const [aberto, setAberto] = useAberto("acc_" + k, "1");
+  const [aberto, setAberto] = useAberto("acc2_" + k, "0");
   return <details className="acc" open={aberto} onToggle={e => setAberto(e.currentTarget.open)}>{resumo}{children}</details>;
 }

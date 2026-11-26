@@ -9,6 +9,7 @@ export const PAGINAS: Pagina[] = [
   { id: "carteira", caminho: "/carteira", titulo: "Carteira" },
   { id: "operacoes", caminho: "/operacoes", titulo: "Operações" },
   { id: "saude", caminho: "/saude", titulo: "Saúde" },
+  { id: "fechamento", caminho: "/fechamento", titulo: "Fechamento" },
   { id: "budget", caminho: "/orcamento", titulo: "Orçamento" },
   { id: "ferramentas", caminho: "/ferramentas", titulo: "Ferramentas" },
   { id: "ativos", caminho: "/ativos", titulo: "Ativos" },

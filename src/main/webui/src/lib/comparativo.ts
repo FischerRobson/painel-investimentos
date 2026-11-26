@@ -11,7 +11,11 @@ export type Benchmarks = {
   warnings?: string[];
 };
 export type ChaveSerie = "carteira" | "CDI" | "IBOV" | "IFIX";
+export type ClasseSerie = "acao" | "fii" | "exterior" | "cripto" | "rf" | "moeda";
+// serie: 1 no começo do período, na mesma grade de datas da carteira
+export type SerieAtivo = { id: string; nome: string; classe: ClasseSerie; valor: number; serie: Serie; ret: number };
 export type Comparativo = {
+  ativos: SerieAtivo[];
   series: Record<ChaveSerie, Serie>;
   ret: Record<ChaveSerie, number | null>;
   fora: string[]; avisos: string[]; vazia: boolean;
@@ -48,21 +52,22 @@ export function calcularComparativo(bench: Benchmarks, items: ItemAtivo[], c: Co
   // o CDI de hoje só sai amanhã: o período vai até o dado mais recente das outras séries
   const ultimo = Math.max(...[ind.IBOV, ind.IFIX].filter((s): s is Serie => !!s?.length).map(s => s[s.length - 1][0]));
   if (ultimo > grade[grade.length - 1]) grade.push(ultimo);
-  const ativos: { peso: number; serie: Serie }[] = [], fora: string[] = [];
+  const ativos: { id: string; nome: string; classe: ClasseSerie; peso: number; serie: Serie }[] = [], fora: string[] = [];
 
   for (const r of c.rv.filter(r => r.value)) {
     const it = items.find(i => i.ticker === r.t);
     let pts = porDia(it?.points);
     if (pts.length && r.cur && r.cur !== "BRL") pts = fxDia[r.cur] ? multiplica(pts, fxDia[r.cur]!) : [];
-    if (pts.length > 1) ativos.push({ peso: r.value!, serie: pts }); else fora.push(r.t);
+    const classe: ClasseSerie = r.type === "FII" ? "fii" : r.type === "Exterior" ? "exterior" : "acao";
+    if (pts.length > 1) ativos.push({ id: "rv:" + r.t, nome: r.t, classe, peso: r.value!, serie: pts }); else fora.push(r.t);
   }
   for (const x of c.cr.filter(x => x.value)) {
     const s = porDia(bench.crypto?.[x.t]);
-    if (s.length > 1) ativos.push({ peso: x.value!, serie: s }); else fora.push(x.t);
+    if (s.length > 1) ativos.push({ id: "cr:" + x.t, nome: x.t, classe: "cripto", peso: x.value!, serie: s }); else fora.push(x.t);
   }
   for (const m of c.mo.filter(m => m.value)) {
     const s = fxDia[m.c];
-    if (s && s.length > 1) ativos.push({ peso: m.value!, serie: s }); else fora.push(m.c);
+    if (s && s.length > 1) ativos.push({ id: "mo:" + m.c, nome: m.c, classe: "moeda", peso: m.value!, serie: s }); else fora.push(m.c);
   }
   // renda fixa refeita dia a dia com o CDI e o IPCA do período
   const ipcaMes = Object.fromEntries((bench.ipca || []).map(([d, v]) => [d.slice(0, 7), v]));
@@ -80,7 +85,7 @@ export function calcularComparativo(bench: Benchmarks, items: ItemAtivo[], c: Co
       }
       serie.push([cdi[i][0], f]);
     }
-    ativos.push({ peso: r.calc!.liquido, serie });
+    ativos.push({ id: "rf:" + r.id, nome: r.nome, classe: "rf", peso: r.calc!.liquido, serie });
   }
 
   const pesoTotal = ativos.reduce((a, x) => a + x.peso, 0);
@@ -91,5 +96,9 @@ export function calcularComparativo(bench: Benchmarks, items: ItemAtivo[], c: Co
   const norm = (s: Serie | undefined): Serie => s?.length ? grade.map(t => [t, valorEm(s, t) / valorEm(s, t0)]) : [];
   const series: Record<ChaveSerie, Serie> = { carteira, CDI: norm(cdi), IBOV: norm(ind.IBOV), IFIX: norm(ind.IFIX) };
   const ret = Object.fromEntries(Object.entries(series).map(([k, s]) => [k, s.length ? (s[s.length - 1][1] - 1) * 100 : null])) as Record<ChaveSerie, number | null>;
-  return { series, ret, fora, avisos: bench.warnings || [], vazia: !ativos.length };
+  const porAtivo: SerieAtivo[] = ativos.map(a => {
+    const serie = norm(a.serie);
+    return { id: a.id, nome: a.nome, classe: a.classe, valor: a.peso, serie, ret: (serie[serie.length - 1][1] - 1) * 100 };
+  }).sort((a, b) => b.valor - a.valor);
+  return { ativos: porAtivo, series, ret, fora, avisos: bench.warnings || [], vazia: !ativos.length };
 }
