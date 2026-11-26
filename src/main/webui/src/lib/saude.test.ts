@@ -54,3 +54,22 @@ describe("calcularSaude", () => {
     expect(compras.every(c => c.ticker !== "FRACO3")).toBe(true);
   });
 });
+
+describe("dados para o rebalanceamento", () => {
+  it("lista o que dá para vender, com quantidade, custo, reserva e bloqueio", () => {
+    const comCdb: DocCarteira = { ...doc, rendaFixa: [...doc.rendaFixa!, { id: "c", nome: "CDB travado", tipo: "CDB", idx: "cdi", taxa: 110, aplicado: 1000, data: "2025-06-02", venc: "2029-06-01" }] };
+    const comp = montarComposicao({ doc: comCdb, ativos: itens, cripto: {}, fx: null, rates, hoje, valorBem: () => null });
+    const s = calcularSaude({ comp, itens, rates, hoje, custoFixo: 2000, prefs: PREF_SAUDE, operacoes: doc.operacoes ?? [], proventos: [] });
+    const por = (id: string) => s.vendaveis.find(v => v.id === id)!;
+    expect(por("FRACO3")).toMatchObject({ classe: "acao", unidades: 100, classeIR: "acao", custo: 1000, bloqueio: null });
+    expect(por("s")).toMatchObject({ classe: "rf", unidades: null, classeIR: null, reserva: true, bloqueio: null });
+    expect(por("c").reserva).toBe(false);
+    expect(por("c").bloqueio).toContain("liquidez");
+    expect(s.semCotacao).toEqual([]);
+  });
+  it("avisa quando um ativo está sem cotação", () => {
+    const comp = montarComposicao({ doc, ativos: { FORTE3: itens.FORTE3 }, cripto: {}, fx: null, rates, hoje, valorBem: () => null });
+    const s = calcularSaude({ comp, itens, rates, hoje, custoFixo: 2000, prefs: PREF_SAUDE, operacoes: doc.operacoes ?? [], proventos: [] });
+    expect(s.semCotacao).toEqual(["FRACO3"]);
+  });
+});

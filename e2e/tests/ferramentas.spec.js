@@ -9,6 +9,8 @@ const FERRAMENTAS = [
   ["marcacao", "Marcação a mercado"],
   ["analisador", "Analisador de ações e FIIs"],
   ["planejador", "Planejador de metas"],
+  ["moradia", "Alugar × Financiar"],
+  ["monte-carlo", "Monte Carlo"],
 ];
 
 test.describe("app", () => {

@@ -198,6 +198,7 @@ details.acc[open] > summary::before { transform: rotate(90deg); }
 .proj-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); align-items: end; }
 .proj-form label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--text-3); }
 .proj-form label input { width: 100%; min-width: 0; padding: 8px 10px; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+.proj-form label select { width: 100%; min-width: 0; }
 .proj-form label.chk { flex-direction: row; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); padding-bottom: 9px; }
 .proj-form label.chk input { width: auto; }
 .proj-form .quick { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
