@@ -1,9 +1,11 @@
-// Base dos testes: modo demonstração ligado, Termômetro com dados fixos e falha em qualquer erro de JavaScript.
+// Base dos testes: modo demonstração ligado, Termômetro e Tesouro Direto com dados fixos e falha em qualquer erro de JavaScript.
 // Os seletores usam papel e texto (não ids), como uma pessoa acharia na tela.
 import { test as base, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
 
 const TERMOMETRO = readFileSync(new URL("../fixtures/termometro.json", import.meta.url), "utf8");
+// Retrato do CSV do Tesouro Transparente de 19/11/2026 (Prefixado, IPCA+, IPCA+ com juros e Selic)
+export const TESOURO = readFileSync(new URL("../fixtures/tesouro.json", import.meta.url), "utf8");
 
 export const test = base.extend({
   page: async ({ page }, use) => {
@@ -17,6 +19,7 @@ export const test = base.extend({
     });
     // O Termômetro fica fora do modo demonstração (dados públicos do BCB); aqui vem de um retrato fixo.
     await page.route("**/api/termometro", r => r.fulfill({ contentType: "application/json", body: TERMOMETRO }));
+    await page.route("**/api/tesouro", r => r.fulfill({ contentType: "application/json", body: TESOURO }));
     await use(page);
     expect(erros, "erros de JavaScript na página").toEqual([]);
   },

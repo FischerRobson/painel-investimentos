@@ -47,6 +47,7 @@ nb-configuration.xml
 # Segredos locais
 .env
 cache_taxas.json
+cache_tesouro.json
 data/
 deploy.env
 .aws-sam/

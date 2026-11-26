@@ -23,7 +23,8 @@ public class DemoFilter {
         String path = ctx.getUriInfo().getPath();
         if (!"1".equals(ctx.getHeaderString(HEADER)) || !path.startsWith("/api/") || path.startsWith("/api/auth/")
                 || path.equals("/api/version")
-                || path.equals("/api/termometro")) { // dados públicos do BCB, sem nada do usuário
+                || path.equals("/api/termometro") // dados públicos do BCB, sem nada do usuário
+                || path.equals("/api/tesouro")) { // preços e taxas públicos do Tesouro Direto
             return null;
         }
         DemoDataService.Reply r = demo.reply(ctx.getMethod(), path, ctx.getUriInfo().getQueryParameters());

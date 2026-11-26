@@ -74,6 +74,30 @@ test.describe("app", () => {
     await expect(page.getByText(/Vender hoje/i).first()).toBeVisible();
   });
 
+  // Tesouro Direto: retrato fixo de 19/11/2026 (fixtures/tesouro.json)
+  test("Marcação a mercado usa a taxa de resgate do Tesouro para um título do Tesouro", async ({ page }) => {
+    await ir(page, "/ferramentas#marcacao");
+    await page.getByRole("button", { name: "Usar este título" }).click(); // demo: Tesouro IPCA+ 2032 (15/08/2032)
+    await expect(page.getByText("resgate do Tesouro IPCA+ 2032 em 19/11/2026 (7,94%)")).toBeVisible();
+    await expect(page.getByLabel("Taxa de mercado hoje (IPCA + % a.a.)")).toHaveValue("7.94");
+    await page.getByRole("button", { name: "Taxa de mercado = contratada" }).click();
+    await page.getByRole("button", { name: "Taxa do Tesouro hoje (7,94%)" }).click();
+    await expect(page.getByLabel("Taxa de mercado hoje (IPCA + % a.a.)")).toHaveValue("7.94");
+  });
+
+  test("IPCA+ × Prefixado e Comparador puxam as taxas do Tesouro", async ({ page }) => {
+    await ir(page, "/ferramentas#ipca-pre");
+    await page.getByLabel("Prefixado (% a.a.)").fill("1");
+    await page.getByLabel("IPCA+: juro real (% a.a.)").fill("1");
+    await page.getByRole("button", { name: "Taxas do Tesouro hoje" }).click();
+    await expect(page.getByText(/Taxas do Tesouro Direto em 19\/11\/2026: Tesouro Prefixado \d{4} e Tesouro IPCA\+ \d{4}/)).toBeVisible();
+    await expect(page.getByLabel("Prefixado (% a.a.)")).toHaveValue(/^1[345]\.\d+$/);
+
+    await ir(page, "/ferramentas#comparador");
+    await page.getByRole("button", { name: "Taxas do Tesouro (19/11/2026)" }).click();
+    await expect(page.getByText(/Taxas de compra do Tesouro Direto em 19\/11\/2026/)).toBeVisible();
+  });
+
   test("Analisador dá nota aos tickers", async ({ page }) => {
     await ir(page, "/ferramentas#analisador");
     await page.getByLabel(/^Tickers/).fill("BBDC4, KNRI11");

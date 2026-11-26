@@ -285,6 +285,10 @@ class SnapshotServiceTest {
             public String ratesCacheFile() {
                 return dir.resolve("rates.json").toString();
             }
+
+            public String tesouroCacheFile() {
+                return dir.resolve("tesouro.json").toString();
+            }
         };
     }
 }

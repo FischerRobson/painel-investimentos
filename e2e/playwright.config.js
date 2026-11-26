@@ -26,7 +26,7 @@ export default defineConfig({
   ],
   webServer: {
     command: `java -Djava.net.preferIPv4Stack=true -Dquarkus.http.port=${PORT} -Dquarkus.scheduler.enabled=false `
-      + `-Dpainel.storage.dir=e2e/.dados -Dpainel.rates-cache-file=e2e/.dados/cache_taxas.json -jar target/quarkus-app/quarkus-run.jar`,
+      + `-Dpainel.storage.dir=e2e/.dados -Dpainel.rates-cache-file=e2e/.dados/cache_taxas.json -Dpainel.tesouro-cache-file=e2e/.dados/cache_tesouro.json -jar target/quarkus-app/quarkus-run.jar`,
     cwd: "..",
     url: `http://127.0.0.1:${PORT}/api/version`,
     reuseExistingServer: !process.env.CI,

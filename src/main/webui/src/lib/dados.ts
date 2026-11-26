@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch, getJson } from "./api";
 import { useCarteira } from "./carteira";
-import { acumulado12, cenarioFocus, currentRates, type LinhaFocus, type ModoCenario, type TaxasBCB, type TituloRF } from "../motor";
+import { acumulado12, cenarioFocus, currentRates, type LinhaFocus, type ModoCenario, type TaxasBCB, type Tesouro, type TituloRF } from "../motor";
 
 export const hojeISO = (): string => new Date().toLocaleDateString("sv-SE"); // AAAA-MM-DD no fuso local
 export const isoBR = (d?: string | null): string => d ? d.split("-").reverse().join("/") : "—";
@@ -54,6 +54,22 @@ export function useTermometro() {
       return j as Termometro;
     },
     staleTime: Infinity, // o servidor guarda por 6 h; na página vale a primeira resposta
+    retry: false,
+  });
+}
+
+// ---------- Tesouro Direto (/api/tesouro) ----------
+// Taxas e preços do último dia publicado pelo Tesouro (sai com alguns dias de atraso). Se falhar, as ferramentas seguem com
+// as taxas digitadas: o erro só esconde os botões.
+export function useTesouro() {
+  return useQuery({
+    queryKey: ["tesouro"],
+    queryFn: async () => {
+      const j = await (await apiFetch("/api/tesouro")).json() as Tesouro & { error?: string };
+      if (j.error) throw new Error(j.error);
+      return j as Tesouro;
+    },
+    staleTime: Infinity, // o servidor guarda por 6 h
     retry: false,
   });
 }

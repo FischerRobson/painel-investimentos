@@ -1,11 +1,11 @@
 // Marcação a mercado (Tesouro Prefixado e IPCA+): quanto se recebe vendendo hoje e se compensa mais que manter até o vencimento.
-// Conta em Motor.marcacao; correção do IPCA em Motor.fatorIpcaPeriodo; cenário do Focus.
+// Conta em Motor.marcacao; correção do IPCA em Motor.fatorIpcaPeriodo; cenário do Focus; taxa de mercado do Tesouro Direto.
 import { useState } from "react";
 import { Link } from "react-router";
-import { cenarioDoTermometro, hojeISO, isoBR, useRendaFixa, useTermometro } from "../../lib/dados";
+import { cenarioDoTermometro, hojeISO, isoBR, useRendaFixa, useTermometro, useTesouro } from "../../lib/dados";
 import { usePreferencia } from "../../lib/preferencia";
 import { brl, money, signCls } from "../../lib/formato";
-import { addDays, cdiDaSelic, diasCorridos, fatorIpcaPeriodo, marcacao, type ModoCenario } from "../../motor";
+import { addDays, cdiDaSelic, diasCorridos, fatorIpcaPeriodo, marcacao, tesouroMaisProximo, type ModoCenario } from "../../motor";
 import { Num, Texto } from "../../componentes/Campos";
 import { CENARIOS_RF, TAXA_TXT } from "./Comparador";
 
@@ -19,6 +19,7 @@ const EXEMPLO = { tipo: "Tesouro IPCA+", qtd: 1, pu: 1000, taxa: 6, dataCompra: 
 export function Marcacao() {
   const termo = useTermometro();
   const rf = useRendaFixa();
+  const tesouro = useTesouro().data;
   const [mkCfg, setMkCfg] = usePreferencia<Cfg>("marcacao", { ...EXEMPLO, modo: "base" });
   const [msg, setMsg] = useState("");
   const [escolhido, setEscolhido] = useState("");
@@ -45,15 +46,23 @@ export function Marcacao() {
   const sens = [-1, 0, 1, 2].map(d => { const tx = taxa + d; return { t: tx, x: calc(tx) }; }).filter(o => o.x);
   // Prefixados e IPCA+ da carteira ainda vigentes: o formulário é preenchido a partir do título
   const vivos = rf.titulos.filter(x => x.venc && x.venc > hoje && (x.idx === "pre" || x.idx === "ipca"));
+  // Taxa de mercado de verdade: a de resgate (venda) do título do Tesouro com o vencimento mais perto
+  const ref = tesouroMaisProximo(tesouro, mkCfg.tipo, mkCfg.dataVenc, "venda");
+  const refTxt = ref && `${ref.tipo} ${ref.vencimento.slice(0, 4)}${ref.vencimento === mkCfg.dataVenc ? "" : " (vencimento mais próximo)"}, taxa de resgate em ${isoBR(tesouro!.data)}`;
 
   const campo = (n: keyof Cfg) => (v: number | null) => setMkCfg({ [n]: v } as Partial<Cfg>);
   const usarMinha = () => {
     const item = rf.titulos.find(x => String(x.id) === (escolhido || String(vivos[0]?.id)));
     if (!item || !item.venc) return;
+    const tipo = item.idx === "ipca" ? "Tesouro IPCA+" : "Tesouro Prefixado";
+    // Título do Tesouro na carteira: a taxa de mercado já vem do Tesouro Direto; outros (CDB, debênture) começam na contratada
+    const doTesouro = /tesouro/i.test(item.tipo) ? tesouroMaisProximo(tesouro, tipo, item.venc, "venda") : null;
     // O título inteiro entra como 1 unidade de preço igual ao valor aplicado; as contas são lineares, então o resultado vale para o total
-    setMkCfg({ tipo: item.idx === "ipca" ? "Tesouro IPCA+" : "Tesouro Prefixado", qtd: 1, pu: item.aplicado, taxa: item.taxa,
-      dataCompra: item.data, dataVenc: item.venc, dataAnal: hojeISO(), taxaMerc: null, carteiraId: item.id });
-    setMsg(`${item.nome}: tratado como 1 título de ${money(item.aplicado)} comprado em ${isoBR(item.data)}. A taxa de mercado começa igual à contratada; ajuste para ver o efeito da taxa de hoje.`);
+    setMkCfg({ tipo, qtd: 1, pu: item.aplicado, taxa: item.taxa,
+      dataCompra: item.data, dataVenc: item.venc, dataAnal: hojeISO(), taxaMerc: doTesouro?.taxaVenda ?? null, carteiraId: item.id });
+    setMsg(`${item.nome}: tratado como 1 título de ${money(item.aplicado)} comprado em ${isoBR(item.data)}. ` + (doTesouro
+      ? `A taxa de mercado é a de resgate do ${doTesouro.tipo} ${doTesouro.vencimento.slice(0, 4)} em ${isoBR(tesouro!.data)} (${brl(doTesouro.taxaVenda!)}%).`
+      : "A taxa de mercado começa igual à contratada; ajuste para ver o efeito da taxa de hoje."));
   };
 
   return (
@@ -90,7 +99,9 @@ export function Marcacao() {
         <div className="quick">
           <button type="button" onClick={() => setMkCfg({ ...EXEMPLO })}>Carregar exemplo</button>
           <button type="button" title="Volta a taxa de mercado para a taxa contratada" onClick={() => setMkCfg({ taxaMerc: null })}>Taxa de mercado = contratada</button>
+          {ref && <button type="button" title={refTxt!} onClick={() => setMkCfg({ taxaMerc: ref.taxaVenda })}>Taxa do Tesouro hoje ({brl(ref.taxaVenda!)}%)</button>}
         </div>
+        {ref && <div className="hint">Referência: {refTxt}{tesouro?.stale ? ` · fonte fora do ar, dados salvos em ${tesouro.stale}` : ""}.</div>}
       </form>
 
       {valido ? <>
@@ -128,7 +139,7 @@ export function Marcacao() {
         </table></div>
       </> : <div className="hint" style={{ marginTop: 10 }}>{!qtd || !pu ? "Informe quantidade e preço de compra." : "Confira as datas: a análise tem que ficar entre a compra e o vencimento."}</div>}
 
-      <div className="status">Estimativa, não é cotação do Tesouro Direto. {cen.semFocus ? "Sem as expectativas do Focus agora: cenário com o último dado realizado. " : ""}Não considera os cupons semestrais do IPCA+ (NTN-B) nem os do prefixado com juros (NTN-F); a custódia da B3 fica de fora; o IR segue a tabela regressiva pelo tempo de cada operação; na reaplicação, o CDI é a Selic meta menos 0,10 ponto; a correção do IPCA é mensal. Conheça o conceito em <Link to="/glossario#marcacao-a-mercado">marcação a mercado</Link>.</div>
+      <div className="status">Estimativa: o preço é calculado aqui, não é o PU do Tesouro Direto (a taxa do Tesouro, quando usada, é a do último dia publicado, com alguns dias de atraso). {cen.semFocus ? "Sem as expectativas do Focus agora: cenário com o último dado realizado. " : ""}Não considera os cupons semestrais do IPCA+ (NTN-B) nem os do prefixado com juros (NTN-F); a custódia da B3 fica de fora; o IR segue a tabela regressiva pelo tempo de cada operação; na reaplicação, o CDI é a Selic meta menos 0,10 ponto; a correção do IPCA é mensal. Conheça o conceito em <Link to="/glossario#marcacao-a-mercado">marcação a mercado</Link>.</div>
     </div>
   );
 }

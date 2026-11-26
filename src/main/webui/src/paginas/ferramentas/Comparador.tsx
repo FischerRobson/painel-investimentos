@@ -1,10 +1,11 @@
 // Comparador de renda fixa: mesmo valor e prazo, produtos diferentes (% do CDI, prefixado, IPCA+), com cenários do Focus.
 // Conta em Motor.comparaRF. Um título da carteira pode entrar na comparação com o valor de hoje (Motor.valorAtualRF).
+// As taxas dos títulos do Tesouro podem vir do Tesouro Direto (/api/tesouro), pelo vencimento mais próximo de cada produto.
 import { useState } from "react";
-import { cenarioDoTermometro, hojeISO, isoBR, useRendaFixa, useTermometro } from "../../lib/dados";
+import { cenarioDoTermometro, hojeISO, isoBR, useRendaFixa, useTermometro, useTesouro } from "../../lib/dados";
 import { usePreferencia } from "../../lib/preferencia";
 import { brl, money } from "../../lib/formato";
-import { cdiDaSelic, comparaRF, valorAtualRF, type ModoCenario } from "../../motor";
+import { cdiDaSelic, comparaRF, daquiAnos, tesouroMaisProximo, valorAtualRF, type ModoCenario } from "../../motor";
 import { CampoNum, CampoTexto, Num } from "../../componentes/Campos";
 
 // Tipos e a forma como cada um rende: cdi = % do CDI (CDI = Selic meta − 0,10 p.p.), pre = % a.a., ipca = IPCA + % a.a.
@@ -35,6 +36,7 @@ const novoId = () => Date.now() + seq++;
 export function Comparador() {
   const termo = useTermometro();
   const rf = useRendaFixa();
+  const tesouro = useTesouro().data;
   const [cmpCfg, setCmpCfg] = usePreferencia<Cfg>("comparador", { valor: 10000, anos: 5, modo: "base", ordem: "liquido", produtos: [] });
   const [msg, setMsg] = useState("");
   const [escolhido, setEscolhido] = useState<string>("");
@@ -81,9 +83,34 @@ export function Comparador() {
       (v.cobertura ? "" : " A série do CDI começa depois da aplicação: o valor de hoje pode estar subestimado.") +
       " Escolher outro título substitui este na comparação.");
   };
+  // Taxa de compra do título do Tesouro com vencimento mais perto do prazo do produto (Prefixado e IPCA+; o Selic rende a Selic)
+  const taxaTesouro = (tipo: string, anosVenc: number | null) =>
+    tipo === "Tesouro Prefixado" || tipo === "Tesouro IPCA+" ? tesouroMaisProximo(tesouro, tipo, daquiAnos(hoje, anosVenc || anos || 1)) : null;
+  const usarTesouro = () => {
+    if (!tesouro) return;
+    const usados: string[] = [];
+    let produtos = cmpCfg.produtos.map(p => {
+      const ref = taxaTesouro(p.tipo, p.anosVenc);
+      if (!ref || p.minha) return p;
+      usados.push(`${p.nome || p.tipo}: ${ref.tipo} ${ref.vencimento.slice(0, 4)}`);
+      return { ...p, taxa: ref.taxaCompra };
+    });
+    // Sem nenhum Prefixado ou IPCA+ na lista, entram os dois com o prazo da comparação
+    if (!usados.length) {
+      produtos = produtos.concat((["Tesouro Prefixado", "Tesouro IPCA+"] as const).flatMap(tipo => {
+        const ref = taxaTesouro(tipo, cmpCfg.anos);
+        if (!ref) return [];
+        usados.push(`${tipo} ${ref.vencimento.slice(0, 4)}`);
+        return [{ id: novoId(), nome: "", tipo, taxa: ref.taxaCompra, anosVenc: cmpCfg.anos }];
+      }));
+    }
+    setCmpCfg({ produtos });
+    setMsg(usados.length ? `Taxas de compra do Tesouro Direto em ${isoBR(tesouro.data)}, pelo vencimento mais próximo: ${usados.join(" · ")}.`
+      : "Nenhum título do Tesouro com vencimento para esses prazos.");
+  };
   const exemplo = () => setCmpCfg({ produtos: [
-    { id: novoId(), nome: "", tipo: "Tesouro Prefixado", taxa: 12, anosVenc: 5 },
-    { id: novoId(), nome: "", tipo: "Tesouro IPCA+", taxa: 6, anosVenc: 5 },
+    { id: novoId(), nome: "", tipo: "Tesouro Prefixado", taxa: taxaTesouro("Tesouro Prefixado", 5)?.taxaCompra ?? 12, anosVenc: 5 },
+    { id: novoId(), nome: "", tipo: "Tesouro IPCA+", taxa: taxaTesouro("Tesouro IPCA+", 5)?.taxaCompra ?? 6, anosVenc: 5 },
     { id: novoId(), nome: "", tipo: "CDB", taxa: 110, anosVenc: 5 },
     { id: novoId(), nome: "", tipo: "Tesouro Selic", taxa: 100, anosVenc: 5 },
   ] });
@@ -136,7 +163,9 @@ export function Comparador() {
       </table></div>
       <div className="quick" style={{ marginTop: 8 }}>
         <button type="button" onClick={() => setCmpCfg(c => ({ ...c, produtos: [...c.produtos, { id: novoId(), nome: "", tipo: "CDB", taxa: TIPOS_RF.CDB.padrao, anosVenc: c.anos }] }))}>+ Adicionar produto</button>{" "}
-        <button type="button" onClick={exemplo}>Carregar exemplo</button>
+        <button type="button" onClick={exemplo}>Carregar exemplo</button>{" "}
+        {tesouro && <button type="button" title="Preenche a taxa dos produtos Tesouro Prefixado e IPCA+ com a do Tesouro Direto, pelo vencimento mais próximo"
+          onClick={usarTesouro}>Taxas do Tesouro ({isoBR(tesouro.data)})</button>}
       </div>
 
       <div className="tiles" style={{ marginTop: 14 }}>

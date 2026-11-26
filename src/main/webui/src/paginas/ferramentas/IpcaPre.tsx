@@ -1,9 +1,10 @@
 // IPCA+ × Prefixado: inflação de equilíbrio, quem ganha com a inflação escolhida e cenários. Conta em Motor.ipcaVsPre.
+// As duas taxas podem vir do Tesouro Direto (/api/tesouro): os títulos com vencimento mais perto do prazo.
 import { Link } from "react-router";
-import { useRendaFixa } from "../../lib/dados";
+import { hojeISO, isoBR, useRendaFixa, useTesouro } from "../../lib/dados";
 import { usePreferencia } from "../../lib/preferencia";
 import { big, brl, money, pct, signCls } from "../../lib/formato";
-import { aliqIR, fatorIpca, fatorPre, ipcaEquilibrio, ipcaVsPre } from "../../motor";
+import { aliqIR, daquiAnos, fatorIpca, fatorPre, ipcaEquilibrio, ipcaVsPre, tesouroMaisProximo } from "../../motor";
 import { configLinha, css } from "../../lib/graficos";
 import { Grafico } from "../../componentes/Grafico";
 import { Legenda, Num } from "../../componentes/Campos";
@@ -12,12 +13,16 @@ type Cfg = { valor?: number; anos?: number; pre?: number; real?: number; ipca?: 
 
 export function IpcaPre() {
   const { atuais: cur } = useRendaFixa();
+  const tesouro = useTesouro().data;
   const [ipCfg, setIpCfg] = usePreferencia<Cfg>("ipcaPre", {});
   const cfg = { valor: 10000, anos: 5, pre: 12, real: 6.5, ...ipCfg } as Required<Cfg>;
   if (cfg.ipca == null) cfg.ipca = cur ? +cur.ipca.toFixed(2) : 4.5;
   // campo vazio sai da preferência (volta ao padrão)
   const campo = (n: keyof Cfg) => (v: number | null) => setIpCfg(c => { const x = { ...c }; if (v == null) delete x[n]; else x[n] = v; return x; });
   const setIpca = (v: number) => setIpCfg({ ipca: Math.round(v * 1e4) / 1e4 });
+  const alvo = daquiAnos(hojeISO(), cfg.anos || 1);
+  const tdPre = tesouroMaisProximo(tesouro, "Tesouro Prefixado", alvo), tdIpca = tesouroMaisProximo(tesouro, "Tesouro IPCA+", alvo);
+  const usaTesouro = tdPre && tdIpca && cfg.pre === tdPre.taxaCompra && cfg.real === tdIpca.taxaCompra;
 
   return (
     <div className="panel">
@@ -36,8 +41,12 @@ export function IpcaPre() {
           {[1, 2, 5, 10, 20].map(a => <button key={a} type="button" onClick={() => setIpCfg({ anos: a })}>{a} ano{a > 1 ? "s" : ""}</button>)}
           <button type="button" onClick={() => setIpca(ipcaEquilibrio(cfg.pre, cfg.real))}>Inflação de equilíbrio</button>
           {cur && <button type="button" title="IPCA acumulado nos últimos 12 meses" onClick={() => setIpca(cur.ipca)}>IPCA atual ({brl(cur.ipca)}%)</button>}
+          {tdPre && tdIpca && <button type="button" title="Taxas de compra do Tesouro Direto com vencimento mais perto do prazo"
+            onClick={() => setIpCfg({ pre: tdPre.taxaCompra!, real: tdIpca.taxaCompra! })}>Taxas do Tesouro hoje</button>}
         </div>
       </form>
+      {usaTesouro && <div className="hint">Taxas do Tesouro Direto em {isoBR(tesouro!.data)}: {tdPre.tipo} {tdPre.vencimento.slice(0, 4)} e {tdIpca.tipo} {tdIpca.vencimento.slice(0, 4)}
+        {tdPre.vencimento !== tdIpca.vencimento ? " (vencimentos diferentes: o Tesouro não tem os dois no mesmo ano)" : ""}.</div>}
       <Resultado cfg={cfg} />
     </div>
   );

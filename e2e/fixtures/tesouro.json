@@ -1,0 +1,269 @@
+{
+ "data": "2026-11-19",
+ "titulos": [
+  {
+   "tipo": "Tesouro IPCA+",
+   "vencimento": "2029-05-15",
+   "indexador": "ipca",
+   "jurosSemestrais": false,
+   "taxaCompra": 7.46,
+   "taxaVenda": 7.58,
+   "puCompra": 4004.99,
+   "puVenda": 3990.87,
+   "puBase": 3990.87
+  },
+  {
+   "tipo": "Tesouro IPCA+",
+   "vencimento": "2032-08-15",
+   "indexador": "ipca",
+   "jurosSemestrais": false,
+   "taxaCompra": 7.82,
+   "taxaVenda": 7.94,
+   "puCompra": 3110.97,
+   "puVenda": 3088.81,
+   "puBase": 3088.81
+  },
+  {
+   "tipo": "Tesouro IPCA+",
+   "vencimento": "2035-05-15",
+   "indexador": "ipca",
+   "jurosSemestrais": false,
+   "taxaCompra": 7.86,
+   "taxaVenda": 7.98,
+   "puCompra": 2526.53,
+   "puVenda": 2500.95,
+   "puBase": 2500.95
+  },
+  {
+   "tipo": "Tesouro IPCA+",
+   "vencimento": "2040-08-15",
+   "indexador": "ipca",
+   "jurosSemestrais": false,
+   "taxaCompra": 7.54,
+   "taxaVenda": 7.66,
+   "puCompra": 1770.71,
+   "puVenda": 1742.56,
+   "puBase": 1742.56
+  },
+  {
+   "tipo": "Tesouro IPCA+",
+   "vencimento": "2045-05-15",
+   "indexador": "ipca",
+   "jurosSemestrais": false,
+   "taxaCompra": 7.55,
+   "taxaVenda": 7.67,
+   "puCompra": 1255.17,
+   "puVenda": 1228.74,
+   "puBase": 1228.74
+  },
+  {
+   "tipo": "Tesouro IPCA+",
+   "vencimento": "2050-08-15",
+   "indexador": "ipca",
+   "jurosSemestrais": false,
+   "taxaCompra": 7.56,
+   "taxaVenda": 7.68,
+   "puCompra": 856.64,
+   "puVenda": 833.74,
+   "puBase": 833.74
+  },
+  {
+   "tipo": "Tesouro IPCA+ com Juros Semestrais",
+   "vencimento": "2030-08-15",
+   "indexador": "ipca",
+   "jurosSemestrais": true,
+   "taxaCompra": 7.65,
+   "taxaVenda": 7.77,
+   "puCompra": 4618.7,
+   "puVenda": 4598.01,
+   "puBase": 4598.01
+  },
+  {
+   "tipo": "Tesouro IPCA+ com Juros Semestrais",
+   "vencimento": "2032-08-15",
+   "indexador": "ipca",
+   "jurosSemestrais": true,
+   "taxaCompra": 7.77,
+   "taxaVenda": 7.89,
+   "puCompra": 4488.63,
+   "puVenda": 4461.14,
+   "puBase": 4461.14
+  },
+  {
+   "tipo": "Tesouro IPCA+ com Juros Semestrais",
+   "vencimento": "2035-05-15",
+   "indexador": "ipca",
+   "jurosSemestrais": true,
+   "taxaCompra": 7.81,
+   "taxaVenda": 7.93,
+   "puCompra": 4283.66,
+   "puVenda": 4248.81,
+   "puBase": 4248.81
+  },
+  {
+   "tipo": "Tesouro IPCA+ com Juros Semestrais",
+   "vencimento": "2037-05-15",
+   "indexador": "ipca",
+   "jurosSemestrais": true,
+   "taxaCompra": 7.72,
+   "taxaVenda": 7.84,
+   "puCompra": 4231.88,
+   "puVenda": 4192.37,
+   "puBase": 4192.37
+  },
+  {
+   "tipo": "Tesouro IPCA+ com Juros Semestrais",
+   "vencimento": "2040-08-15",
+   "indexador": "ipca",
+   "jurosSemestrais": true,
+   "taxaCompra": 7.59,
+   "taxaVenda": 7.71,
+   "puCompra": 4244.18,
+   "puVenda": 4198.31,
+   "puBase": 4198.31
+  },
+  {
+   "tipo": "Tesouro IPCA+ com Juros Semestrais",
+   "vencimento": "2045-05-15",
+   "indexador": "ipca",
+   "jurosSemestrais": true,
+   "taxaCompra": 7.59,
+   "taxaVenda": 7.71,
+   "puCompra": 4072.24,
+   "puVenda": 4020.53,
+   "puBase": 4020.53
+  },
+  {
+   "tipo": "Tesouro IPCA+ com Juros Semestrais",
+   "vencimento": "2050-08-15",
+   "indexador": "ipca",
+   "jurosSemestrais": true,
+   "taxaCompra": 7.59,
+   "taxaVenda": 7.71,
+   "puCompra": 4061.81,
+   "puVenda": 4005.96,
+   "puBase": 4005.96
+  },
+  {
+   "tipo": "Tesouro IPCA+ com Juros Semestrais",
+   "vencimento": "2055-05-15",
+   "indexador": "ipca",
+   "jurosSemestrais": true,
+   "taxaCompra": 7.58,
+   "taxaVenda": 7.7,
+   "puCompra": 3947.17,
+   "puVenda": 3889.0,
+   "puBase": 3889.0
+  },
+  {
+   "tipo": "Tesouro IPCA+ com Juros Semestrais",
+   "vencimento": "2060-08-15",
+   "indexador": "ipca",
+   "jurosSemestrais": true,
+   "taxaCompra": 7.58,
+   "taxaVenda": 7.7,
+   "puCompra": 3977.74,
+   "puVenda": 3917.97,
+   "puBase": 3917.97
+  },
+  {
+   "tipo": "Tesouro Prefixado",
+   "vencimento": "2027-01-01",
+   "indexador": "pre",
+   "jurosSemestrais": false,
+   "taxaCompra": 13.56,
+   "taxaVenda": 13.68,
+   "puCompra": 985.97,
+   "puVenda": 985.35,
+   "puBase": 985.35
+  },
+  {
+   "tipo": "Tesouro Prefixado",
+   "vencimento": "2028-01-01",
+   "indexador": "pre",
+   "jurosSemestrais": false,
+   "taxaCompra": 14.47,
+   "taxaVenda": 14.59,
+   "puCompra": 861.03,
+   "puVenda": 859.57,
+   "puBase": 859.57
+  },
+  {
+   "tipo": "Tesouro Prefixado",
+   "vencimento": "2029-01-01",
+   "indexador": "pre",
+   "jurosSemestrais": false,
+   "taxaCompra": 15.04,
+   "taxaVenda": 15.16,
+   "puCompra": 746.01,
+   "puVenda": 743.97,
+   "puBase": 743.97
+  },
+  {
+   "tipo": "Tesouro Prefixado",
+   "vencimento": "2031-01-01",
+   "indexador": "pre",
+   "jurosSemestrais": false,
+   "taxaCompra": 15.35,
+   "taxaVenda": 15.47,
+   "puCompra": 558.47,
+   "puVenda": 555.79,
+   "puBase": 555.79
+  },
+  {
+   "tipo": "Tesouro Prefixado",
+   "vencimento": "2032-01-01",
+   "indexador": "pre",
+   "jurosSemestrais": false,
+   "taxaCompra": 15.43,
+   "taxaVenda": 15.55,
+   "puCompra": 482.45,
+   "puVenda": 479.64,
+   "puBase": 479.64
+  },
+  {
+   "tipo": "Tesouro Selic",
+   "vencimento": "2027-03-01",
+   "indexador": "selic",
+   "jurosSemestrais": false,
+   "taxaCompra": 0.03,
+   "taxaVenda": 0.04,
+   "puCompra": 20343.78,
+   "puVenda": 20332.84,
+   "puBase": 20332.84
+  },
+  {
+   "tipo": "Tesouro Selic",
+   "vencimento": "2028-03-01",
+   "indexador": "selic",
+   "jurosSemestrais": false,
+   "taxaCompra": 0.04,
+   "taxaVenda": 0.05,
+   "puCompra": 20336.11,
+   "puVenda": 20323.1,
+   "puBase": 20323.1
+  },
+  {
+   "tipo": "Tesouro Selic",
+   "vencimento": "2029-03-01",
+   "indexador": "selic",
+   "jurosSemestrais": false,
+   "taxaCompra": 0.05,
+   "taxaVenda": 0.06,
+   "puCompra": 20320.65,
+   "puVenda": 20305.65,
+   "puBase": 20305.65
+  },
+  {
+   "tipo": "Tesouro Selic",
+   "vencimento": "2031-03-01",
+   "indexador": "selic",
+   "jurosSemestrais": false,
+   "taxaCompra": 0.11,
+   "taxaVenda": 0.12,
+   "puCompra": 20251.92,
+   "puVenda": 20232.91,
+   "puBase": 20232.91
+  }
+ ]
+}

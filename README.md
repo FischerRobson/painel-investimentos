@@ -11,7 +11,7 @@ Navegador / PWA ──HTTPS──► Lambda Function URL ──► Quarkus (Java
                                                    ├── /*  (app React: build do Vite servido pelo Quinoa, service worker e ícones)
                                                    ├── /api/*  (token do Cognito validado pelo quarkus-oidc)
                                                    ├── S3: users/{sub}/carteira.json, historico.json, positions/, precos.json e budget/
-                                                   └── brapi · Yahoo · Fundamentus · Banco Central · AwesomeAPI · CoinGecko · FIPE
+                                                   └── brapi · Yahoo · Fundamentus · Banco Central · Tesouro · AwesomeAPI · CoinGecko · FIPE
 EventBridge Scheduler (18h, Brasília, dias úteis) ──invoke──► POST /internal/snapshots (posições do dia de todos os usuários)
 Login: Cognito (Google) com authorization code + PKCE; só e-mails da lista ALLOWED_EMAILS criam conta
 ```
@@ -32,6 +32,7 @@ Login: Cognito (Google) com authorization code + PKCE; só e-mails da lista ALLO
 | `GET /api/data?symbols=&range=` | Ações/FIIs/exterior: cotação, gráfico, proventos e indicadores |
 | `GET /api/crypto?coins=` | Cripto em reais |
 | `GET /api/rates?from=AAAA-MM-DD` | CDI e IPCA (Banco Central), com fallback para as últimas taxas salvas |
+| `GET /api/tesouro` | Preços e taxas do Tesouro Direto na última data base do CSV do Tesouro Transparente (lê só o topo do arquivo; cache de 6 h e cópia em disco se a fonte cair) |
 | `GET /api/fx?days=` | Câmbio (USD, EUR, GBP, ARS, JPY) |
 | `GET /api/fipe/{brands,models,years,price}` | Tabela FIPE |
 | `GET/PUT /api/carteira` | Carteira do usuário (`If-Match` obrigatório no PUT; 412 em conflito) |

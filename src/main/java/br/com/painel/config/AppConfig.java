@@ -19,6 +19,9 @@ public interface AppConfig {
     @WithDefault("cache_taxas.json")
     String ratesCacheFile();
 
+    @WithDefault("cache_tesouro.json")
+    String tesouroCacheFile();
+
     interface Auth {
         Optional<String> configParam();
     }
