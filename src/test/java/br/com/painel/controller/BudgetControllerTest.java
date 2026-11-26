@@ -208,6 +208,16 @@ class BudgetControllerTest {
     }
 
     @Test
+    void backupCarriesTheLastStatementImport() {
+        String backup = """
+                {"app":"painel-acoes","budget":{"lastImport":{"at":"2026-11-20T12:00:00Z","source":"Fatura do cartão","fileName":"f.pdf",
+                 "imported":3,"skipped":1,"months":["2026-11"]}}}""";
+        given().contentType(ContentType.JSON).body(backup).when().post("/api/backup/import").then().statusCode(204);
+        given().when().get("/api/budget/import/last").then().statusCode(200).body("last.fileName", equalTo("f.pdf"));
+        given().when().get("/api/backup").then().statusCode(200).body("budget.lastImport.imported", equalTo(3));
+    }
+
+    @Test
     void backupCarriesTheBudget() throws IOException {
         given().contentType(ContentType.JSON).header("If-None-Match", "*").body(SETTINGS)
                 .when().put("/api/budget/settings").then().statusCode(200);

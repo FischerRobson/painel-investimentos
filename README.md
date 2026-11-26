@@ -46,7 +46,8 @@ Login: Cognito (Google) com authorization code + PKCE; só e-mails da lista ALLO
 | `GET /api/historico` | Totais de cada dia (gerados pelo servidor, só leitura) |
 | `GET /api/positions` · `GET /api/positions/{AAAA-MM-DD}` | Dias com posições salvas · posições de um dia |
 | `POST /internal/snapshots` | Gera a foto do dia para todos os usuários; chamado pelo agendamento com o header `X-Snapshot-Token` |
-| `GET /api/backup`, `POST /api/backup/import` | Exporta/importa tudo |
+| `GET /api/backup`, `POST /api/backup/import` | Exporta/importa carteira, histórico e orçamento (com a data da última importação de extrato) |
+| `GET /api/backup/positions?after=`, `POST /api/backup/positions` | Posições diárias do backup, em lotes de até 30 dias (o Lambda limita cada requisição a 6 MB). A importação grava por cima dos dias do arquivo e mantém os demais |
 | `GET /api/benchmarks?range=&fx=&crypto=` | CDI, Ibovespa, IFIX (via XFIX11), câmbio e cripto em reais no período, para comparar a carteira |
 | `GET /api/custos` | Custos da conta AWS pelo Cost Explorer (cache de 12 h: cada consulta custa US$ 0,01) |
 | `GET /api/brapi/uso` | Consumo do plano da brapi (usadas, restantes, janela), mostrado na página Custos; cache de 10 min, não gasta cota |

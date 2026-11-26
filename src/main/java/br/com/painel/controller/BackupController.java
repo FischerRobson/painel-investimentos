@@ -1,6 +1,8 @@
 package br.com.painel.controller;
 
+import br.com.painel.dto.ErrorResponse;
 import br.com.painel.model.Backup;
+import br.com.painel.model.PositionsBatch;
 import br.com.painel.service.WalletService;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.validation.Valid;
@@ -10,7 +12,12 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 
 @Path("/api/backup")
 @Produces(MediaType.APPLICATION_JSON)
@@ -34,5 +41,28 @@ public class BackupController {
     @RunOnVirtualThread
     public void importBackup(@Valid @NotNull Backup backup) {
         service.importBackup(backup);
+    }
+
+    // Saved positions, oldest first, a slice per request
+    @GET
+    @Path("/positions")
+    @RunOnVirtualThread
+    public Response exportPositions(@QueryParam("after") String after) {
+        LocalDate day = null;
+        if (after != null) {
+            try {
+                day = LocalDate.parse(after);
+            } catch (DateTimeParseException e) {
+                return Response.status(Response.Status.BAD_REQUEST).entity(new ErrorResponse("data inválida")).build();
+            }
+        }
+        return Response.ok(service.exportPositions(day)).build();
+    }
+
+    @POST
+    @Path("/positions")
+    @RunOnVirtualThread
+    public void importPositions(@Valid @NotNull PositionsBatch batch) {
+        service.importPositions(batch);
     }
 }

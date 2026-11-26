@@ -5,6 +5,7 @@ import br.com.painel.model.CurrencyHolding;
 import br.com.painel.model.FixedIncome;
 import br.com.painel.model.Operation;
 import br.com.painel.model.Position;
+import br.com.painel.model.PositionsBatch;
 import br.com.painel.model.PositionsDay;
 import br.com.painel.model.Snapshot;
 import br.com.painel.model.Wallet;
@@ -15,6 +16,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -131,6 +133,31 @@ public class WalletService {
 
     public Optional<PositionsDay> positions(LocalDate date) {
         return repository.positions(user.id(), date);
+    }
+
+    public PositionsBatch exportPositions(LocalDate after) {
+        String owner = user.id();
+        List<LocalDate> pending = repository.positionDates(owner).stream()
+                .filter(d -> after == null || d.isAfter(after))
+                .toList();
+        List<LocalDate> slice = pending.subList(0, Math.min(pending.size(), PositionsBatch.MAX_DAYS));
+        List<PositionsDay> days = slice.stream().flatMap(d -> repository.positions(owner, d).stream()).toList();
+        return new PositionsBatch(days, slice.size() < pending.size() ? slice.getLast().toString() : null);
+    }
+
+    // Writes the days of the backup over the saved ones; days that are not in the backup stay
+    public void importPositions(PositionsBatch batch) {
+        batch.days().forEach(d -> checkDate(d.date()));
+        String owner = user.id();
+        batch.days().forEach(d -> repository.putPositions(owner, d));
+    }
+
+    private static void checkDate(String text) {
+        try {
+            LocalDate.parse(text);
+        } catch (DateTimeParseException e) {
+            throw new InvalidDataException("data inválida: " + text);
+        }
     }
 
     public Backup exportBackup() {

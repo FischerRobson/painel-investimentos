@@ -1,13 +1,18 @@
 package br.com.painel.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 import java.util.List;
 
 // The user's positions at the daily close (18:00 Brasília, B3 trading days only), saved as users/{sub}/positions/AAAA-MM-DD.json.
 // previousDate is the trading day the ppv/pnl compare against (null on the first day saved).
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public record PositionsDay(String date, String previousDate, String takenAt, List<Line> positions, Totals totals) {
+public record PositionsDay(@NotNull @Pattern(regexp = Formats.ISO_DATE) String date, String previousDate, String takenAt,
+                           @Size(max = 1500) List<@NotNull @Valid Line> positions, @NotNull Totals totals) {
 
     public PositionsDay {
         positions = positions == null ? List.of() : List.copyOf(positions);
@@ -23,7 +28,8 @@ public record PositionsDay(String date, String previousDate, String takenAt, Lis
     //  - currency: quote currency when not BRL (e.g. USD for AAPL); gross and taxRate: fixed income before tax and its IR rate
     //  - staleSince: the price is the last known one, from that date ("" when unknown); missing: no price at all
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public record Line(String kind, String key, String asset, Double notional, Double price, Double pv, Double ppv, Double pnl,
+    public record Line(@NotNull String kind, @NotNull String key, @NotNull String asset, @NotNull Double notional, Double price,
+                       Double pv, Double ppv, Double pnl,
                        String currency, Double gross, Double taxRate, String staleSince, Boolean missing) {
     }
 

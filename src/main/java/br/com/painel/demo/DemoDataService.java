@@ -22,6 +22,7 @@ import br.com.painel.model.FixedIncome;
 import br.com.painel.model.Operation;
 import br.com.painel.model.PaymentMethod;
 import br.com.painel.model.Position;
+import br.com.painel.model.PositionsBatch;
 import br.com.painel.model.PositionsDay;
 import br.com.painel.model.Recurring;
 import br.com.painel.model.Vehicle;
@@ -100,6 +101,8 @@ public class DemoDataService {
             case "/api/historico" -> new Reply(200, history(), null);
             case "/api/positions" -> new Reply(200, new ArrayList<>(history().keySet()), null);
             case "/api/backup" -> new Reply(200, backup(), null);
+            case "/api/backup/positions" -> get ? new Reply(200, new PositionsBatch(List.of(), null), null)
+                    : new Reply(400, Map.of("error", "Indisponível no modo demonstração"), null);
             case "/api/backup/import", "/api/budget/import/preview", "/api/budget/import/commit" ->
                     new Reply(400, Map.of("error", "Indisponível no modo demonstração"), null);
             case "/api/data" -> new Reply(200, data(q.getFirst("symbols"), param(q, "range", "1y")), null);
