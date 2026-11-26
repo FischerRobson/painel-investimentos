@@ -11,6 +11,7 @@ import { Operacoes } from "./paginas/operacoes/Operacoes";
 import { Saude } from "./paginas/saude/Saude";
 import { Orcamento } from "./paginas/orcamento/Orcamento";
 import { VR } from "./paginas/orcamento/VR";
+import { Fechamento } from "./paginas/Fechamento";
 import { PAGINAS } from "./rotas";
 import type { ReactElement } from "react";
 import type { Sessao } from "./lib/api";
@@ -22,6 +23,7 @@ const PAGINA: Record<string, ReactElement> = {
   ativos: <Ativos />,
   saude: <Saude />,
   budget: <Orcamento />,
+  fechamento: <Fechamento />,
   ferramentas: <Ferramentas />,
   moedas: <Moedas />,
   bens: <Bens />,

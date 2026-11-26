@@ -168,6 +168,14 @@ com ETag) e entra no backup. Contas em `src/main/webui/src/motor/vr.ts`.
   diferença entre as apurações da página Operações com e sem as vendas. Não vende a reserva de emergência nem título sem
   liquidez diária, e fica suspenso se algum ativo estiver sem cotação.
 
+### Fechamento do mês
+
+Página `/fechamento` (`motor/fechamento.ts`). A variação do patrimônio investido vai da última foto antes do mês até a última do
+mês e se divide em aportes líquidos (pelas operações) e valorização (o que sobra da conta). Proventos aparecem à parte, porque
+as fotos não têm o caixa. Também mostra a rentabilidade sem aportes contra o CDI, os ativos que mais puxaram (soma do PnL das
+posições diárias), a taxa de poupança e os gastos contra a média de até 6 meses. A tela avisa quando uma operação lançada
+depois da foto ou uma cotação que falhou distorce os números.
+
 ### Modo demonstração
 
 O botão **"Modo demonstração"** (topo da página) faz o app mostrar dados fictícios, para testar ou apresentar

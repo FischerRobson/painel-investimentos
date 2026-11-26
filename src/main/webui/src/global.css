@@ -124,7 +124,7 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
   .nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; margin: 0; gap: 0; justify-content: space-around;
     background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
     border-top: 1px solid var(--border); border-bottom: 0; padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); overflow-x: auto; overflow-y: hidden; justify-content: flex-start; }
-  /* com 10 páginas não cabem todas na largura: a barra rola na horizontal e cada item tem largura mínima */
+  /* as páginas não cabem todas na largura: a barra rola na horizontal e cada item tem largura mínima */
   .nav a { flex: 1 0 auto; min-width: 62px; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 2px; font-size: 10.5px;
     border-bottom: 0; margin: 0; color: var(--text-3); -webkit-tap-highlight-color: transparent; }
   .nav a.on { color: var(--accent); border-bottom: 0; }
@@ -395,3 +395,24 @@ tr.estorno td { color: var(--text-3); font-style: italic; }
 .fx-op input, .fx-op select { width: 120px; padding: 7px 10px; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
 a.btn { display: inline-block; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); text-decoration: none; white-space: nowrap; }
 .op-segs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+
+/* Fechamento do mês: barras a partir do zero (com negativos, o zero fica no meio) */
+.f-barras { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 10px; }
+.f-linha { display: grid; grid-template-columns: 130px 1fr 130px; column-gap: 10px; align-items: center; }
+.f-linha.curta { grid-template-columns: 70px 1fr 70px; }
+.f-nome { font-size: 13px; color: var(--text-2); }
+.f-valor { text-align: right; font-weight: 600; white-space: nowrap; }
+.f-detalhe { grid-column: 2 / -1; font-size: 11px; color: var(--text-3); }
+.f-trilho { position: relative; height: 10px; background: var(--grid); border-radius: 4px; }
+.f-trilho i { position: absolute; top: 0; bottom: 0; left: 0; min-width: 2px; border-radius: 0 4px 4px 0; }
+.f-barras.com-negativo .f-trilho i { left: 50%; }
+.f-barras.com-negativo .f-trilho i.neg { left: auto; right: 50%; border-radius: 4px 0 0 4px; }
+.f-barras.com-negativo .f-trilho::after { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--text-3); }
+.f-duas { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0 28px; }
+.f-duas > div { min-width: 0; }
+@media (max-width: 600px) {
+  .f-linha:not(.curta) { grid-template-columns: 1fr auto; row-gap: 3px; }
+  .f-linha:not(.curta) .f-trilho { grid-column: 1 / -1; order: 3; }
+  .f-linha:not(.curta) .f-detalhe { grid-column: 1 / -1; order: 4; }
+}
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
