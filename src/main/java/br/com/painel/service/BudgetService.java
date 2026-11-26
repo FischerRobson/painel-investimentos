@@ -13,6 +13,7 @@ import br.com.painel.model.BudgetSettings;
 import br.com.painel.model.Recurring;
 import br.com.painel.model.Expense;
 import br.com.painel.model.Income;
+import br.com.painel.model.LastImport;
 import br.com.painel.repository.DocumentStore.Condition;
 import br.com.painel.repository.UserDataRepository;
 import br.com.painel.repository.UserDataRepository.Versioned;
@@ -157,7 +158,8 @@ public class BudgetService {
         BudgetRules rules = repository.budgetRules(owner).map(Versioned::value).orElse(null);
         Benefits benefits = repository.benefits(owner).map(Versioned::value).orElse(null);
         Recurring recurring = repository.recurring(owner).map(Versioned::value).orElse(null);
-        return new BudgetBackup(settings, months, rules, benefits, recurring);
+        LastImport lastImport = repository.lastImport(owner).orElse(null);
+        return new BudgetBackup(settings, months, rules, benefits, recurring, lastImport);
     }
 
     public void importBackup(BudgetBackup backup) {
@@ -190,6 +192,9 @@ public class BudgetService {
         }
         if (backup.recurring() != null) {
             repository.saveRecurring(owner, backup.recurring(), Condition.any());
+        }
+        if (backup.lastImport() != null) {
+            repository.saveLastImport(owner, backup.lastImport());
         }
     }
 

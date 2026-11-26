@@ -8,13 +8,16 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasKey;
@@ -230,5 +233,44 @@ class WalletControllerTest {
                 .body("app", equalTo("painel-acoes")).body("historico", hasKey("2026-10-20")).body("moedas[0].c", equalTo("USD"))
                 .body("historico.'2026-10-20'.stale[0].asset", equalTo("BTC"));
         given().contentType(ContentType.JSON).body("{\"qualquer\":1}").when().post("/api/backup/import").then().statusCode(400);
+    }
+
+    private static String positionsDay(LocalDate date) {
+        return """
+                {"date":"%s","takenAt":"%sT21:00:00Z","totals":{"pv":100,"ppv":90,"pnl":10},
+                 "positions":[{"kind":"stock","key":"stock:ITSA4","asset":"ITSA4","notional":10,"price":10,"pv":100,"ppv":90,"pnl":10}]}"""
+                .formatted(date, date);
+    }
+
+    private static String batch(LocalDate first, int count) {
+        return IntStream.range(0, count).mapToObj(i -> positionsDay(first.plusDays(i)))
+                .collect(Collectors.joining(",", "{\"days\":[", "]}"));
+    }
+
+    @Test
+    void positionsTravelInSlicesInTheBackup() {
+        given().when().get("/api/backup/positions").then().statusCode(200).body("days.size()", equalTo(0)).body("next", nullValue());
+        LocalDate first = LocalDate.parse("2026-09-01");
+        given().contentType(ContentType.JSON).body(batch(first, 30)).when().post("/api/backup/positions").then().statusCode(204);
+        given().contentType(ContentType.JSON).body(batch(first.plusDays(30), 2)).when().post("/api/backup/positions").then().statusCode(204);
+
+        given().when().get("/api/backup/positions").then().statusCode(200)
+                .body("days.size()", equalTo(30)).body("days[0].date", equalTo("2026-09-01"))
+                .body("days[0].positions[0].key", equalTo("stock:ITSA4")).body("next", equalTo("2026-09-30"));
+        given().when().get("/api/backup/positions?after=2026-09-30").then().statusCode(200)
+                .body("days.size()", equalTo(2)).body("days[1].date", equalTo("2026-10-02")).body("next", nullValue());
+        given().when().get("/api/positions/2026-10-02").then().statusCode(200).body("totals.pnl", equalTo(10.0f));
+    }
+
+    @Test
+    void rejectsInvalidPositionsWithoutSavingTheSlice() {
+        LocalDate first = LocalDate.parse("2026-09-01");
+        given().contentType(ContentType.JSON).body(batch(first, 31)).when().post("/api/backup/positions").then().statusCode(400);
+        String badDate = "{\"days\":[" + positionsDay(first) + "," + positionsDay(first).replace("\"date\":\"2026-09-01\"", "\"date\":\"2026-02-30\"") + "]}";
+        given().contentType(ContentType.JSON).body(badDate).when().post("/api/backup/positions").then().statusCode(400);
+        String noKey = "{\"days\":[" + positionsDay(first).replace("\"key\":\"stock:ITSA4\",", "") + "]}";
+        given().contentType(ContentType.JSON).body(noKey).when().post("/api/backup/positions").then().statusCode(400);
+        given().when().get("/api/backup/positions?after=ontem").then().statusCode(400);
+        given().when().get("/api/positions").then().body("size()", equalTo(0));
     }
 }
