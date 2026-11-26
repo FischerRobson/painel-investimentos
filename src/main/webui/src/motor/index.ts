@@ -6,3 +6,4 @@ export * from "./moradia";
 export * from "./montecarlo";
 export * from "./rebalancear";
 export * from "./fechamento";
+export * from "./perfilrf";

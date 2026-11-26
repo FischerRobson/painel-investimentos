@@ -19,14 +19,34 @@ export const TOOL_ART: Record<string, string> = {
     <path d="M60 100 H200" style="stroke:var(--border);stroke-width:4;stroke-linecap:round"/>
     <path d="M60 100 H150" style="stroke:var(--s2);stroke-width:4;stroke-linecap:round"/>
     <circle cx="150" cy="100" r="6" style="fill:var(--surface);stroke:var(--s2);stroke-width:2.5"/>`, "Prefixado entre duas curvas de IPCA+ com inflações diferentes"),
-  termometro: ART(`<path d="M24 70 L60 58 L96 64 L132 40 L168 46 L204 30 L236 34" style="fill:none;stroke:var(--text-3);stroke-width:2.5;stroke-linejoin:round"/>
-    <path d="M24 88 L60 84 L96 78 L132 80 L168 70 L204 72 L236 66" style="fill:none;stroke:var(--text-3);stroke-width:2.5;stroke-dasharray:5 4"/>`, "Linhas de inflação e juros"),
-  comparador: ART([60, 120, 90, 160].map((w, i) => `<rect x="24" y="${18 + i * 22}" width="${w + 50}" height="14" rx="4" style="fill:var(--text-3);opacity:${0.35 + i * 0.12}"/>`).join(""), "Barras comparando investimentos"),
-  marcacao: ART(`<path d="M30 20 Q90 86 236 92" style="fill:none;stroke:var(--text-3);stroke-width:2.5"/><circle cx="96" cy="66" r="6" style="fill:var(--text-3)"/>`, "Preço do título caindo quando a taxa sobe"),
-  analisador: ART([[24, 150, 0.8], [84, 110, 0.55], [144, 170, 0.35], [204, 90, 0.65]].map(([x, h, o]) => `<rect x="${x}" y="${100 - h / 2 - 8}" width="36" height="${h / 2}" rx="5" style="fill:var(--text-3);opacity:${o}"/>`).join(""), "Barras de pontuação de ativos"),
-  planejador: ART(`<path d="M30 14 L40 14 L40 96" style="fill:none;stroke:var(--text-3);stroke-width:2.5;stroke-linecap:round"/>
-    <path d="M40 18 L110 18 L96 32 L110 46 L40 46 Z" style="fill:var(--text-3);opacity:.5"/>
-    <path d="M60 96 V80 M100 96 V66 M140 96 V52 M180 96 V40 M220 96 V26" style="stroke:var(--text-3);stroke-width:8;stroke-linecap:round;opacity:.35"/>`, "Bandeira de meta e barras de aportes subindo"),
+  termometro: ART(`<rect x="30" y="14" width="18" height="66" rx="9" style="fill:var(--surface);stroke:var(--border);stroke-width:2"/>
+    <rect x="35" y="40" width="8" height="44" rx="4" style="fill:var(--s8)"/>
+    <circle cx="39" cy="88" r="12" style="fill:var(--s8)"/>
+    <path d="M50 26 h6 M50 40 h6 M50 54 h6 M50 68 h6" style="stroke:var(--text-3);stroke-width:2;stroke-linecap:round"/>
+    <path d="M76 66 L106 54 L136 60 L166 36 L196 42 L236 24" style="fill:none;stroke:var(--s1);stroke-width:3;stroke-linejoin:round;stroke-linecap:round"/>
+    <path d="M76 86 L106 82 L136 76 L166 78 L196 68 L236 64" style="fill:none;stroke:var(--s2);stroke-width:2.5;stroke-dasharray:5 4;stroke-linecap:round"/>
+    <circle cx="236" cy="24" r="5" style="fill:var(--s1)"/>
+    <path d="M76 96 H236" style="stroke:var(--border);stroke-width:1.5"/>`, "Termômetro ao lado das linhas de inflação e juros"),
+  comparador: ART(`${[[110, 1], [170, 2], [140, 3], [80, 4]].map(([w, c], i) => `<rect x="24" y="${16 + i * 22}" width="${w}" height="14" rx="4" style="fill:var(--s${c});opacity:${c === 2 ? 1 : 0.45}"/>`).join("")}
+    <circle cx="${24 + 170 + 16}" cy="45" r="9" style="fill:var(--surface);stroke:var(--s2);stroke-width:2.5"/>
+    <path d="M205 45 l4 4 l7 -8" style="fill:none;stroke:var(--s2);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"/>
+    <path d="M24 104 H236" style="stroke:var(--border);stroke-width:1.5"/>`, "Barras comparando investimentos, com o melhor marcado"),
+  marcacao: ART(`<path d="M24 40 L236 40" style="stroke:var(--s4);stroke-width:2;stroke-dasharray:5 4"/>
+    <path d="M30 18 Q90 84 236 92" style="fill:none;stroke:var(--s2);stroke-width:3;stroke-linecap:round"/>
+    <path d="M30 18 Q90 84 236 92 L236 96 L30 96 Z" style="fill:var(--s2);opacity:.12"/>
+    <path d="M96 66 V96" style="stroke:var(--text-3);stroke-width:1.5;stroke-dasharray:3 3"/>
+    <circle cx="96" cy="66" r="7" style="fill:var(--s1);stroke:var(--surface);stroke-width:2"/>
+    <rect x="150" y="12" width="70" height="20" rx="6" style="fill:var(--surface);stroke:var(--border)"/>
+    <path d="M160 22 h30" style="stroke:var(--s1);stroke-width:3;stroke-linecap:round"/>
+    <path d="M24 96 H236" style="stroke:var(--border);stroke-width:1.5"/>`, "Preço do título caindo quando a taxa sobe, com o ponto de venda"),
+  analisador: ART(`${[[24, 150, 2], [84, 110, 3], [144, 170, 1], [204, 90, 4]].map(([x, h, c]) => `<rect x="${x}" y="${100 - h / 2 - 8}" width="36" height="${h / 2}" rx="5" style="fill:var(--s${c});opacity:.8"/>`).join("")}
+    <path d="M18 96 H246" style="stroke:var(--border);stroke-width:1.5"/>`, "Barras de pontuação de ativos"),
+  planejador: ART(`<path d="M60 96 V82 M100 96 V70 M140 96 V58 M180 96 V46" style="stroke:var(--s2);stroke-width:12;stroke-linecap:round;opacity:.5"/>
+    <path d="M44 90 C100 80 160 56 218 26" style="fill:none;stroke:var(--s1);stroke-width:3;stroke-linecap:round"/>
+    <path d="M218 14 V96" style="stroke:var(--text-3);stroke-width:2.5;stroke-linecap:round"/>
+    <path d="M218 16 H246 L238 26 L246 36 H218 Z" style="fill:var(--s3)"/>
+    <circle cx="218" cy="26" r="5" style="fill:var(--s1)"/>
+    <path d="M24 96 H236" style="stroke:var(--border);stroke-width:1.5"/>`, "Aportes subindo até a bandeira da meta"),
   "carteira-mercado": ART(`<path d="M24 82 C70 70 110 76 150 48 S212 36 236 18" style="fill:none;stroke:var(--s1);stroke-width:3;stroke-linecap:round"/>
     <path d="M24 82 L236 48" style="fill:none;stroke:var(--s2);stroke-width:2.5;stroke-dasharray:5 4"/>
     <path d="M24 82 C60 94 104 54 150 70 S210 52 236 64" style="fill:none;stroke:var(--s3);stroke-width:2.5"/>

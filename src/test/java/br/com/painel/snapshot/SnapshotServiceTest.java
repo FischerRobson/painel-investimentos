@@ -218,7 +218,7 @@ class SnapshotServiceTest {
                 return Map.of("BTC", new CryptoPrice(400_000.0, 1.0));
             }
         };
-        FxService fx = new FxService(null) {
+        FxService fx = new FxService(null, null, new ObjectMapper(), config()) {
             @Override
             public Map<String, FxQuote> last() {
                 down();
@@ -284,6 +284,10 @@ class SnapshotServiceTest {
 
             public String ratesCacheFile() {
                 return dir.resolve("rates.json").toString();
+            }
+
+            public String fxCacheFile() {
+                return dir.resolve("fx.json").toString();
             }
         };
     }

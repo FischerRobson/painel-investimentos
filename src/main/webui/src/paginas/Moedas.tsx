@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTitulo } from "../lib/useTitulo";
 import { store } from "../lib/store";
 import { arrow, brl, money, pct, signCls } from "../lib/formato";
-import { FX_CODES, erroCambio, fxDec, moneyC, useCambio, type Cambio } from "../lib/cambio";
+import { FX_CODES, avisoCambio, erroCambio, fxDec, moneyC, useCambio, type Cambio } from "../lib/cambio";
 import { useCarteira } from "../lib/carteira";
 import { novoIdOp, operacoesStore } from "../lib/operacoes";
 import { hojeISO } from "../lib/dados";
@@ -38,6 +38,7 @@ export function Moedas() {
         <div>
           <h2>Moedas</h2>
           <div className="hint" style={{ margin: 0 }}>Cotação de compra em reais (AwesomeAPI). Lance as compras e vendas de cada moeda e o valor entra no patrimônio da Carteira.</div>
+          {avisoCambio(fx) && <div className="status" style={{ marginTop: 6 }}>{avisoCambio(fx)}</div>}
         </div>
         <div className="seg">
           {PERIODOS.map(([d, l]) => <button key={d} className={dias === d ? "on" : undefined} onClick={() => setDias(d)}>{l}</button>)}

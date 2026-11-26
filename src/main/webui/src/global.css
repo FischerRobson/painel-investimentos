@@ -440,3 +440,18 @@ a.btn { display: inline-block; padding: 8px 14px; border-radius: 8px; border: 1p
 @container (max-width: 44px) { .mapa-texto { display: none; } }
 @container (max-height: 16px) { .mapa-texto { display: none; } }
 @media (max-width: 600px) { .mapa { height: 440px; } }
+/* Tabelas com a classe cards-m viram um card por linha no celular: cada célula mostra o rótulo (data-label) à esquerda */
+@media (max-width: 640px) {
+  .w-table.cards-m thead { display: none; }
+  .w-table.cards-m, .w-table.cards-m tbody, .w-table.cards-m tr, .w-table.cards-m td { display: block; width: 100%; }
+  .w-table.cards-m tr { border: 1px solid var(--border); border-radius: 10px; padding: 6px 12px; margin-bottom: 10px; background: var(--surface); }
+  .w-table.cards-m td { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 0;
+    border-bottom: 1px solid var(--grid); text-align: right; white-space: normal; }
+  .w-table.cards-m td:last-child { border-bottom: 0; }
+  .w-table.cards-m td[data-label]::before { content: attr(data-label); color: var(--text-3); font-size: 12px; text-align: left; flex: 0 0 auto; }
+  .w-table.cards-m td.titulo { justify-content: flex-start; flex-wrap: wrap; text-align: left; font-size: 14px; }
+  .w-table.cards-m td.acao { justify-content: flex-end; }
+  .w-table.cards-m td input:not([type=checkbox]), .w-table.cards-m td select { max-width: 62%; }
+  .w-table.cards-m td[colspan] { display: block; text-align: left; }
+  .w-table.cards-m td:empty { display: none; }
+}

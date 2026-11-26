@@ -104,7 +104,7 @@ function Painel({ c, comOps, erros, semTaxas, ratesErr, historico }: {
           <div className="tile"><div className="k">Proventos 12 meses</div><div className="v">{money(c.div12)}</div>
             <div className="s">{money(c.div12 / 12)} por mês · DY {vAcoes + vFiis ? brl(c.div12 / (vAcoes + vFiis) * 100) + "%" : "—"}</div></div>
           {c.rf.length > 0 && <div className="tile"><div className="k">Rendimento renda fixa</div><div className={"v " + signCls(c.rfRend)}>{semTaxas ? "—" : signedMoney(c.rfRend)}</div>
-            <div className="s">líquido · {c.rfAplic ? pct(c.rfRend / c.rfAplic * 100) : "—"} sobre {money(c.rfAplic)}</div></div>}
+            <div className="s">líquido desde a aplicação · {c.rfAplic ? pct(c.rfRend / c.rfAplic * 100) : "—"} sobre {money(c.rfAplic)}</div></div>}
         </div>
       )}
       {cats.length > 0 && <Distribuicao cats={cats} total={total} vBens={vBens} share={share} />}
