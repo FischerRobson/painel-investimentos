@@ -3,7 +3,8 @@
 // Dias em que uma cotação falhou usam o último valor conhecido e ficam marcados no gráfico.
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { addDays, fluxosDasOperacoes, governados, rentabilidade, type TituloRF } from "../../motor";
+import { addDays, fluxosDasOperacoes, governados, processar, rentabilidade, type TituloRF } from "../../motor";
+import { agrupaPosicoes } from "../../lib/gruposPosicoes";
 import { apiFetch } from "../../lib/api";
 import { useCarteira } from "../../lib/carteira";
 import { hojeISO, isoBR, useDatasPosicoes, usePosicoes, type DiaPosicoes, type LinhaPosicao } from "../../lib/dados";
@@ -31,7 +32,8 @@ function Delta({ a, b }: { a: number; b: number }) {
   return <><span className={signCls(d)}>{sinal(d)}{money(Math.abs(d))}</span> <span className="muted">{a ? pct((b / a - 1) * 100) : ""}</span></>;
 }
 
-export function Historico({ hist: bruto }: { hist: Record<string, unknown> }) {
+// tipos: o tipo de hoje de cada ticker (FII, Exterior...), para separar as posições
+export function Historico({ hist: bruto, tipos }: { hist: Record<string, unknown>; tipos: Record<string, string> }) {
   const hist = bruto as Record<string, Foto>;
   const days = Object.keys(hist).sort();
   const [dia, setDia] = useState<string | null>(null);
@@ -50,7 +52,7 @@ export function Historico({ hist: bruto }: { hist: Record<string, unknown> }) {
   if (days.length < 2) return (
     <div className="panel"><h2>Evolução do patrimônio</h2>
       <div className="hint" style={{ marginTop: 6 }}>{intro} {days.length ? `A primeira foi em ${isoBR(days[0])}; o gráfico aparece a partir do segundo dia.` : "A primeira sai no próximo dia de pregão, às 18h."}</div>
-      {days.length === 1 && <Posicoes dia={days[0]} primeiraComPosicoes={datas.data?.[0]} />}
+      {days.length === 1 && <Posicoes dia={days[0]} tipos={tipos} primeiraComPosicoes={datas.data?.[0]} />}
     </div>
   );
   const first = hist[days[0]], last = hist[days[days.length - 1]];
@@ -95,7 +97,7 @@ export function Historico({ hist: bruto }: { hist: Record<string, unknown> }) {
         </label>
         {!dia && <span className="status">ou clique num ponto do gráfico.</span>}
       </div>
-      {dia && <Posicoes dia={dia} primeiraComPosicoes={datas.data?.[0]} onFechar={() => setDia(null)} />}
+      {dia && <Posicoes dia={dia} tipos={tipos} primeiraComPosicoes={datas.data?.[0]} onFechar={() => setDia(null)} />}
     </div>
   );
 }
@@ -109,10 +111,8 @@ function rentabilidadeSemAportes(pontos: { data: string; valor: number }[], doc:
   return rentabilidade(pontos, fluxosDasOperacoes(doc.operacoes, doc.proventos ?? [], rf));
 }
 
-const TIPO: Record<string, string> = { stock: "", crypto: "Cripto", fx: "Moeda", fixedIncome: "Renda fixa" };
-
 // Tabela das posições de um dia, comparadas com o dia de pregão anterior salvo
-function Posicoes({ dia, primeiraComPosicoes, onFechar }: { dia: string; primeiraComPosicoes?: string; onFechar?: () => void }) {
+function Posicoes({ dia, tipos, primeiraComPosicoes, onFechar }: { dia: string; tipos: Record<string, string>; primeiraComPosicoes?: string; onFechar?: () => void }) {
   const q = usePosicoes(dia);
   const anterior = usePosicoes(q.data?.previousDate); // para marcar a troca de faixa do IR na renda fixa
   const cabecalho = (
@@ -123,33 +123,56 @@ function Posicoes({ dia, primeiraComPosicoes, onFechar }: { dia: string; primeir
   );
   if (q.isPending) return <>{cabecalho}<div className="status">Carregando as posições…</div></>;
   if (q.isError) return <>{cabecalho}<div className="hint">Sem posições salvas neste dia{primeiraComPosicoes && primeiraComPosicoes > dia ? ` (o painel guarda as posições desde ${isoBR(primeiraComPosicoes)})` : ""}.</div></>;
-  return <>{cabecalho}<TabelaPosicoes d={q.data} anterior={anterior.data} /></>;
+  return <>{cabecalho}<TabelaPosicoes d={q.data} anterior={anterior.data} tipos={tipos} /></>;
 }
 
-function TabelaPosicoes({ d, anterior }: { d: DiaPosicoes; anterior?: DiaPosicoes }) {
-  const linhas = [...d.positions].sort((a, b) => b.pv - a.pv);
+const Pnl = ({ v }: { v: number | null }) => v == null ? <span className="muted">—</span> : <span className={signCls(v)}>{sinal(v)}{money(Math.abs(v))}</span>;
+
+// Renda fixa: "valor bruto (valor líquido)"
+const brutoLiquido = (bruto: number | undefined, liquido: number) => bruto != null ? `${money(bruto)} (${money(liquido)})` : money(liquido);
+
+function TabelaPosicoes({ d, anterior, tipos }: { d: DiaPosicoes; anterior?: DiaPosicoes; tipos: Record<string, string> }) {
+  const { doc } = useCarteira();
+  const classes = Object.fromEntries(Object.values(processar(doc?.operacoes ?? []).posicoes).map(p => [p.ativo, p.classe]));
+  const grupos = agrupaPosicoes(d.positions, classes, tipos);
+  const antes = new Map((anterior?.positions ?? []).map(l => [l.key, l]));
+  // o bruto do dia anterior vem do arquivo daquele dia (0 se o título ainda não existia)
+  const brutoAntes = (l: LinhaPosicao) => l.ppv === 0 ? 0 : antes.get(l.key)?.gross;
   const faixaAntes = new Map((anterior?.positions ?? []).map(l => [l.key, l.taxRate]));
-  const Pnl = ({ v }: { v: number | null }) => v == null ? <span className="muted">—</span> : <span className={signCls(v)}>{sinal(v)}{money(Math.abs(v))}</span>;
   return <>
     <div className="table-wrap"><table className="w-table">
       <thead><tr><th>Ativo</th><th>Quantidade</th><th>Preço</th><th>PV</th><th>PPV</th><th>PnL do dia</th></tr></thead>
-      <tbody>{linhas.map(l => {
-        const mudouIr = l.kind === "fixedIncome" && l.taxRate != null && faixaAntes.get(l.key) != null && faixaAntes.get(l.key) !== l.taxRate;
+      {grupos.map(g => {
+        const rf = g.id === "rf";
+        const soma = (f: (l: LinhaPosicao) => number | undefined) => g.linhas.every(l => f(l) != null) ? g.linhas.reduce((t, l) => t + f(l)!, 0) : undefined;
         return (
-          <tr key={l.key}>
-            <td><span className="tk">{l.asset}</span> <span className="muted">{[TIPO[l.kind], l.currency && `em ${l.currency}`].filter(Boolean).join(" · ")}</span></td>
-            <td>{quantidade(l)}</td>
-            <td>{preco(l)}{l.missing ? <> <span className="muted">sem preço</span></> : l.staleSince != null && <> <span className="muted" title="A cotação falhou na hora da foto: valor anterior">(de {l.staleSince ? isoBR(l.staleSince) : "antes"})</span></>}</td>
-            <td>{money(l.pv)}{l.kind === "fixedIncome" && l.gross != null && <> <span className="muted" title="Valor bruto, antes do IR">bruto {money(l.gross)}</span></>}</td>
-            <td>{money(l.ppv)}</td>
-            <td><Pnl v={l.pnl} />{mudouIr && <> <span className="muted" title={`IR passou de ${brl(faixaAntes.get(l.key)! * 100, 1)}% para ${brl(l.taxRate! * 100, 1)}%`}>mudou a faixa de IR</span></>}</td>
-          </tr>
+          <tbody key={g.id} aria-label={g.nome}>
+            <tr className="grupo">
+              <th scope="rowgroup" colSpan={3}>{g.nome}</th>
+              <th>{rf ? brutoLiquido(soma(l => l.gross), g.pv) : money(g.pv)}</th>
+              <th>{rf ? brutoLiquido(soma(brutoAntes), g.ppv) : money(g.ppv)}</th>
+              <th><Pnl v={g.pnl} /></th>
+            </tr>
+            {g.linhas.map(l => {
+              const mudouIr = rf && l.taxRate != null && faixaAntes.get(l.key) != null && faixaAntes.get(l.key) !== l.taxRate;
+              return (
+                <tr key={l.key}>
+                  <td><span className="tk">{l.asset}</span></td>
+                  <td>{quantidade(l)}</td>
+                  <td>{preco(l)}{l.missing ? <> <span className="muted">sem preço</span></> : l.staleSince != null && <> <span className="muted" title="A cotação falhou na hora da foto: valor anterior">(de {l.staleSince ? isoBR(l.staleSince) : "antes"})</span></>}</td>
+                  <td>{rf ? brutoLiquido(l.gross, l.pv) : money(l.pv)}</td>
+                  <td>{rf ? brutoLiquido(brutoAntes(l), l.ppv) : money(l.ppv)}</td>
+                  <td><Pnl v={l.pnl} />{mudouIr && <> <span className="muted" title={`IR passou de ${brl(faixaAntes.get(l.key)! * 100, 1)}% para ${brl(l.taxRate! * 100, 1)}%`}>mudou a faixa de IR</span></>}</td>
+                </tr>
+              );
+            })}
+          </tbody>
         );
-      })}</tbody>
+      })}
       <tfoot><tr><th>Total</th><th></th><th></th><th>{money(d.totals.pv)}</th><th>{money(d.totals.ppv)}</th><th><Pnl v={d.totals.pnl} /></th></tr></tfoot>
     </table></div>
     <div className="status">PV = preço × quantidade · PPV = PV do dia anterior · PnL = quantidade do dia anterior × variação do preço (compras e vendas não contam como lucro).
-      Renda fixa: quantidade = valor aplicado e preço = valor líquido na curva por real aplicado.</div>
+      Renda fixa: PV e PPV aparecem como valor bruto (valor líquido), o total geral usa o líquido, quantidade = valor aplicado e preço = valor líquido na curva por real aplicado.</div>
   </>;
 }
 

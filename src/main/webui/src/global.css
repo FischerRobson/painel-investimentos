@@ -416,3 +416,27 @@ a.btn { display: inline-block; padding: 8px 14px; border-radius: 8px; border: 1p
   .f-linha:not(.curta) .f-detalhe { grid-column: 1 / -1; order: 4; }
 }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Legenda clicável do desempenho por ativo; a régua (total investido) usa a cor do texto */
+.leg-ativos button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; padding: 2px 0; font: inherit; color: inherit; cursor: pointer; }
+.leg-ativos button.off { opacity: .4; text-decoration: line-through; }
+.leg-ativos i.regua { background: var(--text); height: 4px; }
+
+/* Posições do dia: cabeçalho e subtotal de cada tipo */
+.w-table tr.grupo th { padding-top: 16px; color: var(--text); font-size: 12px; border-bottom: 1px solid var(--border); }
+.w-table tr.grupo th { text-align: right; }
+.w-table tr.grupo th:first-child { text-align: left; }
+
+/* Mapa da carteira: o texto some conforme o retângulo encolhe (o nome completo fica no toque e no título) */
+.mapa { position: relative; height: 380px; margin: 6px 0 8px; }
+.mapa-item { position: absolute; padding: 0; border: 2px solid var(--surface); border-radius: 6px; overflow: hidden; container-type: size; cursor: pointer; color: var(--text); font: inherit; }
+.mapa-item.on { border-color: var(--text); }
+.mapa-texto { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 2px 4px; font-size: 12px; line-height: 1.25; }
+.mapa-texto b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mapa-texto small { font-size: 11px; color: var(--text-2); }
+@container (max-height: 64px) { .mapa-texto small { display: none; } }
+@container (max-height: 36px) { .mapa-texto > span { display: none; } }
+@container (max-width: 90px) { .mapa-texto small { display: none; } }
+@container (max-width: 44px) { .mapa-texto { display: none; } }
+@container (max-height: 16px) { .mapa-texto { display: none; } }
+@media (max-width: 600px) { .mapa { height: 440px; } }

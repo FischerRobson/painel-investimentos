@@ -18,7 +18,7 @@ import java.util.Set;
 @ApplicationScoped
 public class BenchmarkService {
 
-    public static final Set<String> RANGES = Set.of("6mo", "1y", "5y");
+    public static final Set<String> RANGES = Set.of("1mo", "3mo", "6mo", "1y", "5y");
     private static final String IBOV = "^BVSP";
     // Yahoo has no IFIX history; XFIX11 is the ETF that tracks it
     private static final String IFIX = "XFIX11.SA";
@@ -35,6 +35,8 @@ public class BenchmarkService {
         List<String> warnings = new ArrayList<>();
         Map<String, List<Point>> indices = new LinkedHashMap<>();
         LocalDate start = LocalDate.now().minusMonths(switch (range) {
+            case "1mo" -> 1;
+            case "3mo" -> 3;
             case "6mo" -> 6;
             case "5y" -> 60;
             default -> 12;
@@ -50,24 +52,26 @@ public class BenchmarkService {
         } catch (RuntimeException e) {
             warnings.add("CDI indisponível (Banco Central)");
         }
-        series(IBOV, range, warnings, "Ibovespa").ifPresent(p -> indices.put("IBOV", p));
-        series(IFIX, range, warnings, "IFIX").ifPresent(p -> indices.put("IFIX", p));
+        series(IBOV, range, start, warnings, "Ibovespa").ifPresent(p -> indices.put("IBOV", p));
+        series(IFIX, range, start, warnings, "IFIX").ifPresent(p -> indices.put("IFIX", p));
 
         Map<String, List<Point>> fx = new LinkedHashMap<>();
         for (String c : fxCodes) {
-            series(c + "BRL=X", range, warnings, c).ifPresent(p -> fx.put(c, p));
+            series(c + "BRL=X", range, start, warnings, c).ifPresent(p -> fx.put(c, p));
         }
         Map<String, List<Point>> crypto = new LinkedHashMap<>();
-        List<Point> usd = fx.containsKey("USD") ? fx.get("USD") : series("USDBRL=X", range, warnings, "USD").orElse(List.of());
+        List<Point> usd = fx.containsKey("USD") ? fx.get("USD") : series("USDBRL=X", range, start, warnings, "USD").orElse(List.of());
         for (String coin : coins) {
-            series(coin + "-USD", range, warnings, coin).ifPresent(p -> crypto.put(coin, toBrl(p, usd)));
+            series(coin + "-USD", range, start, warnings, coin).ifPresent(p -> crypto.put(coin, toBrl(p, usd)));
         }
         return new BenchmarkResponse(range, indices, fx, crypto, ipca, warnings);
     }
 
-    private Optional<List<Point>> series(String symbol, String range, List<String> warnings, String label) {
+    private Optional<List<Point>> series(String symbol, String range, LocalDate start, List<String> warnings, String label) {
         try {
-            List<Point> pts = yahoo.chart(symbol, range).points();
+            // Yahoo is only asked for the ranges it has an interval for: 1 and 3 months are cut from 6 months
+            List<Point> pts = YahooService.RANGES.containsKey(range) ? yahoo.chart(symbol, range).points()
+                    : since(yahoo.chart(symbol, "6mo").points(), start);
             if (!pts.isEmpty()) {
                 return Optional.of(pts);
             }
@@ -75,6 +79,11 @@ public class BenchmarkService {
         }
         warnings.add(label + " indisponível");
         return Optional.empty();
+    }
+
+    static List<Point> since(List<Point> points, LocalDate start) {
+        long cut = start.atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli();
+        return points.stream().filter(p -> p.t() >= cut).toList();
     }
 
     // Daily CDI (% per day) -> cumulative index starting at 1. Each point sits at market close (21:00 UTC = 18:00 in

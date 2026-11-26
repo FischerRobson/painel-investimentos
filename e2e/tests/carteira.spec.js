@@ -4,6 +4,8 @@ import { test, expect, ir } from "./base.js";
 
 const tabela = (page, titulo) => page.locator("details.acc").filter({ has: page.locator("summary", { hasText: titulo }) });
 const linha = (page, texto) => page.getByRole("row").filter({ hasText: texto });
+// as seções da carteira começam fechadas
+const abrir = (page, titulo) => tabela(page, titulo).locator("summary").click();
 
 
 test.describe("app", () => {
@@ -16,6 +18,7 @@ test.describe("app", () => {
     await expect(page.locator(".pie-box canvas")).toBeVisible();
     await expect(tabela(page, "Ações, FIIs e cripto")).toContainText("8 ativos");
     await expect(tabela(page, "Renda fixa")).toContainText("4 títulos");
+    await abrir(page, "Renda fixa");
     await expect(linha(page, "CDB Banco Exemplo")).toContainText("105% do CDI");
     await expect(linha(page, "LCI Banco Fictício")).toContainText("isento");
     await expect(tabela(page, "Bens")).toContainText("fora dos investimentos");
@@ -37,6 +40,7 @@ test.describe("app", () => {
 
   test("Carteira: nada se adiciona à mão; a quantidade abre a venda em Operações", async ({ page }) => {
     await ir(page, "/carteira");
+    await abrir(page, "Ações, FIIs e cripto");
     await expect(linha(page, "ITSA4")).toBeVisible();
     await expect(page.getByPlaceholder(/^Ticker/)).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Adicionar" })).toHaveCount(0);
@@ -65,6 +69,7 @@ test.describe("app", () => {
 
     await page.getByRole("navigation", { name: "Páginas" }).getByRole("link", { name: "Carteira" }).click();
     await expect(tabela(page, "Renda fixa")).toContainText("5 títulos");
+    await abrir(page, "Renda fixa"); // fica aberta nas próximas visitas
     await expect(linha(page, "CDB Teste")).toContainText("95% do CDI");
     await expect(linha(page, "CDB Banco Exemplo").getByRole("button", { name: /Editar|Remover/ })).toHaveCount(0);
 
@@ -82,17 +87,55 @@ test.describe("app", () => {
     await expect(linha(page, "CDB Banco Exemplo")).toHaveCount(0);
   });
 
-  test("Carteira: comparativo com o mercado abre e troca o período", async ({ page }) => {
+  test("Carteira: as seções começam fechadas, mesmo com o valor antigo salvo, e lembram o que você abriu", async ({ page }) => {
+    await page.addInitScript(() => { for (const k of ["rv", "rf", "fx", "bens"]) localStorage.setItem("acc_" + k, "1"); });
     await ir(page, "/carteira");
-    const cmp = page.locator("details.acc").filter({ hasText: "Carteira × CDI, Ibovespa e IFIX" });
-    await expect(cmp).toContainText("toque para calcular");
-    await cmp.locator("summary").click();
-    await expect(cmp.locator(".tile").filter({ hasText: "Sua carteira" })).toContainText("%");
-    await expect(cmp.locator("summary")).toContainText(/1 ano: carteira [+−-]?[\d,]+% · CDI/);
-    await cmp.getByRole("button", { name: "6 meses" }).click();
-    await expect(cmp.locator("summary")).toContainText(/6 meses: carteira/);
+    for (const t of ["Ações, FIIs e cripto", "Renda fixa", "Moedas", "Bens"]) await expect(tabela(page, t)).not.toHaveAttribute("open");
+    await abrir(page, "Renda fixa");
+    await expect(linha(page, "CDB Banco Exemplo")).toBeVisible();
     await page.reload();
-    await expect(page.locator("details.acc").filter({ hasText: "Carteira × CDI" })).toHaveAttribute("open", "");
+    await expect(tabela(page, "Renda fixa")).toHaveAttribute("open", "");
+    await expect(tabela(page, "Bens")).not.toHaveAttribute("open");
+  });
+
+  test("Carteira: gráfico com todos os ativos e a régua do total investido", async ({ page }) => {
+    await ir(page, "/carteira");
+    const g = page.locator(".panel").filter({ has: page.getByRole("heading", { name: "Desempenho dos seus ativos" }) });
+    const legenda = g.locator(".leg-ativos");
+    await expect(legenda.getByRole("button", { name: /^Total investido/ })).toBeVisible();
+    for (const nome of ["ITSA4", "HGLG11", "AAPL", "BTC", "CDB Banco Exemplo", "USD"]) await expect(legenda.getByRole("button", { name: nome })).toBeVisible();
+    await expect(legenda).not.toContainText("Carro de exemplo"); // bens ficam de fora
+    await expect(g.locator("canvas")).toBeVisible();
+    await expect(g.locator(".hint")).toContainText("últimos 30 dias");
+    await expect(g.getByRole("group")).toHaveCount(0); // sem botões de período ou de classe
+    await legenda.getByRole("button", { name: "HGLG11" }).click();
+    await expect(legenda.getByRole("button", { name: "HGLG11" })).toHaveAttribute("aria-pressed", "false");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  });
+
+  test("Carteira: o mapa tem um retângulo por ativo, e os 30 dias não buscam as cotações de novo", async ({ page }) => {
+    const pedidos = [];
+    page.on("request", r => { if (r.url().includes("/api/data?")) pedidos.push(new URL(r.url()).search); });
+    await ir(page, "/carteira");
+    const mapa = page.locator(".panel").filter({ has: page.getByRole("heading", { name: "Mapa da carteira" }) });
+    await expect(mapa.locator(".mapa-item")).toHaveCount(14); // 6 ações e FIIs, 2 criptos, 4 títulos e 2 moedas; sem bens
+    await mapa.getByRole("button", { name: /^CDB Banco Exemplo:/ }).click();
+    await expect(mapa.getByRole("status")).toContainText("CDB Banco Exemplo (Renda fixa)");
+    await expect(mapa.getByRole("status")).toContainText("em 30 dias");
+    expect(pedidos).toHaveLength(1);
+    expect(pedidos[0]).toContain("range=1mo");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  });
+
+  test("Ferramentas: carteira contra o mercado abre e troca o período", async ({ page }) => {
+    await ir(page, "/carteira");
+    await expect(page.getByText("Carteira × CDI, Ibovespa e IFIX")).toHaveCount(0);
+    await ir(page, "/ferramentas#carteira-mercado");
+    const tile = page.locator(".tile").filter({ hasText: "Sua carteira" });
+    await expect(tile).toContainText("%");
+    await page.getByRole("button", { name: "6 meses" }).click();
+    await expect(page.getByRole("button", { name: "6 meses" })).toHaveAttribute("aria-pressed", "true");
+    await expect(tile).toContainText("%");
   });
 
   test("Carteira: importar backup não existe no modo demonstração", async ({ page }) => {
@@ -127,7 +170,9 @@ test.describe("Evolução do patrimônio", () => {
     await expect(p.getByRole("heading", { name: new RegExp(`^Posições em ${d}/${m}/${a}`) })).toContainText("comparadas com");
     for (const col of ["Ativo", "Quantidade", "Preço", "PV", "PPV", "PnL do dia"]) await expect(p.getByRole("columnheader", { name: col, exact: true })).toBeVisible();
     await expect(p.getByRole("row").filter({ hasText: "ITSA4" })).toContainText(/R\$ [\d.]+,\d\d/);
-    await expect(p.getByRole("row").filter({ hasText: "CDB Banco Exemplo" })).toContainText("Renda fixa");
+    for (const grupo of ["Renda fixa", "Ações", "FIIs", "Exterior", "Cripto", "Moedas"]) await expect(p.getByRole("rowheader", { name: grupo, exact: true })).toBeVisible();
+    await expect(p.getByRole("cell", { name: "ETH", exact: true })).toBeVisible(); // só o nome, sem o tipo ao lado
+    await expect(p.getByRole("row").filter({ hasText: "CDB Banco Exemplo" })).toContainText(/R\$ [\d.]+,\d\d \(R\$ [\d.]+,\d\d\)/);
     await expect(p.getByRole("row").filter({ hasText: "Carro de exemplo" })).toHaveCount(0); // bens não são posição
     await expect(p.getByRole("row").filter({ hasText: "Total" })).toContainText(/R\$ [\d.]+,\d\d/);
     await p.getByRole("button", { name: "Fechar" }).click();

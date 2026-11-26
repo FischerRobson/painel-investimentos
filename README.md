@@ -176,6 +176,14 @@ as fotos não têm o caixa. Também mostra a rentabilidade sem aportes contra o 
 posições diárias), a taxa de poupança e os gastos contra a média de até 6 meses. A tela avisa quando uma operação lançada
 depois da foto ou uma cotação que falhou distorce os números.
 
+### Gráficos da Carteira
+
+**Mapa da carteira** (um retângulo por ativo: tamanho = valor, cor = variação; layout em `lib/treemap.ts`) e **Desempenho dos
+seus ativos** (uma linha por ativo em %, com o total investido como régua) mostram os últimos 30 dias e ficam sem bens. Usam
+as cotações de 1 mês que a página já busca, então não gastam a brapi a mais. É a composição de hoje levada para o passado, não
+a rentabilidade real. Nas posições do dia, os ativos vêm separados por tipo, e a renda fixa aparece como bruto (líquido).
+O comparativo com CDI, Ibovespa e IFIX fica em Ferramentas. As seções da Carteira começam fechadas (`acc2_*` no localStorage).
+
 ### Modo demonstração
 
 O botão **"Modo demonstração"** (topo da página) faz o app mostrar dados fictícios, para testar ou apresentar

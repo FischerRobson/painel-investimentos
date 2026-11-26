@@ -1,6 +1,7 @@
 import { test, expect, ir } from "./base.js";
 
 const FERRAMENTAS = [
+  ["carteira-mercado", "Carteira × CDI, Ibovespa e IFIX"],
   ["renda-fixa", "Projeção da renda fixa"],
   ["aportes", "Simulador de aportes"],
   ["ipca-pre", "IPCA+ × Prefixado"],

@@ -14,10 +14,12 @@ import { Analisador } from "./Analisador";
 import { Planejador } from "./Planejador";
 import { AlugarFinanciar } from "./AlugarFinanciar";
 import { MonteCarlo } from "./MonteCarlo";
+import { CarteiraMercado } from "./CarteiraMercado";
 
 type Ferramenta = { id: string; nome: string; desc: string; Componente: ComponentType };
 
 export const TOOLS: Ferramenta[] = [
+  { id: "carteira-mercado", nome: "Carteira × CDI, Ibovespa e IFIX", desc: "Como a sua composição de hoje teria se saído contra o CDI e os índices da bolsa.", Componente: CarteiraMercado },
   { id: "renda-fixa", nome: "Projeção da renda fixa", desc: "Quanto os seus títulos de renda fixa vão valer numa data futura, já descontado o IR.", Componente: ProjecaoRF },
   { id: "aportes", nome: "Simulador de aportes", desc: "Quanto você terá aportando todo mês, e quando chega na meta de patrimônio ou de renda.", Componente: Simulador },
   { id: "ipca-pre", nome: "IPCA+ × Prefixado", desc: "Qual inflação faz os dois títulos empatarem, e quem ganha com a inflação que você espera.", Componente: IpcaPre },

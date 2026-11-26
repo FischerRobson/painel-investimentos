@@ -53,7 +53,8 @@ test("modo demonstração avisa e esconde o e-mail", async ({ page }) => {
 
 test("carteira mostra os investimentos fictícios", async ({ page }) => {
   await ir(page, "/carteira");
-  await expect(page.getByText("CDB Banco Exemplo").first()).toBeVisible();
+  await page.locator("details.acc summary").filter({ hasText: "Renda fixa" }).click();
+  await expect(page.getByRole("cell", { name: /CDB Banco Exemplo/ }).first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Evolução do patrimônio" })).toBeVisible();
 });
 

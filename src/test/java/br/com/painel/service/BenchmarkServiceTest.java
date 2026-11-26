@@ -1,5 +1,7 @@
 package br.com.painel.service;
 
+import java.time.ZoneOffset;
+import java.time.LocalDate;
 import br.com.painel.dto.Point;
 import br.com.painel.dto.RatePoint;
 import org.junit.jupiter.api.Test;
@@ -24,5 +26,16 @@ class BenchmarkServiceTest {
         List<Point> btc = List.of(new Point(50, 1), new Point(100, 10), new Point(200, 10), new Point(300, 10));
         // at t=50 there is no dollar quote yet: the point is dropped
         assertEquals(List.of(new Point(100, 50), new Point(200, 50), new Point(300, 60)), BenchmarkService.toBrl(btc, usd));
+    }
+
+    @Test
+    void shortRangesAreCutAtTheStartDate() {
+        LocalDate start = LocalDate.parse("2026-10-26");
+        List<Point> points = List.of(new Point(at("2026-10-23"), 1), new Point(at("2026-10-26"), 2), new Point(at("2026-11-02"), 3));
+        assertEquals(List.of(points.get(1), points.get(2)), BenchmarkService.since(points, start));
+    }
+
+    private static long at(String day) {
+        return LocalDate.parse(day).atTime(13, 0).toInstant(ZoneOffset.UTC).toEpochMilli();
     }
 }
