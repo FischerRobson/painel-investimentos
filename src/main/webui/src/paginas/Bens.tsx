@@ -8,6 +8,7 @@ import { bemNome, comPreco, fipeGet, usePrecosBens, type PrecoFipe } from "../li
 import { configLinha, css } from "../lib/graficos";
 import { Grafico } from "../componentes/Grafico";
 import { ErroCarteira } from "../componentes/ErroCarteira";
+import { Entrada, Selecao } from "../componentes/Campos";
 
 const FIPE_TIPOS: Record<string, string> = { cars: "Carro", motorcycles: "Moto", trucks: "Caminhão" };
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
@@ -138,15 +139,15 @@ function ConsultaFipe({ bens, podeSalvar, onSalvar }: { bens: Bem[]; podeSalvar:
       <h2>Consultar tabela FIPE</h2>
       <div className="hint">Escolha o veículo. O valor é o da tabela FIPE do mês (fonte: parallelum.com.br).</div>
       <div className="w-add rf-form fipe-form">
-        <label>Tipo<select value={sel.type} onChange={e => onTipo(e.target.value)}>
+        <label>Tipo<Selecao value={sel.type} onChange={e => onTipo(e.target.value)}>
           {Object.entries(FIPE_TIPOS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-        </select></label>
-        <label>Marca<select value={sel.brand} disabled={!listas.brands} onChange={e => onMarca(e.target.value)}>{opcoes(listas.brands, "Escolha a marca")}</select></label>
-        <label>Modelo <input placeholder="filtrar (ex.: onix 1.0)" disabled={!listas.models} value={filtro} onChange={e => setFiltro(e.target.value)} aria-label="Filtrar modelos" />
-          <select value={sel.model} disabled={!listas.models} onChange={e => onModelo(e.target.value)}>
+        </Selecao></label>
+        <label>Marca<Selecao value={sel.brand} disabled={!listas.brands} onChange={e => onMarca(e.target.value)}>{opcoes(listas.brands, "Escolha a marca")}</Selecao></label>
+        <label>Modelo <Entrada placeholder="filtrar (ex.: onix 1.0)" disabled={!listas.models} value={filtro} onChange={e => setFiltro(e.target.value)} aria-label="Filtrar modelos" />
+          <Selecao value={sel.model} disabled={!listas.models} onChange={e => onModelo(e.target.value)}>
             {opcoes(modelos, listas.models ? `Escolha o modelo (${modelos.length})` : "Escolha a marca antes")}
-          </select></label>
-        <label>Ano<select value={sel.year} disabled={!listas.years} onChange={e => onAno(e.target.value)}>{opcoes(listas.years, "Escolha o ano")}</select></label>
+          </Selecao></label>
+        <label>Ano<Selecao value={sel.year} disabled={!listas.years} onChange={e => onAno(e.target.value)}>{opcoes(listas.years, "Escolha o ano")}</Selecao></label>
       </div>
       {ocupado && <div className="status" style={{ marginTop: 8 }}>Consultando…</div>}
       {erro && <div className="err" style={{ marginTop: 8 }}>{erro}</div>}
@@ -160,7 +161,7 @@ function ConsultaFipe({ bens, podeSalvar, onSalvar }: { bens: Bem[]; podeSalvar:
           </div>
           <div className="fipe-save">
             {jaSalvo ? <span className="status">Já está nos seus bens.</span> : <>
-              <input placeholder="Apelido (opcional, ex.: Meu carro)" maxLength={40} value={apelido} onChange={e => setApelido(e.target.value)} aria-label="Apelido" />
+              <Entrada placeholder="Apelido (opcional, ex.: Meu carro)" maxLength={40} value={apelido} onChange={e => setApelido(e.target.value)} aria-label="Apelido" />
               <button className="primary" disabled={!podeSalvar} onClick={() => { onSalvar(sel, resultado, apelido); setApelido(""); }}>Salvar nos meus bens</button>
             </>}
           </div>

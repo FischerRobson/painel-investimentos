@@ -2,6 +2,7 @@
 import { brl, money } from "../../lib/formato";
 import { NOME_META, type ClasseMeta } from "../../motor";
 import type { PrefSaude, Saude } from "../../lib/saude";
+import { Entrada, Campo } from "../../componentes/Campos";
 
 export function Aportar({ saude: s, prefs, setPrefs }: { saude: Saude; prefs: PrefSaude; setPrefs: (m: Partial<PrefSaude>) => void }) {
   const a = s.aporte;
@@ -10,7 +11,7 @@ export function Aportar({ saude: s, prefs, setPrefs }: { saude: Saude; prefs: Pr
     <div className="panel">
       <h2>Onde aportar</h2>
       <div className="hint">Ordem: 1) completar a reserva de emergência; 2) classes mais abaixo da meta; 3) em ações e FIIs, ativos com nota ≥ 60, sem alerta grave, abaixo de 15% da carteira, e preço atraente (Graham, P/VP).</div>
-      <label className="status">Aporte deste mês (R$) <input type="number" min="0" step="50" value={prefs.aporte} onChange={e => setPrefs({ aporte: e.target.value })} style={{ width: 120 }} placeholder="Ex.: 2000" /></label>
+      <Campo inline rotulo="Aporte deste mês (R$)"><Entrada type="number" min="0" step="50" value={prefs.aporte} onChange={e => setPrefs({ aporte: e.target.value })} style={{ width: 120 }} placeholder="Ex.: 2000" /></Campo>
       {!a && <div className="hint" style={{ marginTop: 8 }}>Informe o valor para ver a divisão.</div>}
       {a && <>
         <div className="table-wrap" style={{ marginTop: 10 }}><table className="w-table">

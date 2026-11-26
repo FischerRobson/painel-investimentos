@@ -23,6 +23,8 @@ import { MetasPorArea, Regras, type RascunhoRegra } from "./Configuracoes";
 import { AbasOrcamento } from "./Abas";
 import { Recorrentes, rascunhoVazio, type RascunhoRecorrente } from "./Recorrentes";
 import { Proximos } from "./Proximos";
+import { EsqueletoPainel } from "../../componentes/Esqueleto";
+import { Entrada } from "../../componentes/Campos";
 
 type Vista = { mes: string; dados: Mes; resumo: ResumoMes[] };
 export type Edicao = { kind: Tipo; id: string } | null;
@@ -106,7 +108,7 @@ export function Orcamento() {
   useEffect(() => () => { void gravacaoMes.descarregar(); void qc.invalidateQueries({ queryKey: ["planejador-orcamento"] }); }, []);
 
   if (erro) return <><AbasOrcamento /><div className="panel err">{erro}</div></>;
-  if (!vista || !metas) return <><AbasOrcamento /><div className="panel muted">Carregando o orçamento…</div></>;
+  if (!vista || !metas) return <><AbasOrcamento /><EsqueletoPainel tiles={4} grafico linhas={6} texto="Carregando o orçamento…" /></>;
   const { dados } = vista;
 
   const mudarDados = (novo: Mes) => {
@@ -301,7 +303,7 @@ function AvisoReferencia({ ref_: ref, mes, onSalvar, onEditar }: { ref_: Referen
   return (
     <form className="b-ref b-ref-form" onSubmit={e => { e.preventDefault(); const v = Math.round(Number(renda) * 100) / 100; if (v > 0) onSalvar(v); }}>
       <div><strong>Qual é a sua renda mensal líquida?</strong> Ela vira a base das metas em reais nos meses sem entradas lançadas, e fica salva. Você pode mudar depois em Metas por área.</div>
-      <div className="b-ref-row"><input name="income" type="number" min="1" step="0.01" required placeholder="Ex.: 8500" aria-label="Renda mensal líquida (R$)" value={renda} onChange={e => setRenda(e.target.value)} /><button className="primary" type="submit">Usar como referência</button></div>
+      <div className="b-ref-row"><Entrada name="income" type="number" min="1" step="0.01" required placeholder="Ex.: 8500" aria-label="Renda mensal líquida (R$)" value={renda} onChange={e => setRenda(e.target.value)} /><button className="primary" type="submit">Usar como referência</button></div>
     </form>
   );
 }

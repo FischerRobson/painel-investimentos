@@ -10,6 +10,7 @@ import { Grafico } from "../../componentes/Grafico";
 import { Legenda } from "../../componentes/Campos";
 import { ErroCarteira } from "../../componentes/ErroCarteira";
 import type { Composicao } from "../../lib/composicao";
+import { EsqueletoPainel, EsqueletoGrafico } from "../../componentes/Esqueleto";
 
 const RANGES: [string, string][] = [["6mo", "6 meses"], ["1y", "1 ano"], ["5y", "5 anos"]];
 const SERIES: [ChaveSerie, string, string, boolean?][] = [["carteira", "Sua carteira", "--s1"], ["CDI", "CDI", "--s2", true], ["IBOV", "Ibovespa", "--s3"], ["IFIX", "IFIX", "--s4"]];
@@ -17,7 +18,7 @@ const SERIES: [ChaveSerie, string, string, boolean?][] = [["carteira", "Sua cart
 export function CarteiraMercado() {
   const { carteira, composicao, pronta } = useComposicao();
   if (carteira.erro) return <ErroCarteira msg={carteira.erro} />;
-  if (!composicao) return <div className="panel muted">Carregando sua carteira…</div>;
+  if (!composicao) return <EsqueletoPainel tiles={4} grafico texto="Carregando sua carteira…" />;
   return <Painel c={composicao} pronta={pronta} />;
 }
 
@@ -36,7 +37,7 @@ function Painel({ c, pronta }: { c: Composicao; pronta: boolean }) {
       </div></div>
       {c.vazia || d?.vazia ? <div className="hint" style={{ margin: "12px 0" }}>Cadastre ativos na carteira para comparar.</div>
         : erro ? <div className="err" style={{ margin: "12px 0" }}>{erro}</div>
-        : carregando || !d ? <div className="status" style={{ margin: "12px 0" }}>Buscando históricos…</div>
+        : carregando || !d ? <div style={{ margin: "12px 0" }}><EsqueletoGrafico altura={320} texto="Buscando os históricos…" /></div>
         : <>
               <div className="tiles">{SERIES.map(([k, nome, cor]) => (
                 <div className="tile" key={k}>

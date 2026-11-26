@@ -16,6 +16,8 @@ import {
 } from "../../motor";
 import { Grafico } from "../../componentes/Grafico";
 import { AbasOrcamento } from "./Abas";
+import { EsqueletoPainel } from "../../componentes/Esqueleto";
+import { Entrada, Campo } from "../../componentes/Campos";
 
 const TIPOS: [TipoMovimento, string][] = [["gasto", "Gasto"], ["credito", "Crédito"], ["estorno", "Estorno"], ["ajuste", "Ajuste"]];
 const CATEGORIAS = ["Restaurante", "Mercado", "Padaria", "Delivery", "Lanche", "Outro"];
@@ -30,7 +32,7 @@ export function VR() {
   const [contaId, setContaId] = useState<string | null>(null);
 
   if (erro) return <><AbasOrcamento /><div className="panel err">Não consegui carregar o VR ({erro}). Recarregue a página em instantes.</div></>;
-  if (!doc) return <><AbasOrcamento /><div className="panel muted">Carregando o VR…</div></>;
+  if (!doc) return <><AbasOrcamento /><EsqueletoPainel tiles={3} linhas={4} texto="Carregando o VR…" /></>;
   if (!doc.contas.length) return <><AbasOrcamento /><NovaConta primeira /></>;
   const conta = doc.contas.find(c => c.id === contaId) ?? doc.contas[0];
   return <>
@@ -90,8 +92,7 @@ function Conta({ conta, doc, contas, onConta }: { conta: ContaVR; doc: DocVR; co
         </div>
       )}
       <form className="w-add" style={{ marginTop: 12 }} onSubmit={conferir}>
-        <label className="status">Conferir com o app: saldo lá{" "}
-          <input type="number" step="0.01" aria-label="Saldo no app do cartão" placeholder={brl(atual)} value={noApp} onChange={e => setNoApp(e.target.value)} /></label>
+        <Campo inline rotulo="Conferir com o app: saldo lá"><Entrada type="number" step="0.01" aria-label="Saldo no app do cartão" placeholder={brl(atual)} value={noApp} onChange={e => setNoApp(e.target.value)} /></Campo>
         <button type="submit" disabled={noApp === ""}>Ajustar</button>
         {noApp !== "" && ajusteParaSaldo(atual, Number(noApp)) !== 0 && <span className="status">vai lançar um ajuste de <Assinado v={ajusteParaSaldo(atual, Number(noApp))} /></span>}
       </form>
@@ -168,13 +169,13 @@ function FormMovimento({ conta, editando, categorias, onSalvar, onCancelar }: {
       {TIPOS.map(([k, l]) => <button key={k} type="button" className={f.tipo === k ? "on" : undefined} aria-pressed={f.tipo === k} onClick={() => setF({ ...f, tipo: k })}>{l}</button>)}
     </div>
     <form className="w-add rf-form b-form" onSubmit={salvar}>
-      <label>Data<input name="date" type="date" required max={hojeISO()} value={f.data} onChange={e => setF({ ...f, data: e.target.value })} /></label>
-      <label>Descrição<input name="description" maxLength={120} placeholder={f.tipo === "gasto" ? "Ex.: Restaurante" : f.tipo === "ajuste" ? "Ex.: Saldo do app" : "Opcional"}
+      <label>Data<Entrada name="date" type="date" required max={hojeISO()} value={f.data} onChange={e => setF({ ...f, data: e.target.value })} /></label>
+      <label>Descrição<Entrada name="description" maxLength={120} placeholder={f.tipo === "gasto" ? "Ex.: Restaurante" : f.tipo === "ajuste" ? "Ex.: Saldo do app" : "Opcional"}
         required={f.tipo === "gasto"} value={f.descricao} onChange={e => setF({ ...f, descricao: e.target.value })} /></label>
-      {f.tipo === "gasto" && <label>Categoria<input name="categoria" list="vr-categorias" maxLength={40} placeholder="Ex.: Mercado" value={f.categoria} onChange={e => setF({ ...f, categoria: e.target.value })} />
+      {f.tipo === "gasto" && <label>Categoria<Entrada name="categoria" list="vr-categorias" maxLength={40} placeholder="Ex.: Mercado" value={f.categoria} onChange={e => setF({ ...f, categoria: e.target.value })} />
         <datalist id="vr-categorias">{categorias.map(c => <option key={c} value={c} />)}</datalist></label>}
       <label>{f.tipo === "ajuste" ? "Valor (R$, negativo tira do saldo)" : "Valor (R$)"}
-        <input name="amount" type="number" step="0.01" {...(f.tipo === "ajuste" ? {} : { min: "0.01" })} required value={f.valor} onChange={e => setF({ ...f, valor: e.target.value })} /></label>
+        <Entrada name="amount" type="number" step="0.01" {...(f.tipo === "ajuste" ? {} : { min: "0.01" })} required value={f.valor} onChange={e => setF({ ...f, valor: e.target.value })} /></label>
       <div className="pair">{editando
         ? <><button className="primary" type="submit">Salvar alteração</button><button type="button" onClick={onCancelar}>Cancelar</button></>
         : <button className="primary" type="submit">Lançar</button>}</div>
@@ -199,11 +200,11 @@ function NovaConta({ primeira = false }: { primeira?: boolean }) {
   };
   const form = (
     <form className="w-add rf-form" onSubmit={salvar}>
-      <label>Nome<input name="nome" maxLength={40} required placeholder="Ex.: VR, VA, Flash" value={f.nome} onChange={e => setF({ ...f, nome: e.target.value })} /></label>
-      <label>Crédito mensal (R$)<input name="creditoMensal" type="number" step="0.01" min="0" placeholder="Ex.: 1100" value={f.creditoMensal} onChange={e => setF({ ...f, creditoMensal: e.target.value })} /></label>
-      <label>Dia do crédito<input name="diaCredito" type="number" min="1" max="31" value={f.diaCredito} onChange={e => setF({ ...f, diaCredito: e.target.value })} /></label>
-      <label>Saldo hoje (R$)<input name="saldoInicial" type="number" step="0.01" required value={f.saldoInicial} onChange={e => setF({ ...f, saldoInicial: e.target.value })} /></label>
-      <label>A partir de<input name="dataInicio" type="date" required max={hojeISO()} value={f.dataInicio} onChange={e => setF({ ...f, dataInicio: e.target.value })} /></label>
+      <label>Nome<Entrada name="nome" maxLength={40} required placeholder="Ex.: VR, VA, Flash" value={f.nome} onChange={e => setF({ ...f, nome: e.target.value })} /></label>
+      <label>Crédito mensal (R$)<Entrada name="creditoMensal" type="number" step="0.01" min="0" placeholder="Ex.: 1100" value={f.creditoMensal} onChange={e => setF({ ...f, creditoMensal: e.target.value })} /></label>
+      <label>Dia do crédito<Entrada name="diaCredito" type="number" min="1" max="31" value={f.diaCredito} onChange={e => setF({ ...f, diaCredito: e.target.value })} /></label>
+      <label>Saldo hoje (R$)<Entrada name="saldoInicial" type="number" step="0.01" required value={f.saldoInicial} onChange={e => setF({ ...f, saldoInicial: e.target.value })} /></label>
+      <label>A partir de<Entrada name="dataInicio" type="date" required max={hojeISO()} value={f.dataInicio} onChange={e => setF({ ...f, dataInicio: e.target.value })} /></label>
       <button className="primary" type="submit">{primeira ? "Começar" : "Adicionar cartão"}</button>
     </form>
   );
@@ -245,11 +246,11 @@ function Configuracao({ conta }: { conta: ContaVR }) {
       <summary><span className="acc-t">Configurações de {conta.nome}</span>
         <span className="acc-s">{conta.creditoMensal ? `${money(conta.creditoMensal)} todo dia ${conta.diaCredito}` : "sem crédito mensal"} · saldo inicial {money(conta.saldoInicial)} em {isoBR(conta.dataInicio)}</span></summary>
       <form className="w-add rf-form" onSubmit={salvar}>
-        <label>Nome<input name="nome" maxLength={40} required value={f.nome} onChange={e => setF({ ...f, nome: e.target.value })} /></label>
-        <label>Crédito mensal (R$)<input name="creditoMensal" type="number" step="0.01" min="0" value={f.creditoMensal} onChange={e => setF({ ...f, creditoMensal: e.target.value })} /></label>
-        <label>Dia do crédito<input name="diaCredito" type="number" min="1" max="31" value={f.diaCredito} onChange={e => setF({ ...f, diaCredito: e.target.value })} /></label>
-        <label>Saldo inicial (R$)<input name="saldoInicial" type="number" step="0.01" required value={f.saldoInicial} onChange={e => setF({ ...f, saldoInicial: e.target.value })} /></label>
-        <label>Data do saldo inicial<input name="dataInicio" type="date" required value={f.dataInicio} onChange={e => setF({ ...f, dataInicio: e.target.value })} /></label>
+        <label>Nome<Entrada name="nome" maxLength={40} required value={f.nome} onChange={e => setF({ ...f, nome: e.target.value })} /></label>
+        <label>Crédito mensal (R$)<Entrada name="creditoMensal" type="number" step="0.01" min="0" value={f.creditoMensal} onChange={e => setF({ ...f, creditoMensal: e.target.value })} /></label>
+        <label>Dia do crédito<Entrada name="diaCredito" type="number" min="1" max="31" value={f.diaCredito} onChange={e => setF({ ...f, diaCredito: e.target.value })} /></label>
+        <label>Saldo inicial (R$)<Entrada name="saldoInicial" type="number" step="0.01" required value={f.saldoInicial} onChange={e => setF({ ...f, saldoInicial: e.target.value })} /></label>
+        <label>Data do saldo inicial<Entrada name="dataInicio" type="date" required value={f.dataInicio} onChange={e => setF({ ...f, dataInicio: e.target.value })} /></label>
         <span className="pair"><button className="primary" type="submit">Salvar</button><button type="button" onClick={remover}>Remover cartão</button></span>
       </form>
       <div className="status" style={{ marginTop: 6 }}>Lançamentos antes da data do saldo inicial não entram no saldo.</div>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { brl, money } from "../../lib/formato";
 import { AREAS, AREAS_MANUAIS, novoId, normText, somaMetas, tituloMes, type AreaId, type Metas, type Regra } from "../../lib/orcamento";
 import { useFoco } from "./Orcamento";
+import { Entrada, Selecao } from "../../componentes/Campos";
 
 export type RascunhoRegra = { id: string | null; match: string; description: string; area: string; apply: boolean };
 
@@ -31,10 +32,10 @@ export function MetasPorArea({ metas, aberto, setAberto, foco, onSalvar }: {
       <div className="hint">Quanto da renda líquida (tudo que entrou no mês) vai para cada área. A soma precisa dar 100%. A renda de referência vale nos meses sem entradas lançadas; deixe em branco para usar a do último mês com entradas.</div>
       <form className="w-add rf-form" ref={ref} onSubmit={e => void salvar(e)}>
         {AREAS.map(a => (
-          <label key={a.id}>{a.name} (%)<input name={a.id} type="number" min="0" max="100" step="0.5" required value={valor(a.id)}
+          <label key={a.id}>{a.name} (%)<Entrada name={a.id} type="number" min="0" max="100" step="0.5" required value={valor(a.id)}
             onChange={e => setRascunho({ ...Object.fromEntries(AREAS.map(x => [x.id, valor(x.id)])), [a.id]: e.target.value })} /></label>
         ))}
-        <label>Renda de referência (R$)<input name="referenceIncome" type="number" min="1" step="0.01" placeholder="Opcional"
+        <label>Renda de referência (R$)<Entrada name="referenceIncome" type="number" min="1" step="0.01" placeholder="Opcional"
           value={renda ?? metas.referenceIncome ?? ""} onChange={e => setRenda(e.target.value)} /></label>
         <div className="b-targets-foot">
           <span className={ok ? "muted" : "err"}>{ok ? "Soma: 100%" : `Soma: ${brl(soma, 1)}% (precisa dar 100%)`}</span>
@@ -90,12 +91,12 @@ export function Regras({ regras, mes, aberto, setAberto, rascunho, setRascunho, 
           </tr>
         ))}</tbody></table></div>}
       <form className="w-add rf-form b-rule-form" ref={ref} onSubmit={e => void salvar(e)}>
-        <label>Quando a descrição contém<input name="match" maxLength={80} required minLength={3} placeholder="Ex.: Auto Posto Major" value={d.match} onChange={e => muda({ match: e.target.value })} /></label>
-        <label>Trocar por<input name="description" maxLength={120} required placeholder="Ex.: Combustível" value={d.description} onChange={e => muda({ description: e.target.value })} /></label>
-        <label>Área<select name="area" value={d.area} onChange={e => muda({ area: e.target.value })}><option value="">Manter a sugerida</option>
-          {AREAS_MANUAIS.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
+        <label>Quando a descrição contém<Entrada name="match" maxLength={80} required minLength={3} placeholder="Ex.: Auto Posto Major" value={d.match} onChange={e => muda({ match: e.target.value })} /></label>
+        <label>Trocar por<Entrada name="description" maxLength={120} required placeholder="Ex.: Combustível" value={d.description} onChange={e => muda({ description: e.target.value })} /></label>
+        <label>Área<Selecao name="area" value={d.area} onChange={e => muda({ area: e.target.value })}><option value="">Manter a sugerida</option>
+          {AREAS_MANUAIS.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</Selecao></label>
         <div className="b-rule-foot">
-          <label><input type="checkbox" name="apply" checked={d.apply} onChange={e => muda({ apply: e.target.checked })} />Aplicar também aos lançamentos já salvos de {tituloMes(mes)}</label>
+          <label><Entrada type="checkbox" name="apply" checked={d.apply} onChange={e => muda({ apply: e.target.checked })} />Aplicar também aos lançamentos já salvos de {tituloMes(mes)}</label>
           <span className="pair">
             {(rascunho?.id || rascunho?.match) && <button type="button" onClick={() => { setRascunho(null); setErro(null); }}>Cancelar</button>}
             <button className="primary" type="submit">{rascunho?.id ? "Salvar regra" : "Criar regra"}</button>

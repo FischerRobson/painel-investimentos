@@ -3,6 +3,7 @@ import { useState } from "react";
 import { money, signCls } from "../../lib/formato";
 import { hojeISO, isoBR } from "../../lib/dados";
 import { LIMITE_ACOES, LIMITE_CRIPTO, apurarExterior, apurarIR, type Realizado } from "../../motor";
+import { Selecao, Campo } from "../../componentes/Campos";
 
 const nomeMes = (mes: string) => { const s = new Date(mes + "-15T12:00:00").toLocaleDateString("pt-BR", { month: "long" }); return s[0].toUpperCase() + s.slice(1); };
 const Valor = ({ v }: { v: number }) => <span className={signCls(v)}>{v < 0 ? "−" : ""}{money(Math.abs(v))}</span>;
@@ -25,7 +26,7 @@ export function Impostos({ realizados }: { realizados: Realizado[] }) {
     <div className="panel">
       <div className="w-head">
         <div><h2>Imposto de renda</h2><div className="hint" style={{ margin: 0 }}>Apuração mensal das vendas (renda variável e cripto). Confira com o informe da corretora antes de pagar.</div></div>
-        <label className="status">Ano <select value={ano} onChange={e => setAno(+e.target.value)} aria-label="Ano do imposto">{anos.map(a => <option key={a}>{a}</option>)}</select></label>
+        <Campo inline rotulo="Ano"><Selecao value={ano} onChange={e => setAno(+e.target.value)} aria-label="Ano do imposto">{anos.map(a => <option key={a}>{a}</option>)}</Selecao></Campo>
       </div>
       <div className="tiles">
         <div className="tile"><div className="k">DARFs de {ano}</div><div className="v">{money(darfs.reduce((s, d) => s + d.valor, 0))}</div><div className="s">{darfs.length} {darfs.length === 1 ? "guia" : "guias"}</div></div>

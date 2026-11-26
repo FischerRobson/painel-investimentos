@@ -4,6 +4,7 @@ import { money } from "../../lib/formato";
 import { hojeISO, isoBR } from "../../lib/dados";
 import { operacoesStore, novoIdOp } from "../../lib/operacoes";
 import { sugerirProventos, type Operacao, type Provento, type TipoProvento } from "../../motor";
+import { Entrada, Selecao, Campo } from "../../componentes/Campos";
 
 const NOME: Record<TipoProvento, string> = { dividendo: "Dividendo", jcp: "JCP", rendimento: "Rendimento (FII)", outro: "Outro" };
 
@@ -31,7 +32,7 @@ export function Proventos({ operacoes, proventos, historico }: {
     <div className="panel">
       <div className="w-head">
         <div><h2>Proventos recebidos</h2><div className="hint" style={{ margin: 0 }}>O que caiu na conta: entra na declaração e na rentabilidade. Confira os valores com o extrato da corretora.</div></div>
-        <label className="status">Ano <select value={ano} onChange={e => setAno(+e.target.value)} aria-label="Ano dos proventos">{anos.map(a => <option key={a}>{a}</option>)}</select></label>
+        <Campo inline rotulo="Ano"><Selecao value={ano} onChange={e => setAno(+e.target.value)} aria-label="Ano dos proventos">{anos.map(a => <option key={a}>{a}</option>)}</Selecao></Campo>
       </div>
       <div className="tiles">
         <div className="tile"><div className="k">Total em {ano}</div><div className="v">{money(total())}</div><div className="s">{doAno.length} pagamentos</div></div>
@@ -54,11 +55,11 @@ export function Proventos({ operacoes, proventos, historico }: {
 
       <h3>Lançar provento</h3>
       <form className="w-add rf-form" onSubmit={lancar}>
-        <label>Data<input type="date" required max={hojeISO()} value={f.data} onChange={e => setF({ ...f, data: e.target.value })} /></label>
-        <label>Ativo<input required placeholder="Ex.: ITSA4" style={{ textTransform: "uppercase" }} value={f.ativo} onChange={e => setF({ ...f, ativo: e.target.value })} /></label>
-        <label>Tipo<select value={f.tipo} onChange={e => setF({ ...f, tipo: e.target.value as TipoProvento })}>{(Object.keys(NOME) as TipoProvento[]).map(t => <option key={t} value={t}>{NOME[t]}</option>)}</select></label>
-        <label>Valor recebido (R$)<input type="number" step="0.01" min="0.01" required value={f.valor} onChange={e => setF({ ...f, valor: e.target.value })} /></label>
-        {f.tipo === "jcp" && <label>IR retido (R$)<input type="number" step="0.01" min="0" value={f.irRetido} onChange={e => setF({ ...f, irRetido: e.target.value })} /></label>}
+        <label>Data<Entrada type="date" required max={hojeISO()} value={f.data} onChange={e => setF({ ...f, data: e.target.value })} /></label>
+        <label>Ativo<Entrada required placeholder="Ex.: ITSA4" style={{ textTransform: "uppercase" }} value={f.ativo} onChange={e => setF({ ...f, ativo: e.target.value })} /></label>
+        <label>Tipo<Selecao value={f.tipo} onChange={e => setF({ ...f, tipo: e.target.value as TipoProvento })}>{(Object.keys(NOME) as TipoProvento[]).map(t => <option key={t} value={t}>{NOME[t]}</option>)}</Selecao></label>
+        <label>Valor recebido (R$)<Entrada type="number" step="0.01" min="0.01" required value={f.valor} onChange={e => setF({ ...f, valor: e.target.value })} /></label>
+        {f.tipo === "jcp" && <label>IR retido (R$)<Entrada type="number" step="0.01" min="0" value={f.irRetido} onChange={e => setF({ ...f, irRetido: e.target.value })} /></label>}
         <button className="primary" type="submit">Lançar</button>
       </form>
 

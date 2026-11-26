@@ -2,6 +2,7 @@
 import { money } from "../../lib/formato";
 import { NOME_META, planejarRebalanceamento, type Operacao } from "../../motor";
 import type { PrefSaude, Saude } from "../../lib/saude";
+import { Entrada, Campo } from "../../componentes/Campos";
 
 const p1 = (v: number) => v.toFixed(1).replace(".", ",") + "%";
 const quantidade = (q: number) => q.toLocaleString("pt-BR", { maximumFractionDigits: 8 });
@@ -18,8 +19,7 @@ export function Rebalancear({ saude: s, prefs, setPrefs, operacoes, hoje }: {
       <h2>Rebalancear vendendo</h2>
       <div className="hint">Aportar na classe atrasada é o jeito mais barato de voltar à meta, porque não paga IR. Vender vale quando o desvio é grande e o aporte demora demais para corrigir.
         {" "}Aqui só são vendidas as classes que passam da meta além da tolerância, e a reserva de emergência fica de fora.</div>
-      <label className="status">Tolerância (pontos percentuais acima da meta){" "}
-        <input type="number" min="0" max="50" step="1" value={prefs.banda} onChange={e => setPrefs({ banda: Math.min(50, Math.max(0, Number(e.target.value) || 0)) })} style={{ width: 70 }} /></label>
+      <Campo inline rotulo="Tolerância (pontos percentuais acima da meta)"><Entrada type="number" min="0" max="50" step="1" value={prefs.banda} onChange={e => setPrefs({ banda: Math.min(50, Math.max(0, Number(e.target.value) || 0)) })} style={{ width: 70 }} /></Campo>
       {s.semCotacao.length > 0 && <div className="status down" role="status">Sem o valor de {s.semCotacao.join(", ")} agora. O plano fica suspenso, porque sem esses ativos as classes sairiam erradas.</div>}
       {plano && !plano.vendas.length && <>
         <div className="status" style={{ marginTop: 8 }}>{plano.naoVendido.length ? "Há classe acima da tolerância, mas nada pode ser vendido agora." : "Nada a vender: nenhuma classe passa da meta além da tolerância."}

@@ -6,7 +6,7 @@ import { big, brl, money } from "../../lib/formato";
 import { nominalParaReal, REGRA_ALUGUEL, simulaMoradia, type CfgMoradia } from "../../motor";
 import { configLinha, css } from "../../lib/graficos";
 import { Grafico } from "../../componentes/Grafico";
-import { Legenda, Num } from "../../componentes/Campos";
+import { Legenda, Num, Selecao } from "../../componentes/Campos";
 import { ErroCarteira } from "../../componentes/ErroCarteira";
 
 // Rendimento padrão de longo prazo: o CDI de hoje não vale por 30 anos
@@ -44,8 +44,8 @@ export function AlugarFinanciar() {
         <Num rotulo="ITBI e cartório (% do imóvel)" min="0" step="0.5" valor={c.custosCompra} onValor={campo("custosCompra")} />
         <Num rotulo="Juros do financiamento (% a.a.)" min="0" step="0.1" valor={c.juros} onValor={campo("juros")} />
         <Num rotulo="Prazo do financiamento (meses)" min="1" max="420" step="12" valor={c.prazo} onValor={campo("prazo")} />
-        <label>Tabela<select value={c.sistema} onChange={e => setCfg({ sistema: e.target.value as CfgMoradia["sistema"] })}>
-          <option value="sac">SAC (prestação cai)</option><option value="price">Price (prestação fixa)</option></select></label>
+        <label>Tabela<Selecao value={c.sistema} onChange={e => setCfg({ sistema: e.target.value as CfgMoradia["sistema"] })}>
+          <option value="sac">SAC (prestação cai)</option><option value="price">Price (prestação fixa)</option></Selecao></label>
         <Num rotulo="Seguros e taxa mensal (R$)" min="0" step="10" valor={c.seguros} onValor={campo("seguros")} />
         <Num rotulo="Tarifas do banco na contratação (R$)" min="0" step="100" valor={c.tarifas} onValor={campo("tarifas")} />
         <Num rotulo="Aluguel de um imóvel igual (R$/mês)" min="0" step="100" valor={c.aluguel} onValor={campo("aluguel")} />

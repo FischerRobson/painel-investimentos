@@ -5,7 +5,8 @@ import { cenarioDoTermometro, hojeISO, isoBR, useRendaFixa, useTermometro } from
 import { usePreferencia } from "../../lib/preferencia";
 import { brl, money } from "../../lib/formato";
 import { cdiDaSelic, comparaRF, FGC, LIQUIDEZ_TXT, liquidezRF, ordenarRF, RISCO_TXT, riscoRF, valorAtualRF, type ModoCenario, type OrdemRF } from "../../motor";
-import { CampoNum, CampoTexto, Num } from "../../componentes/Campos";
+import { CampoNum, CampoTexto, Num, Entrada, Selecao } from "../../componentes/Campos";
+import { EsqueletoPainel } from "../../componentes/Esqueleto";
 
 // Tipos e a forma como cada um rende: cdi = % do CDI (CDI = Selic meta − 0,10 p.p.), pre = % a.a., ipca = IPCA + % a.a.
 export const TIPOS_RF: Record<string, { idx: "cdi" | "pre" | "ipca"; padrao: number; isento: boolean; selic?: boolean }> = {
@@ -45,7 +46,7 @@ export function Comparador() {
   const [cmpCfg, setCmpCfg] = usePreferencia<Cfg>("comparador", { valor: 10000, anos: 5, modo: "base", ordem: "liquido", produtos: produtosExemplo() });
   const [msg, setMsg] = useState("");
   const [escolhido, setEscolhido] = useState<string>("");
-  if (termo.isPending) return <div className="panel"><h2>Comparador de renda fixa</h2><div className="hint">Carregando as expectativas do Banco Central…</div></div>;
+  if (termo.isPending) return <EsqueletoPainel campos={4} tiles={3} linhas={4} texto="Carregando as expectativas do Banco Central…" />;
 
   const t = termo.data;
   const valor = cmpCfg.valor ?? 0, anos = cmpCfg.anos ?? 0;
@@ -97,22 +98,22 @@ export function Comparador() {
       <form className="w-add proj-form" onSubmit={e => e.preventDefault()}>
         <Num rotulo="Valor investido (R$)" min="0" step="100" valor={cmpCfg.valor} onValor={v => setCmpCfg({ valor: v })} />
         <Num rotulo="Prazo (anos)" min="0.1" max="40" step="any" valor={cmpCfg.anos} onValor={v => setCmpCfg({ anos: v })} />
-        <label>Cenário de juros e inflação<select value={cmpCfg.modo} onChange={e => setCmpCfg({ modo: e.target.value as ModoCenario })}>
+        <label>Cenário de juros e inflação<Selecao value={cmpCfg.modo} onChange={e => setCmpCfg({ modo: e.target.value as ModoCenario })}>
           {Object.entries(CENARIOS_RF).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-        </select></label>
-        <label>Ordenar por<select value={cmpCfg.ordem ?? "liquido"} onChange={e => setCmpCfg({ ordem: e.target.value as OrdemRF })}>
+        </Selecao></label>
+        <label>Ordenar por<Selecao value={cmpCfg.ordem ?? "liquido"} onChange={e => setCmpCfg({ ordem: e.target.value as OrdemRF })}>
           <option value="liquido">Maior patrimônio líquido</option><option value="real">Maior rentabilidade real</option>
           <option value="liquidez">Mais liquidez</option><option value="risco">Menor risco de crédito</option>
-        </select></label>
+        </Selecao></label>
       </form>
 
       <h3>Seu investimento</h3>
       <div className="hint">Escolha um título da sua carteira. O valor de hoje é estimado pela série do CDI e pelo IPCA desde a aplicação; o prazo passa a ser o que falta, e o IR é calculado pelo prazo total.</div>
       {vivos.length
         ? <div style={{ display: "flex", flexWrap: "wrap", gap: 8, maxWidth: "100%" }}>
-            <select style={{ flex: "1 1 260px", minWidth: 0, maxWidth: "100%" }} value={escolhido || String(vivos[0].id)} onChange={e => setEscolhido(e.target.value)} aria-label="Título da carteira">
+            <Selecao style={{ flex: "1 1 260px", minWidth: 0, maxWidth: "100%" }} value={escolhido || String(vivos[0].id)} onChange={e => setEscolhido(e.target.value)} aria-label="Título da carteira">
               {vivos.map(x => <option key={x.id} value={x.id}>{x.nome} · {x.tipo} · {TAXA_TXT(x)} · vence {isoBR(x.venc)}</option>)}
-            </select>
+            </Selecao>
             <button type="button" onClick={compararMinha}>Comparar este investimento</button>
           </div>
         : <div className="hint">Nenhum título vigente na carteira. Cadastre em Carteira › Renda fixa.</div>}
@@ -126,14 +127,14 @@ export function Comparador() {
           return (
             <tr key={p.id}>
               <td data-label="Produto"><CampoTexto valor={p.nome} placeholder={p.tipo} style={{ width: 150 }} aria-label="Nome do produto" onValor={v => mudarProduto(p.id, { nome: v })} /></td>
-              <td data-label="Tipo"><select value={p.tipo} aria-label="Tipo" onChange={e => mudarProduto(p.id, { tipo: e.target.value, taxa: TIPOS_RF[e.target.value].padrao })}>
+              <td data-label="Tipo"><Selecao value={p.tipo} aria-label="Tipo" onChange={e => mudarProduto(p.id, { tipo: e.target.value, taxa: TIPOS_RF[e.target.value].padrao })}>
                 {Object.keys(TIPOS_RF).map(k => <option key={k}>{k}</option>)}
-              </select></td>
+              </Selecao></td>
               <td data-label="Taxa"><CampoNum step="0.01" min="0" style={{ width: 90 }} aria-label="Taxa" valor={p.taxa ?? tp.padrao} onValor={v => mudarProduto(p.id, { taxa: v })} />{" "}
                 <span className="muted">{tp.idx === "cdi" ? "% CDI" : tp.idx === "pre" ? "% a.a." : "IPCA +"}</span></td>
               <td data-label="Vencimento (anos)"><CampoNum step="0.5" min="0.5" max="40" style={{ width: 80 }} aria-label="Vencimento (anos)" valor={p.anosVenc ?? cmpCfg.anos} onValor={v => mudarProduto(p.id, { anosVenc: v })} /></td>
               <td data-label="Liquidez diária">{FGC(p.tipo)
-                ? <input type="checkbox" checked={!!p.liquidezDiaria} aria-label="Liquidez diária" onChange={e => mudarProduto(p.id, { liquidezDiaria: e.target.checked })} />
+                ? <Entrada type="checkbox" checked={!!p.liquidezDiaria} aria-label="Liquidez diária" onChange={e => mudarProduto(p.id, { liquidezDiaria: e.target.checked })} />
                 : <span className="muted">{LIQUIDEZ_TXT[liquidezRF(p)]}</span>}</td>
               <td className="acao"><button type="button" onClick={() => setCmpCfg(c => ({ ...c, produtos: c.produtos.filter(x => x.id !== p.id) }))}>remover</button></td>
             </tr>

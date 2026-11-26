@@ -14,6 +14,7 @@ import {
 } from "../motor";
 import { ErroCarteira } from "../componentes/ErroCarteira";
 import type { PrefSaude } from "../lib/saude";
+import { EsqueletoLinhas, EsqueletoPainel } from "../componentes/Esqueleto";
 
 const nomeArea = (id: string) => AREAS.find(a => a.id === id)?.name ?? id;
 const comSinal = (v: number) => (v >= 0.005 ? "+" : v <= -0.005 ? "−" : "") + money(Math.abs(v));
@@ -49,7 +50,7 @@ export function Fechamento() {
   const mes = pedido ?? (temAnterior.data || Object.keys(fotos).some(d => d.startsWith(anterior)) ? anterior : mesAtual);
 
   if (carteira.erro) return <ErroCarteira msg={carteira.erro} />;
-  if (!carteira.doc || (!pedido && !decidido)) return <div className="panel muted">Montando o fechamento…</div>;
+  if (!carteira.doc || (!pedido && !decidido)) return <><EsqueletoPainel tiles={4} grafico texto="Montando o fechamento…" /><EsqueletoPainel tiles={0} linhas={5} /></>;
   const ir = (m: string) => navegar({ hash: m });
   const parcial = mes === mesAtual;
 
@@ -114,14 +115,14 @@ function Conteudo({ mes, fotos, historicoFalhou, hoje }: { mes: string; fotos: R
 
     {ponte && <div className="panel">
       <h2>Quem puxou o resultado</h2>
-      {!posicoesProntas ? <div className="status">Somando as posições de cada dia…</div>
+      {!posicoesProntas ? <EsqueletoLinhas n={5} texto="Somando as posições de cada dia…" />
         : !carregados.length ? <div className="hint" style={{ margin: 0 }}>Não há posições por ativo salvas neste período.</div>
         : <Contribuicoes c={contribuicoes(carregados)} comDados={carregados.length} total={ponte.datas.length - 1} />}
     </div>}
 
     <div className="panel">
       <h2>Renda e gastos</h2>
-      {orc.isPending ? <div className="status">Lendo o orçamento…</div>
+      {orc.isPending ? <EsqueletoLinhas n={4} texto="Lendo o orçamento…" />
         : orc.isError ? <div className="status down">Não consegui ler o orçamento agora.</div>
         : !temOrcamento ? <div className="hint" style={{ margin: 0 }}>Sem lançamentos neste mês. <Link to={`/orcamento#${mes}`}>Abrir o Orçamento</Link></div>
         : <RendaGastos p={poupanca!} investido={investidoNoMes(operacoes, mes)} temOperacoes={operacoes.length > 0} dados={orc.data.dados} mes={mes} parcial={parcial} />}

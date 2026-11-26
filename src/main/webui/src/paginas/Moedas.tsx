@@ -12,6 +12,8 @@ import { governados } from "../motor";
 import { configLinha, cor } from "../lib/graficos";
 import { Grafico } from "../componentes/Grafico";
 import { ErroCarteira } from "../componentes/ErroCarteira";
+import { EsqueletoCards, EsqueletoPainel } from "../componentes/Esqueleto";
+import { Entrada, Selecao } from "../componentes/Campos";
 
 const PERIODOS: [number, string][] = [[30, "30 dias"], [180, "6 meses"], [360, "1 ano"]];
 
@@ -24,8 +26,8 @@ export function Moedas() {
 
   if (carteira.erro) return <ErroCarteira msg={carteira.erro} />;
   const fx = cambio.data;
-  if (!fx) return <div className={"panel " + (cambio.isError ? "err" : "muted")}>{cambio.isError ? erroCambio(cambio.error) : "Carregando cotações…"}</div>;
-  if (!carteira.doc) return <div className="panel muted">Carregando cotações…</div>;
+  if (!fx && cambio.isError) return <div className="panel err">{erroCambio(cambio.error)}</div>;
+  if (!fx || !carteira.doc) return <><EsqueletoPainel tiles={1} texto="Carregando as cotações…" /><EsqueletoCards n={4} /></>;
 
   const moedas = carteira.doc.moedas ?? [];
   const tenho = (c: string) => moedas.find(m => m.c === c)?.q || 0;
@@ -116,13 +118,13 @@ function OperacaoMoeda({ c, bid, tenho, semHistorico }: { c: string; bid: number
     <form className="fx-op" onSubmit={lancar} aria-label={`Operação em ${c}`}>
       {semHistorico
         ? <span className="status" style={{ width: "100%" }}>Saldo sem histórico. Informe quando e por quanto você comprou estes {moneyC(tenho, c)}.</span>
-        : <label>Operação<select value={tipo} onChange={e => setTipo(e.target.value as "compra" | "venda")} aria-label={`Comprar ou vender ${c}`}>
-            <option value="compra">Comprar</option><option value="venda" disabled={!tenho}>Vender</option></select></label>}
-      {!semHistorico && <label>Quantidade ({c})<input type="number" min="0" step="any" required max={tipo === "venda" ? tenho : undefined}
+        : <label>Operação<Selecao value={tipo} onChange={e => setTipo(e.target.value as "compra" | "venda")} aria-label={`Comprar ou vender ${c}`}>
+            <option value="compra">Comprar</option><option value="venda" disabled={!tenho}>Vender</option></Selecao></label>}
+      {!semHistorico && <label>Quantidade ({c})<Entrada type="number" min="0" step="any" required max={tipo === "venda" ? tenho : undefined}
         value={qtd} onChange={e => setQtd(e.target.value)} aria-label={`Quantidade de ${c}`} /></label>}
-      <label>{tipo === "venda" && !semHistorico ? "Recebi (R$)" : "Paguei (R$)"}<input type="number" min="0.01" step="0.01" placeholder={sugerido != null ? String(sugerido) : ""}
+      <label>{tipo === "venda" && !semHistorico ? "Recebi (R$)" : "Paguei (R$)"}<Entrada type="number" min="0.01" step="0.01" placeholder={sugerido != null ? String(sugerido) : ""}
         required={semHistorico} value={valor} onChange={e => setValor(e.target.value)} aria-label={`Valor em reais de ${c}`} /></label>
-      <label>Data<input type="date" max={hojeISO()} required value={data} onChange={e => setData(e.target.value)} aria-label={`Data da operação em ${c}`} /></label>
+      <label>Data<Entrada type="date" max={hojeISO()} required value={data} onChange={e => setData(e.target.value)} aria-label={`Data da operação em ${c}`} /></label>
       <button className="primary" type="submit">{semHistorico ? "Salvar saldo" : "Lançar"}</button>
     </form>
   );

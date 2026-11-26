@@ -19,6 +19,8 @@ import { FormOperacao, inicialDe, type Grupo, type Inicial, type Movimento } fro
 import { Impostos } from "./Impostos";
 import { Proventos } from "./Proventos";
 import { Declaracao } from "./Declaracao";
+import { EsqueletoPainel } from "../../componentes/Esqueleto";
+import { Entrada, Selecao, Campo } from "../../componentes/Campos";
 
 type Pos = { t: string; q: number };
 type ItemComProventos = ItemAtivo & { dividends?: { date: number; amount: number }[] };
@@ -53,7 +55,7 @@ export function Operacoes() {
   const cambio = useCambio(30);
 
   if (erro) return <ErroCarteira msg={erro} />;
-  if (!doc) return <div className="panel muted">Carregando as operações…</div>;
+  if (!doc) return <EsqueletoPainel tiles={3} campos={4} linhas={6} texto="Carregando as operações…" />;
 
   const itens = Object.fromEntries((cotas.data?.items ?? []).map(i => [i.ticker, i]));
   const fx = (cur?: string) => !cur || cur === "BRL" ? 1 : cambio.data?.quotes[cur]?.bid;
@@ -148,8 +150,8 @@ export function Operacoes() {
     {operacoes.length > 0 && <div className="panel">
       <div className="w-head">
         <h2>Histórico de operações</h2>
-        <label className="status">Ano <select value={String(anoLista)} onChange={e => setAnoLista(e.target.value === "todos" ? "todos" : +e.target.value)} aria-label="Ano das operações">
-          <option value="todos">todos</option>{anos.map(a => <option key={a}>{a}</option>)}</select></label>
+        <Campo inline rotulo="Ano"><Selecao value={String(anoLista)} onChange={e => setAnoLista(e.target.value === "todos" ? "todos" : +e.target.value)} aria-label="Ano das operações">
+          <option value="todos">todos</option>{anos.map(a => <option key={a}>{a}</option>)}</Selecao></Campo>
       </div>
       <div className="hint">Tudo o que mudou a carteira: ações, FIIs, cripto, renda fixa e moedas. Operação não se edita nem se apaga; o estorno desfaz e as duas ficam aqui.</div>
       <div className="table-wrap"><table className="w-table">
@@ -218,10 +220,10 @@ function SaldosIniciais({ pendentes, classeDe }: { pendentes: (Pos & { cripto: b
         return (
           <tr key={p.t}>
             <td><span className="tk">{p.t}</span></td><td>{qtd(p.q)}</td>
-            <td>{p.cripto ? "Cripto" : <select aria-label={`Classe de ${p.t}`} value={c.classe} onChange={e => muda(p.t, { classe: e.target.value as Classe }, p)}>
-              {(["acao", "fii", "etf", "bdr", "exterior"] as Classe[]).map(k => <option key={k} value={k}>{NOME_CLASSE[k]}</option>)}</select>}</td>
-            <td><input type="date" aria-label={`Data do saldo inicial de ${p.t}`} max={hojeISO()} value={c.data} onChange={e => muda(p.t, { data: e.target.value }, p)} /></td>
-            <td><input type="number" step="any" min="0" aria-label={`Preço médio de ${p.t}`} value={c.pm} onChange={e => muda(p.t, { pm: e.target.value }, p)} /></td>
+            <td>{p.cripto ? "Cripto" : <Selecao aria-label={`Classe de ${p.t}`} value={c.classe} onChange={e => muda(p.t, { classe: e.target.value as Classe }, p)}>
+              {(["acao", "fii", "etf", "bdr", "exterior"] as Classe[]).map(k => <option key={k} value={k}>{NOME_CLASSE[k]}</option>)}</Selecao>}</td>
+            <td><Entrada type="date" aria-label={`Data do saldo inicial de ${p.t}`} max={hojeISO()} value={c.data} onChange={e => muda(p.t, { data: e.target.value }, p)} /></td>
+            <td><Entrada type="number" step="any" min="0" aria-label={`Preço médio de ${p.t}`} value={c.pm} onChange={e => muda(p.t, { pm: e.target.value }, p)} /></td>
             <td><button type="button" className="primary" disabled={!(Number(c.pm) > 0)} onClick={() => salvar(p)}>Salvar</button></td>
           </tr>
         );

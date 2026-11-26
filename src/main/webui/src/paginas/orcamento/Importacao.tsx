@@ -9,6 +9,7 @@ import { gravacaoMes, mesCurto, tituloMes, type AreaId } from "../../lib/orcamen
 import { SelectArea, SeloMeio } from "./Lancamentos";
 import { useFoco } from "./Orcamento";
 import type { RascunhoRegra } from "./Configuracoes";
+import { Entrada } from "../../componentes/Campos";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 
@@ -49,7 +50,7 @@ export function BotaoImportar({ imp, onArquivo }: { imp: EstadoImportacao | null
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 15V4M7 9l5-5 5 5" /><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4" /></svg>
         {lendo ? `Lendo ${imp!.fileName}…` : "Importar extrato ou fatura"}
       </button>
-      <input type="file" hidden ref={arquivo} aria-label="Arquivo do extrato ou fatura"
+      <Entrada type="file" hidden ref={arquivo} aria-label="Arquivo do extrato ou fatura"
         accept=".pdf,.xls,.xlsx,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         onChange={e => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onArquivo(f); }} />
     </div>
@@ -129,7 +130,7 @@ export function Importacao({ imp, setImp, mes: _mes, foco, onRegra, onConcluir }
         <thead><tr><th></th><th>Data</th><th>Descrição</th><th className="b-left">Área</th><th>Valor</th><th></th></tr></thead>
         <tbody>{ordenados.map(i => (
           <tr key={i.idx} className={i.selected ? undefined : "off"}>
-            <td className="b-check"><input type="checkbox" checked={i.selected} aria-label={`Importar ${i.description}`} onChange={e => mudaItem(i.idx, { selected: e.target.checked })} /></td>
+            <td className="b-check"><Entrada type="checkbox" checked={i.selected} aria-label={`Importar ${i.description}`} onChange={e => mudaItem(i.idx, { selected: e.target.checked })} /></td>
             <td>{isoBR(i.date)}</td>
             <td className="b-desc">{i.description}<SeloMeio m={i.method} />{sub(i) && <span className="b-sub">{sub(i)}</span>}{i.note && <span className="b-sub warn">{i.note}</span>}</td>
             <td className="b-left">{i.type === "expense" ? <SelectArea valor={i.area} onMudar={a => mudaItem(i.idx, { area: a })} /> : <span className="muted">Entrada</span>}</td>
@@ -140,7 +141,7 @@ export function Importacao({ imp, setImp, mes: _mes, foco, onRegra, onConcluir }
         ))}</tbody>
       </table></div>
       <div className="b-import-foot">
-        {future ? <label><input type="checkbox" checked={!!imp.includeFuture} onChange={e => setImp({ ...imp, includeFuture: e.target.checked })} />Lançar também as {future} parcelas futuras nos meses seguintes</label> : <span />}
+        {future ? <label><Entrada type="checkbox" checked={!!imp.includeFuture} onChange={e => setImp({ ...imp, includeFuture: e.target.checked })} />Lançar também as {future} parcelas futuras nos meses seguintes</label> : <span />}
         <span className="pair">
           <button type="button" disabled={imp.busy} onClick={() => setImp(null)}>Cancelar</button>
           <button type="button" className="primary" disabled={imp.busy || !chosen.length} onClick={() => void importar()}>

@@ -5,6 +5,7 @@ import { hojeISO, isoBR } from "../../lib/dados";
 import { money } from "../../lib/formato";
 import { novoIdOp } from "../../lib/operacoes";
 import { rfCalc, type Indexador, type Operacao, type TaxasBCB, type TituloRF } from "../../motor";
+import { Entrada, Selecao } from "../../componentes/Campos";
 
 const RF_TIPOS = ["CDB", "LCI", "LCA", "CRI", "CRA", "Tesouro Selic", "Tesouro Prefixado", "Tesouro IPCA+", "Debênture", "Poupança/Outro"];
 const RF_ISENTOS = ["LCI", "LCA", "CRI", "CRA"];
@@ -46,20 +47,20 @@ export function FormAplicacao({ inicial, onSalvar, botoes }: { inicial?: Partial
 
   return <>
     <form className="w-add rf-form" onSubmit={salvar} aria-label="Aplicação em renda fixa">
-      <label>Nome<input name="nome" placeholder="Ex.: CDB Banco Inter" required value={f.nome} onChange={e => muda({ nome: e.target.value })} /></label>
-      <label>Tipo do título<select name="tipo" value={f.tipo} onChange={e => mudaTipo(e.target.value)}>{RF_TIPOS.map(t => <option key={t}>{t}</option>)}</select></label>
+      <label>Nome<Entrada name="nome" placeholder="Ex.: CDB Banco Inter" required value={f.nome} onChange={e => muda({ nome: e.target.value })} /></label>
+      <label>Tipo do título<Selecao name="tipo" value={f.tipo} onChange={e => mudaTipo(e.target.value)}>{RF_TIPOS.map(t => <option key={t}>{t}</option>)}</Selecao></label>
       <label>Rentabilidade<span className="pair">
-        <select name="idx" value={f.idx} onChange={e => muda({ idx: e.target.value as Indexador })} aria-label="Indexador">
+        <Selecao name="idx" value={f.idx} onChange={e => muda({ idx: e.target.value as Indexador })} aria-label="Indexador">
           <option value="cdi">% do CDI</option><option value="pre">Prefixado % a.a.</option><option value="ipca">IPCA + % a.a.</option>
-        </select>
-        <input name="taxa" type="number" step="any" min="0" placeholder="Ex.: 110" required value={f.taxa} onChange={e => muda({ taxa: e.target.value })} aria-label="Taxa" />
+        </Selecao>
+        <Entrada name="taxa" type="number" step="any" min="0" placeholder="Ex.: 110" required value={f.taxa} onChange={e => muda({ taxa: e.target.value })} aria-label="Taxa" />
       </span></label>
-      <label>Valor aplicado (R$) — quanto saiu da sua conta<input name="aplicado" type="number" step="0.01" min="0.01" required value={f.aplicado} onChange={e => muda({ aplicado: e.target.value })} /></label>
-      <label>Data da aplicação<input name="data" type="date" max={hojeISO()} required value={f.data} onChange={e => muda({ data: e.target.value })} /></label>
-      <label>Vencimento<input name="venc" type="date" value={f.venc} onChange={e => muda({ venc: e.target.value })} /></label>
-      <label>Banco ou corretora (para o limite do FGC)<input name="instituicao" placeholder="Ex.: Banco Inter" value={f.instituicao} onChange={e => muda({ instituicao: e.target.value })} /></label>
-      <label className="chk"><input name="isento" type="checkbox" checked={f.isento} onChange={e => muda({ isento: e.target.checked })} /> Isento de IR</label>
-      <label className="chk"><input name="liquidez" type="checkbox" checked={f.liquidez} onChange={e => muda({ liquidez: e.target.checked })} /> Liquidez diária (conta na reserva de emergência)</label>
+      <label>Valor aplicado (R$) — quanto saiu da sua conta<Entrada name="aplicado" type="number" step="0.01" min="0.01" required value={f.aplicado} onChange={e => muda({ aplicado: e.target.value })} /></label>
+      <label>Data da aplicação<Entrada name="data" type="date" max={hojeISO()} required value={f.data} onChange={e => muda({ data: e.target.value })} /></label>
+      <label>Vencimento<Entrada name="venc" type="date" value={f.venc} onChange={e => muda({ venc: e.target.value })} /></label>
+      <label>Banco ou corretora (para o limite do FGC)<Entrada name="instituicao" placeholder="Ex.: Banco Inter" value={f.instituicao} onChange={e => muda({ instituicao: e.target.value })} /></label>
+      <label className="chk"><Entrada name="isento" type="checkbox" checked={f.isento} onChange={e => muda({ isento: e.target.checked })} /> Isento de IR</label>
+      <label className="chk"><Entrada name="liquidez" type="checkbox" checked={f.liquidez} onChange={e => muda({ liquidez: e.target.checked })} /> Liquidez diária (conta na reserva de emergência)</label>
       <span className="pair"><button className="primary" type="submit">Aplicar</button>{botoes}</span>
     </form>
     <div className="status" style={{ marginTop: 6 }}>Cada aplicação é um título novo. Valor estimado "na curva" com o CDI e o IPCA do Banco Central, descontando o IR (tabela regressiva). Não considera IOF (só vale para menos de 30 dias) nem a marcação a mercado do Tesouro.</div>
@@ -94,15 +95,15 @@ export function FormResgate({ titulos, rates, inicial, onSalvar, botoes }: {
 
   return <>
     <form className="w-add rf-form" onSubmit={salvar} aria-label="Resgate de renda fixa">
-      <label style={{ gridColumn: "1 / -1" }}>Título<select name="titulo" value={titulo.id} onChange={e => trocaTitulo(e.target.value)}>
-        {titulos.map(t => <option key={t.id} value={t.id}>{t.nome} — aplicado {money(t.aplicado)} em {isoBR(t.data)}</option>)}</select></label>
-      <label>Data do resgate<input name="data" type="date" min={titulo.data} max={hojeISO()} required value={data} onChange={e => setData(e.target.value)} /></label>
-      <label className="chk"><input name="total" type="checkbox" checked={total} onChange={e => setTotal(e.target.checked)} /> Resgate total (o título sai da carteira)</label>
+      <label style={{ gridColumn: "1 / -1" }}>Título<Selecao name="titulo" value={titulo.id} onChange={e => trocaTitulo(e.target.value)}>
+        {titulos.map(t => <option key={t.id} value={t.id}>{t.nome} — aplicado {money(t.aplicado)} em {isoBR(t.data)}</option>)}</Selecao></label>
+      <label>Data do resgate<Entrada name="data" type="date" min={titulo.data} max={hojeISO()} required value={data} onChange={e => setData(e.target.value)} /></label>
+      <label className="chk"><Entrada name="total" type="checkbox" checked={total} onChange={e => setTotal(e.target.checked)} /> Resgate total (o título sai da carteira)</label>
       <label>Valor presente (R$) — o título líquido no dia, antes do resgate
-        <input name="valorPresente" type="number" step="0.01" min="0" required placeholder="do extrato"
+        <Entrada name="valorPresente" type="number" step="0.01" min="0" required placeholder="do extrato"
           value={presente !== "" ? presente : estimado != null ? String(estimado) : ""} onChange={e => setPresente(e.target.value)} /></label>
       <label>Valor recebido (R$) — o que entrou na conta
-        <input name="valor" type="number" step="0.01" min="0.01" required={!total} placeholder={total && vp ? String(vp) : ""}
+        <Entrada name="valor" type="number" step="0.01" min="0.01" required={!total} placeholder={total && vp ? String(vp) : ""}
           value={valor} onChange={e => setValor(e.target.value)} /></label>
       <span className="pair"><button className="primary" type="submit">Resgatar</button>{botoes}</span>
     </form>

@@ -8,6 +8,7 @@ import {
   analisaAcao, analisaFii, classificaSetor, comparaSetor, INDICADORES_SETOR, numeroMagico, precoBazin, precoGraham,
   type FmtCriterio, type Fundamentos,
 } from "../../motor";
+import { Entrada } from "../../componentes/Campos";
 
 type ItemApi = { ticker: string; name?: string; sector?: string; industry?: string; price?: number; fund?: (Fundamentos & { kind?: string }) | null; error?: string };
 type Analise = ReturnType<typeof analisaAcao> | ReturnType<typeof analisaFii>;
@@ -54,7 +55,7 @@ export function Analisador() {
         {" "}<b>É uma leitura dos números, não recomendação de compra ou venda.</b></div>
       <form className="w-add proj-form" onSubmit={enviar}>
         <label style={{ gridColumn: "1 / -1" }}>Tickers (separados por vírgula, até 30)
-          <input type="text" value={tickers} placeholder="PETR4, ITUB4, HGLG11" onChange={e => setTickers(e.target.value)} /></label>
+          <Entrada type="text" value={tickers} placeholder="PETR4, ITUB4, HGLG11" onChange={e => setTickers(e.target.value)} /></label>
         <div className="quick"><button type="submit" disabled={carregando}>Analisar</button></div>
       </form>
       <div className="status">Dados do Fundamentus: o site usa 0 quando não tem o número, então esse critério fica de fora da nota e a cobertura cai.</div>

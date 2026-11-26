@@ -11,6 +11,7 @@ import { brl, parseTickers } from "../../lib/formato";
 import { novoIdOp } from "../../lib/operacoes";
 import { NOME_CLASSE, NOME_TIPO, processar, type Classe, type Operacao, type TaxasBCB, type TipoOperacao, type TituloRF } from "../../motor";
 import { FormAplicacao, FormResgate, deAplicacao, type CamposRF } from "./FormRendaFixa";
+import { Entrada, Selecao } from "../../componentes/Campos";
 
 export const COINS = ["BTC", "ETH", "SOL", "USDT", "USDC", "XRP", "BNB", "ADA", "DOGE", "LINK"];
 const CLASSES_RV: Classe[] = ["acao", "fii", "etf", "bdr", "exterior"];
@@ -147,37 +148,37 @@ function FormNegocio({ grupo, mov, inicial, operacoes, pendentes, classeDe, camb
   const qtdFmt = (q: number) => brl(q, q % 1 ? (cripto ? 8 : 4) : 0);
   return <>
     <form className="w-add rf-form" onSubmit={salvar} aria-label={`${NOME_TIPO[f.tipo]} de ${cripto ? "cripto" : "ações e FIIs"}`}>
-      {mov === "evento" && <label>Evento<select name="tipo" value={f.tipo} onChange={e => muda({ tipo: e.target.value as TipoOperacao })}>
-        {EVENTOS.map(t => <option key={t} value={t}>{NOME_TIPO[t]}</option>)}</select></label>}
+      {mov === "evento" && <label>Evento<Selecao name="tipo" value={f.tipo} onChange={e => muda({ tipo: e.target.value as TipoOperacao })}>
+        {EVENTOS.map(t => <option key={t} value={t}>{NOME_TIPO[t]}</option>)}</Selecao></label>}
       <label>Ativo{escolhido
-        ? <select name="ativo" value={f.ativo} onChange={e => mudaAtivo(e.target.value)}>
+        ? <Selecao name="ativo" value={f.ativo} onChange={e => mudaAtivo(e.target.value)}>
             {posicoes.map(x => <option key={x.ativo} value={x.ativo}>{x.ativo} — {qtdFmt(x.qtd)} {cripto ? "" : NOME_CLASSE[x.classe]}</option>)}
-          </select>
+          </Selecao>
         : cripto
-          ? <select name="ativo" value={f.ativo} onChange={e => mudaAtivo(e.target.value)}>{COINS.map(c => <option key={c}>{c}</option>)}</select>
-          : <input name="ativo" required placeholder="Ex.: ITSA4" autoComplete="off" spellCheck={false} style={{ textTransform: "uppercase" }}
+          ? <Selecao name="ativo" value={f.ativo} onChange={e => mudaAtivo(e.target.value)}>{COINS.map(c => <option key={c}>{c}</option>)}</Selecao>
+          : <Entrada name="ativo" required placeholder="Ex.: ITSA4" autoComplete="off" spellCheck={false} style={{ textTransform: "uppercase" }}
               list="ativos-carteira" value={f.ativo} onChange={e => mudaAtivo(e.target.value)} />}</label>
       {!cripto && !escolhido && <>
         <datalist id="ativos-carteira">{posicoes.map(x => <option key={x.ativo} value={x.ativo} />)}</datalist>
-        <label>Classe<select name="classe" value={f.classe} onChange={e => mudaClasse(e.target.value as Classe)}>
-          {CLASSES_RV.map(c => <option key={c} value={c}>{NOME_CLASSE[c]}</option>)}</select></label>
+        <label>Classe<Selecao name="classe" value={f.classe} onChange={e => mudaClasse(e.target.value as Classe)}>
+          {CLASSES_RV.map(c => <option key={c} value={c}>{NOME_CLASSE[c]}</option>)}</Selecao></label>
       </>}
-      <label>Data<input name="data" type="date" required max={hojeISO()} value={f.data} onChange={e => muda({ data: e.target.value })} /></label>
+      <label>Data<Entrada name="data" type="date" required max={hojeISO()} value={f.data} onChange={e => muda({ data: e.target.value })} /></label>
       {evento
-        ? <label>Fator ({f.tipo === "desdobramento" ? "1 vira quantas" : "quantas viram 1"})<input name="fator" type="number" step="any" min="0" required placeholder="Ex.: 2" value={f.fator} onChange={e => muda({ fator: e.target.value })} /></label>
+        ? <label>Fator ({f.tipo === "desdobramento" ? "1 vira quantas" : "quantas viram 1"})<Entrada name="fator" type="number" step="any" min="0" required placeholder="Ex.: 2" value={f.fator} onChange={e => muda({ fator: e.target.value })} /></label>
         : <>
           <label>Quantidade{f.tipo === "venda" && <> <span className="muted">(você tem {qtdFmt(disponivel)})</span></>}
             <span className="pair">
-              <input name="qtd" type="number" step="any" min="0" max={f.tipo === "venda" ? disponivel : undefined} required value={f.qtd} onChange={e => muda({ qtd: e.target.value })} aria-label="Quantidade" />
+              <Entrada name="qtd" type="number" step="any" min="0" max={f.tipo === "venda" ? disponivel : undefined} required value={f.qtd} onChange={e => muda({ qtd: e.target.value })} aria-label="Quantidade" />
               {f.tipo === "venda" && <button type="button" onClick={() => muda({ qtd: String(disponivel) })} disabled={!disponivel}>Tudo</button>}
             </span></label>
           <label>{f.tipo === "bonificacao" ? "Custo atribuído por ação (R$)" : `Preço${f.classe === "exterior" ? " (na moeda do ativo)" : " (R$)"}`}
-            <input name="preco" type="number" step="any" min="0" required placeholder={hoje != null && f.classe !== "exterior" ? `hoje ${brl(hoje, hoje < 1 ? 4 : 2)}` : ""}
+            <Entrada name="preco" type="number" step="any" min="0" required placeholder={hoje != null && f.classe !== "exterior" ? `hoje ${brl(hoje, hoje < 1 ? 4 : 2)}` : ""}
               value={f.preco} onChange={e => muda({ preco: e.target.value })} aria-label="Preço" /></label>
-          {(f.tipo === "compra" || f.tipo === "venda") && <label>Taxas (R$)<input name="taxas" type="number" step="0.01" min="0" placeholder="0" value={f.taxas} onChange={e => muda({ taxas: e.target.value })} /></label>}
-          {f.classe === "exterior" && <label>Câmbio (R$ por unidade)<input name="cambio" type="number" step="any" min="0" required value={f.cambio} placeholder={cambioDe(ativo) ? String(+cambioDe(ativo)!.toFixed(4)) : ""} onChange={e => muda({ cambio: e.target.value })} /></label>}
+          {(f.tipo === "compra" || f.tipo === "venda") && <label>Taxas (R$)<Entrada name="taxas" type="number" step="0.01" min="0" placeholder="0" value={f.taxas} onChange={e => muda({ taxas: e.target.value })} /></label>}
+          {f.classe === "exterior" && <label>Câmbio (R$ por unidade)<Entrada name="cambio" type="number" step="any" min="0" required value={f.cambio} placeholder={cambioDe(ativo) ? String(+cambioDe(ativo)!.toFixed(4)) : ""} onChange={e => muda({ cambio: e.target.value })} /></label>}
         </>}
-      <label>Observação<input name="obs" maxLength={200} placeholder="Opcional" value={f.obs} onChange={e => muda({ obs: e.target.value })} /></label>
+      <label>Observação<Entrada name="obs" maxLength={200} placeholder="Opcional" value={f.obs} onChange={e => muda({ obs: e.target.value })} /></label>
       <span className="pair">
         <button className="primary" type="submit" disabled={pendente || excede}>Lançar</button>
         {cancelar}

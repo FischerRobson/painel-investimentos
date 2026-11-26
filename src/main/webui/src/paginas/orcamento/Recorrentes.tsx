@@ -4,6 +4,7 @@ import { useState } from "react";
 import { money } from "../../lib/formato";
 import { MEIOS, AREAS, AREAS_MANUAIS, mesDe, novoId, type AreaId, type RegraRecorrente, type Tipo } from "../../lib/orcamento";
 import { useFoco } from "./Orcamento";
+import { Entrada, Selecao } from "../../componentes/Campos";
 
 export type RascunhoRecorrente = { id: string | null; kind: Tipo; description: string; amount: string; area: AreaId; method: string; day: string; start: string; end: string };
 
@@ -69,17 +70,17 @@ export function Recorrentes({ regras, aberto, setAberto, rascunho, setRascunho, 
           </tr>
         ))}</tbody></table></div>}
       <form className="w-add rf-form b-rule-form" ref={ref} onSubmit={e => void salvar(e)}>
-        <label>Tipo<select name="kind" value={d.kind} onChange={e => muda({ kind: e.target.value as Tipo })}>
-          <option value="expense">Saída</option><option value="income">Entrada</option></select></label>
-        <label>Descrição<input name="description" maxLength={120} required placeholder={d.kind === "income" ? "Ex.: Salário" : "Ex.: Aluguel"} value={d.description} onChange={e => muda({ description: e.target.value })} /></label>
-        {d.kind === "expense" && <label>Área<select name="area" value={d.area} onChange={e => muda({ area: e.target.value as AreaId })}>
-          {AREAS_MANUAIS.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>}
-        <label>Meio<select name="method" value={d.method} onChange={e => muda({ method: e.target.value })}><option value="">—</option>
-          {Object.entries(MEIOS).map(([id, n]) => <option key={id} value={id}>{n}</option>)}</select></label>
-        <label>Valor (R$)<input name="amount" type="number" step="0.01" min="0.01" required value={d.amount} onChange={e => muda({ amount: e.target.value })} /></label>
-        <label>Dia do mês<input name="day" type="number" min="1" max="31" required value={d.day} onChange={e => muda({ day: e.target.value })} /></label>
-        <label>A partir de<input name="start" type="month" required value={d.start} onChange={e => muda({ start: e.target.value })} /></label>
-        <label>Até (opcional)<input name="end" type="month" value={d.end} onChange={e => muda({ end: e.target.value })} /></label>
+        <label>Tipo<Selecao name="kind" value={d.kind} onChange={e => muda({ kind: e.target.value as Tipo })}>
+          <option value="expense">Saída</option><option value="income">Entrada</option></Selecao></label>
+        <label>Descrição<Entrada name="description" maxLength={120} required placeholder={d.kind === "income" ? "Ex.: Salário" : "Ex.: Aluguel"} value={d.description} onChange={e => muda({ description: e.target.value })} /></label>
+        {d.kind === "expense" && <label>Área<Selecao name="area" value={d.area} onChange={e => muda({ area: e.target.value as AreaId })}>
+          {AREAS_MANUAIS.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</Selecao></label>}
+        <label>Meio<Selecao name="method" value={d.method} onChange={e => muda({ method: e.target.value })}><option value="">—</option>
+          {Object.entries(MEIOS).map(([id, n]) => <option key={id} value={id}>{n}</option>)}</Selecao></label>
+        <label>Valor (R$)<Entrada name="amount" type="number" step="0.01" min="0.01" required value={d.amount} onChange={e => muda({ amount: e.target.value })} /></label>
+        <label>Dia do mês<Entrada name="day" type="number" min="1" max="31" required value={d.day} onChange={e => muda({ day: e.target.value })} /></label>
+        <label>A partir de<Entrada name="start" type="month" required value={d.start} onChange={e => muda({ start: e.target.value })} /></label>
+        <label>Até (opcional)<Entrada name="end" type="month" value={d.end} onChange={e => muda({ end: e.target.value })} /></label>
         <div className="b-rule-foot">
           <span />
           <span className="pair">

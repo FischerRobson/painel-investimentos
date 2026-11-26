@@ -6,6 +6,7 @@ import { fmtDate, pct, signCls } from "../../lib/formato";
 import { cor, crosshair, css, gridOpts, tickOpts, timeTicks, tooltipOpts } from "../../lib/graficos";
 import { Grafico } from "../../componentes/Grafico";
 import type { ClasseSerie, Comparativo, SerieAtivo } from "../../lib/comparativo";
+import { EsqueletoGrafico } from "../../componentes/Esqueleto";
 
 export const NOME_SERIE: Record<ClasseSerie, string> = { acao: "Ação", fii: "FII", exterior: "Exterior", rf: "Renda fixa", cripto: "Cripto", moeda: "Moeda" };
 const TOTAL = "Total investido";
@@ -21,7 +22,7 @@ export function Desempenho({ d, erro, versao }: { d: Comparativo | null; erro: s
       <h2>Desempenho dos seus ativos</h2>
       <div className="hint">Variação nos últimos 30 dias, todos partindo de 0%. A linha grossa é a régua: o seu total investido, sem bens. Clique num nome para esconder ou mostrar.</div>
       {erro ? <div className="err">{erro}</div>
-        : !d ? <div className="status">Buscando históricos…</div>
+        : !d ? <EsqueletoGrafico altura={300} texto="Buscando os históricos…" />
         : d.vazia || !d.series.carteira.length ? <div className="hint">Sem histórico para desenhar neste período.</div>
         : <Corpo d={d} escondidos={escondidos} versao={versao}
           alternar={id => setEscondidos(h => { const n = new Set(h); if (!n.delete(id)) n.add(id); return n; })} />}
