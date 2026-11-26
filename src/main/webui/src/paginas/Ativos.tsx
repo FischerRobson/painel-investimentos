@@ -13,6 +13,8 @@ import { cor, crosshair, css, gridOpts, tickOpts, timeTicks, tooltipOpts } from 
 import { Grafico } from "../componentes/Grafico";
 import { ErroCarteira } from "../componentes/ErroCarteira";
 import { parseTickers } from "../lib/formato";
+import { EsqueletoCards } from "../componentes/Esqueleto";
+import { Entrada } from "../componentes/Campos";
 
 export const LISTA_PADRAO = "BBDC4, EGIE3, ALUP11, SBSP3, VIVT3, KNRI11, VISC11, XPML11";
 const RANGES: [string, string][] = [["1mo", "1M"], ["3mo", "3M"], ["6mo", "6M"], ["1y", "1A"], ["5y", "5A"], ["max", "Máx"]];
@@ -82,7 +84,7 @@ export function Ativos() {
 
   return <>
     <div className="controls">
-      <input type="text" placeholder="Ex.: BBDC4, EGIE3, KNRI11" autoComplete="off" spellCheck={false} aria-label="Tickers"
+      <Entrada type="text" placeholder="Ex.: BBDC4, EGIE3, KNRI11" autoComplete="off" spellCheck={false} aria-label="Tickers"
         value={texto ?? ""} onChange={e => setTexto(e.target.value)} onKeyDown={e => { if (e.key === "Enter") carregar(texto ?? ""); }} />
       <button className="primary" onClick={() => carregar(texto ?? "")}>Carregar</button>
       <div className="seg">
@@ -90,7 +92,7 @@ export function Ativos() {
       </div>
     </div>
     {q.isError ? <div className="panel err">Não consegui carregar os dados. Recarregue a página em instantes.</div>
-      : !q.data ? <div className="panel muted">Carregando…</div>
+      : !q.data ? <EsqueletoCards n={4} texto="Carregando os ativos…" />
       : <Painel data={data} range={range} onRemover={remover} />}
   </>;
 }

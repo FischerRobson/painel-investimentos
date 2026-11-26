@@ -6,8 +6,9 @@ import { cenarioDoTermometro, hojeISO, isoBR, useRendaFixa, useTermometro } from
 import { usePreferencia } from "../../lib/preferencia";
 import { brl, money, signCls } from "../../lib/formato";
 import { addDays, cdiDaSelic, diasCorridos, fatorIpcaPeriodo, marcacao, type ModoCenario } from "../../motor";
-import { Num, Texto } from "../../componentes/Campos";
+import { Num, Texto, Selecao } from "../../componentes/Campos";
 import { CENARIOS_RF, TAXA_TXT } from "./Comparador";
+import { EsqueletoPainel } from "../../componentes/Esqueleto";
 
 type Cfg = {
   tipo: "Tesouro IPCA+" | "Tesouro Prefixado"; qtd: number | null; pu: number | null; taxa: number | null;
@@ -22,7 +23,7 @@ export function Marcacao() {
   const [mkCfg, setMkCfg] = usePreferencia<Cfg>("marcacao", { ...EXEMPLO, modo: "base" });
   const [msg, setMsg] = useState("");
   const [escolhido, setEscolhido] = useState("");
-  if (termo.isPending) return <div className="panel"><h2>Marcação a mercado</h2><div className="hint">Carregando as taxas do Banco Central…</div></div>;
+  if (termo.isPending) return <EsqueletoPainel campos={4} tiles={3} grafico texto="Carregando as taxas do Banco Central…" />;
 
   const t = termo.data;
   const hoje = hojeISO();
@@ -63,19 +64,19 @@ export function Marcacao() {
       <h3>Seu investimento</h3>
       {vivos.length
         ? <div style={{ display: "flex", flexWrap: "wrap", gap: 8, maxWidth: "100%" }}>
-            <select style={{ flex: "1 1 260px", minWidth: 0, maxWidth: "100%" }} value={escolhido || String(vivos[0].id)} onChange={e => setEscolhido(e.target.value)} aria-label="Título da carteira">
+            <Selecao style={{ flex: "1 1 260px", minWidth: 0, maxWidth: "100%" }} value={escolhido || String(vivos[0].id)} onChange={e => setEscolhido(e.target.value)} aria-label="Título da carteira">
               {vivos.map(x => <option key={x.id} value={x.id}>{x.nome} · {x.tipo} · {TAXA_TXT(x)} · vence {isoBR(x.venc)}</option>)}
-            </select>
+            </Selecao>
             <button type="button" onClick={usarMinha}>Usar este título</button>
           </div>
         : <div className="hint">Nenhum prefixado ou IPCA+ vigente na carteira. Cadastre em Carteira › Renda fixa.</div>}
       {msg && <div className="status">{msg}</div>}
 
       <form className="w-add proj-form" onSubmit={e => e.preventDefault()}>
-        <label>Título<select value={mkCfg.tipo} onChange={e => {
+        <label>Título<Selecao value={mkCfg.tipo} onChange={e => {
           const tipo = e.target.value as Cfg["tipo"];
           setMkCfg({ tipo, taxa: tipo === "Tesouro Prefixado" ? 12 : 6, taxaMerc: null }); // taxa-padrão de cada título
-        }}>{["Tesouro IPCA+", "Tesouro Prefixado"].map(x => <option key={x}>{x}</option>)}</select></label>
+        }}>{["Tesouro IPCA+", "Tesouro Prefixado"].map(x => <option key={x}>{x}</option>)}</Selecao></label>
         <Num rotulo="Quantidade de títulos" min="0" step="1" valor={mkCfg.qtd} onValor={campo("qtd")} />
         <Num rotulo="Preço de compra por título (R$)" min="0" step="0.01" valor={mkCfg.pu} onValor={campo("pu")} />
         <Num rotulo={ipca ? "Taxa contratada (IPCA + % a.a.)" : "Taxa contratada (% a.a.)"} step="0.01" valor={mkCfg.taxa} onValor={campo("taxa")} />
@@ -84,9 +85,9 @@ export function Marcacao() {
         <Texto rotulo="Data da análise" type="date" min={mkCfg.dataCompra} max={mkCfg.dataVenc} valor={dataAnal} onValor={v => setMkCfg({ dataAnal: v })} />
         <Num rotulo={"Taxa de mercado hoje" + (ipca ? " (IPCA + % a.a.)" : " (% a.a.)")} step="0.01" valor={taxaMerc} onValor={campo("taxaMerc")} />
         <Num rotulo="Reaplicar a % do CDI" min="0" step="1" valor={mkCfg.reinv} onValor={campo("reinv")} />
-        <label>Cenário (Focus)<select value={mkCfg.modo} onChange={e => setMkCfg({ modo: e.target.value as ModoCenario })}>
+        <label>Cenário (Focus)<Selecao value={mkCfg.modo} onChange={e => setMkCfg({ modo: e.target.value as ModoCenario })}>
           {Object.entries(CENARIOS_RF).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-        </select></label>
+        </Selecao></label>
         <div className="quick">
           <button type="button" onClick={() => setMkCfg({ ...EXEMPLO })}>Carregar exemplo</button>
           <button type="button" title="Volta a taxa de mercado para a taxa contratada" onClick={() => setMkCfg({ taxaMerc: null })}>Taxa de mercado = contratada</button>

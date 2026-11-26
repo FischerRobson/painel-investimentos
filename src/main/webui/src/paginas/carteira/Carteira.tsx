@@ -1,17 +1,23 @@
 // Carteira: ações, FIIs, cripto, renda fixa, moedas e bens, com os totais, a divisão por classe, o desempenho de cada ativo e a
 // evolução do patrimônio. Contas em lib/composicao.ts e no motor.
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTitulo } from "../../lib/useTitulo";
 import { carteiraStore } from "../../lib/carteira";
 import { useComposicao } from "../../lib/useComposicao";
+import { useComparativo } from "../../lib/useComparativo";
+import { EsqueletoCarteira } from "../../componentes/Esqueleto";
 import { aplicacoesDosTitulosAntigos, operacoesStore } from "../../lib/operacoes";
 import { moneyC } from "../../lib/cambio";
 import { bemNome } from "../../lib/bens";
 import { isoBR, useHistorico } from "../../lib/dados";
 import { arrow, brl, money, pct, signCls } from "../../lib/formato";
 import type { Composicao } from "../../lib/composicao";
+
+// Composição vazia para chamar o useComparativo antes de a carteira chegar (regras dos hooks); ele fica desligado
+const VAZIA: Composicao = { rv: [], cr: [], rf: [], mo: [], bens: [], vAcoes: 0, vFiis: 0, vCripto: 0, vRf: 0, vFx: 0, vBens: 0, vExt: 0,
+  total: 0, patrimonio: 0, dayTotal: 0, dayPct: null, div12: 0, rfRend: 0, rfAplic: 0, vazia: true };
 import { rfTaxa } from "../ferramentas/ProjecaoRF";
 import { ErroCarteira } from "../../componentes/ErroCarteira";
 import { Distribuicao, type Categoria } from "./Distribuicao";
@@ -19,6 +25,7 @@ import { useAberto } from "../../lib/useAberto";
 import { UltimosDias } from "./UltimosDias";
 import { Historico } from "./Historico";
 import { exportarBackup, importarBackup } from "./backup";
+import { Entrada } from "../../componentes/Campos";
 
 export const signedMoney = (v: number | null) => v == null ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "") + money(Math.abs(v));
 
@@ -26,21 +33,33 @@ export function Carteira() {
   useTitulo("Carteira");
   const { carteira, doc, composicao, pronta, erroCripto, rf, itens } = useComposicao();
   const historico = useHistorico();
+  // Mapa e desempenho de 30 dias: só buscam depois que o valor de cada ativo chegou
+  const vazia = !composicao || composicao.vazia;
+  const comparativo = useComparativo(composicao ?? VAZIA, "1mo", pronta && !vazia, itens);
+  // Os gráficos têm até 6 s depois dos valores; passando disso, a página aparece e eles mostram o skeleton no lugar
+  const [cansou, setCansou] = useState(false);
+  useEffect(() => {
+    if (!pronta) return;
+    const t = setTimeout(() => setCansou(true), 6000);
+    return () => clearTimeout(t);
+  }, [pronta]);
 
   // Títulos de renda fixa de antes das operações viram uma aplicação com os mesmos dados (uma vez)
   const migrar = doc ? aplicacoesDosTitulosAntigos(doc).length : 0;
   useEffect(() => { if (migrar) operacoesStore.migrarTitulos(); }, [migrar]);
 
   if (carteira.erro) return <ErroCarteira msg={carteira.erro} />;
-  if (!doc || !composicao) return <div className="panel muted">Carregando sua carteira…</div>;
+  // Espera tudo o que entra nos números (cotações, cripto, câmbio, taxas) e o histórico: nada aparece pela metade
+  const graficosProntos = vazia || cansou || !!comparativo.d || !!comparativo.erro;
+  if (!doc || !composicao || !pronta || historico.isPending || !graficosProntos) return <EsqueletoCarteira />;
   const c = composicao;
 
   return <>
     <Painel c={c} comOps={new Set((doc.operacoes ?? []).map(o => o.ativo))} erros={[erroCripto, rf.ratesErr]} semTaxas={!!rf.titulos.length && !rf.rates} ratesErr={rf.ratesErr}
       historico={historico.data ?? {}} />
-    {!c.vazia && <UltimosDias c={c} itens={itens} pronta={pronta} />}
+    {!c.vazia && <UltimosDias d={comparativo.d} erro={comparativo.erro} versao={comparativo.versao} />}
     {/* sem /api/historico (erro), o painel trata como histórico vazio */}
-    {!c.vazia && !historico.isPending && <Historico hist={historico.data ?? {}} tipos={Object.fromEntries(c.rv.map(r => [r.t, r.type]))} />}
+    {!c.vazia && <Historico hist={historico.data ?? {}} tipos={Object.fromEntries(c.rv.map(r => [r.t, r.type]))} />}
   </>;
 }
 
@@ -89,7 +108,7 @@ function Painel({ c, comOps, erros, semTaxas, ratesErr, historico }: {
           )}
           <button disabled={c.vazia} onClick={() => void exportarBackup(historico)}>Exportar backup</button>
           <button onClick={() => arquivo.current?.click()}>Importar backup</button>
-          <input type="file" ref={arquivo} accept=".json,application/json" hidden aria-label="Arquivo de backup"
+          <Entrada type="file" ref={arquivo} accept=".json,application/json" hidden aria-label="Arquivo de backup"
             onChange={e => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void importar(f); }} />
         </div>
       </div>
@@ -104,7 +123,7 @@ function Painel({ c, comOps, erros, semTaxas, ratesErr, historico }: {
           <div className="tile"><div className="k">Proventos 12 meses</div><div className="v">{money(c.div12)}</div>
             <div className="s">{money(c.div12 / 12)} por mês · DY {vAcoes + vFiis ? brl(c.div12 / (vAcoes + vFiis) * 100) + "%" : "—"}</div></div>
           {c.rf.length > 0 && <div className="tile"><div className="k">Rendimento renda fixa</div><div className={"v " + signCls(c.rfRend)}>{semTaxas ? "—" : signedMoney(c.rfRend)}</div>
-            <div className="s">líquido · {c.rfAplic ? pct(c.rfRend / c.rfAplic * 100) : "—"} sobre {money(c.rfAplic)}</div></div>}
+            <div className="s">líquido desde a aplicação · {c.rfAplic ? pct(c.rfRend / c.rfAplic * 100) : "—"} sobre {money(c.rfAplic)}</div></div>}
         </div>
       )}
       {cats.length > 0 && <Distribuicao cats={cats} total={total} vBens={vBens} share={share} />}

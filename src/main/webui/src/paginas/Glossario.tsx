@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useTitulo } from "../lib/useTitulo";
 import { store } from "../lib/store";
+import { Entrada } from "../componentes/Campos";
 
 type Termo = {
   id: string; nome: string; sigla?: string; outrosNomes?: string[]; categoria: string;
@@ -124,7 +125,7 @@ function Conteudo({ g, termos }: { g: Glossario; termos: TermoIndexado[] }) {
     <div className="panel">
       <h2>Glossário</h2>
       <div className="hint">{termos.length} termos para consultar quando bater a dúvida. {g.aviso || ""}</div>
-      <input ref={buscaRef} type="search" className="g-busca" placeholder="Buscar: CDI, DY, come-cotas…" autoComplete="off" spellCheck={false}
+      <Entrada ref={buscaRef} type="search" className="g-busca" placeholder="Buscar: CDI, DY, come-cotas…" autoComplete="off" spellCheck={false}
         aria-label="Buscar termo" value={busca} onChange={e => setBusca(e.target.value)} />
       <div className="seg g-cats" role="group" aria-label="Categorias">
         <button type="button" className={cat === "" ? "on" : undefined} onClick={() => setCat("")}>Todas</button>

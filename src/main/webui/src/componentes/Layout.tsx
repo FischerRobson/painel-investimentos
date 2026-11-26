@@ -8,6 +8,7 @@ import { DEMO, alternarDemo, store } from "../lib/store";
 import { logout, offlineStore, type Sessao } from "../lib/api";
 import { carteiraStore } from "../lib/carteira";
 import { textoSalvar, useEstadoSalvar } from "../lib/salvar";
+import { Entrada } from "./Campos";
 
 const FONTES = "Cotação: brapi.dev · Indicadores: Fundamentus · Histórico e proventos: Yahoo Finance · Cripto: CoinGecko · Taxas: Banco Central";
 const QUINZE_MIN = 15 * 60 * 1000;
@@ -77,7 +78,7 @@ function AtualizarAuto() {
   }, [ligado, qc]);
   return (
     <label className="status">
-      <input type="checkbox" checked={ligado} onChange={e => setLigado(e.target.checked)} /> atualizar a cada 15 min
+      <Entrada type="checkbox" checked={ligado} onChange={e => setLigado(e.target.checked)} /> atualizar a cada 15 min
     </label>
   );
 }

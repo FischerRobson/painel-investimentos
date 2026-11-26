@@ -3,6 +3,7 @@
 import { useQueries } from "@tanstack/react-query";
 import { money, signCls } from "../../lib/formato";
 import { api, comprometidoDoMes, mesDe, somaMeses, tituloMes, type DocRecorrentes } from "../../lib/orcamento";
+import { EsqueletoPainel } from "../../componentes/Esqueleto";
 
 const MESES = 6;
 const sinal = (v: number) => v > 0 ? "+" : v < 0 ? "−" : "";
@@ -13,7 +14,7 @@ export function Proximos({ doc }: { doc: DocRecorrentes }) {
   const consultas = useQueries({
     queries: meses.map(m => ({ queryKey: ["orcamento-futuro", m], queryFn: () => api.lerMes(m), staleTime: 60_000, retry: false })),
   });
-  if (consultas.some(c => c.isPending)) return <div className="panel muted">Calculando os próximos meses…</div>;
+  if (consultas.some(c => c.isPending)) return <EsqueletoPainel tiles={0} linhas={6} colunas={4} texto="Calculando os próximos meses…" />;
   const linhas = meses.map((m, i) => comprometidoDoMes(m, consultas[i].data ?? { incomes: [], expenses: [] }, doc));
   if (!linhas.some(l => l.total > 0 || l.entradas > 0)) return null;
   const parcelas = linhas.reduce((s, l) => s + l.parcelas, 0), total = linhas.reduce((s, l) => s + l.total, 0);

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { money } from "../../lib/formato";
 import { bensEDireitos, rendimentosDoAno, type Operacao, type Provento, type Realizado } from "../../motor";
+import { Selecao, Campo } from "../../componentes/Campos";
 
 export function Declaracao({ operacoes, proventos, realizados }: { operacoes: Operacao[]; proventos: Provento[]; realizados: Realizado[] }) {
   const atual = new Date().getFullYear();
@@ -21,7 +22,7 @@ export function Declaracao({ operacoes, proventos, realizados }: { operacoes: Op
     <div className="panel">
       <div className="w-head">
         <div><h2>Declaração do imposto de renda</h2><div className="hint" style={{ margin: 0 }}>Para preencher o IRPF. Os CNPJs e a corretora vêm do informe de rendimentos; confira os códigos no programa da Receita.</div></div>
-        <label className="status">Ano-calendário <select value={ano} onChange={e => setAno(+e.target.value)} aria-label="Ano-calendário">{anos.map(a => <option key={a}>{a}</option>)}</select></label>
+        <Campo inline rotulo="Ano-calendário"><Selecao value={ano} onChange={e => setAno(+e.target.value)} aria-label="Ano-calendário">{anos.map(a => <option key={a}>{a}</option>)}</Selecao></Campo>
       </div>
 
       <h3>Bens e direitos</h3>

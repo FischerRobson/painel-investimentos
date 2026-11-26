@@ -6,6 +6,7 @@ import { apiFetch } from "../../lib/api";
 import { brl, money } from "../../lib/formato";
 import { aporteMensal } from "../../motor";
 import { Num, Texto } from "../../componentes/Campos";
+import { EsqueletoPainel } from "../../componentes/Esqueleto";
 
 type MesResumo = { income: number; expenses: number; areas?: Record<string, number> };
 type Orcamento = { meses: MesResumo[]; settings: { referenceIncome?: number | null } };
@@ -36,7 +37,7 @@ export function Planejador() {
   const { atuais: cur } = useRendaFixa();
   const [planCfg, setPlanCfg] = usePreferencia<Cfg>("planejador", {});
   // "Atualizar orçamento" volta para o carregando
-  if (orc.isPending || orc.isFetching) return <div className="panel"><h2>Planejador de metas</h2><div className="hint">Carregando o seu orçamento…</div></div>;
+  if (orc.isPending || orc.isFetching) return <EsqueletoPainel campos={4} tiles={3} grafico texto="Carregando o seu orçamento…" />;
   if (orc.isError) return <div className="panel err">{orc.error.message || "Falha ao ler o orçamento."}</div>;
 
   const def = { nome: "Minha meta", alvo: 100000, atual: 0, meses: 60, taxa: cur ? +cur.cdi.toFixed(2) : 12 };

@@ -7,8 +7,9 @@ import { big, brl, money, pct } from "../../lib/formato";
 import { addDays, addMonths, daysBetween, projectOne, rfCalc, type TaxasBCB, type TituloRF } from "../../motor";
 import { crosshair, css, gridOpts, tickOpts, timeTicks, tooltipOpts } from "../../lib/graficos";
 import { Grafico } from "../../componentes/Grafico";
-import { Num, Texto } from "../../componentes/Campos";
+import { Num, Texto, Entrada, Selecao } from "../../componentes/Campos";
 import { ErroCarteira } from "../../componentes/ErroCarteira";
+import { EsqueletoPainel } from "../../componentes/Esqueleto";
 
 type Cfg = { target?: string | null; cdi?: number | null; ipca?: number | null; reinvest?: boolean; only?: string | null };
 
@@ -25,9 +26,10 @@ export function ProjecaoRF() {
     <div className="panel"><h2>Projeção da renda fixa</h2>
       <div className="hint" style={{ marginTop: 8 }}>Você ainda não cadastrou títulos de renda fixa. Cadastre na página <Link to="/carteira">Carteira</Link> (aba "Renda fixa") para ver a projeção deles.</div></div>
   );
+  if (!rf.rates && !rf.ratesErr) return <EsqueletoPainel campos={3} tiles={3} grafico texto="Carregando as taxas do Banco Central…" />;
   if (!rf.rates) return (
     <div className="panel"><h2>Projeção da renda fixa</h2>
-      <div className={rf.ratesErr ? "err" : "hint"} style={{ marginTop: 8 }}>{rf.ratesErr || "Carregando as taxas do Banco Central…"}</div></div>
+      <div className="err" style={{ marginTop: 8 }}>{rf.ratesErr}</div></div>
   );
   return <>
     {rf.ratesErr && <div className="panel err">{rf.ratesErr}</div>}
@@ -66,14 +68,14 @@ function Projecao({ rfW, rates, cur, projCfg, setProjCfg }: {
       <h2>Projeção da renda fixa</h2>
       <div className="hint">Quanto seus títulos de renda fixa vão valer numa data futura.</div>
       <form className="w-add proj-form" onSubmit={e => e.preventDefault()}>
-        <label>Títulos<select value={only ?? ""} onChange={e => setProjCfg({ only: e.target.value || null })}>
+        <label>Títulos<Selecao value={only ?? ""} onChange={e => setProjCfg({ only: e.target.value || null })}>
           <option value="">Todos os títulos ({rfW.length})</option>
           {rfW.map(x => <option key={x.id} value={x.id}>{x.nome} · {x.tipo}</option>)}
-        </select></label>
+        </Selecao></label>
         <Texto rotulo="Quanto terei em" type="date" min={addDays(hoje, 1)} valor={cfg.target} onValor={v => setProjCfg({ target: v || null })} />
         <Num rotulo="CDI projetado (% a.a.)" step="0.01" valor={cfg.cdi} onValor={v => setProjCfg({ cdi: v })} />
         <Num rotulo="IPCA projetado (% a.a.)" step="0.01" valor={cfg.ipca} onValor={v => setProjCfg({ ipca: v })} />
-        <label className="chk"><input type="checkbox" checked={cfg.reinvest} onChange={e => setProjCfg({ reinvest: e.target.checked })} /> Reaplicar títulos que vencerem a 100% do CDI</label>
+        <label className="chk"><Entrada type="checkbox" checked={cfg.reinvest} onChange={e => setProjCfg({ reinvest: e.target.checked })} /> Reaplicar títulos que vencerem a 100% do CDI</label>
         <div className="quick">
           {([[6, "6 meses"], [12, "1 ano"], [24, "2 anos"], [60, "5 anos"]] as const).map(([m, l]) => (
             <button key={m} type="button" onClick={() => setProjCfg({ target: addMonths(hojeISO(), m) })}>{l}</button>

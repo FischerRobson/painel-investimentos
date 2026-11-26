@@ -9,6 +9,7 @@ import {
 } from "../../lib/orcamento";
 import { useFoco, type Edicao } from "./Orcamento";
 import type { RascunhoRegra } from "./Configuracoes";
+import { Entrada, Selecao } from "../../componentes/Campos";
 
 const PAGINA = 25;
 const TIPOS: [Filtro["kind"], string][] = [["all", "Todos"], ["income", "Entradas"], ["expense", "Saídas"]];
@@ -18,9 +19,9 @@ export const SeloMeio = ({ m }: { m?: string }) => m && MEIOS[m] ? <span classNa
 
 export function SelectArea({ valor, onMudar }: { valor?: string; onMudar: (a: AreaId) => void }) {
   return (
-    <select aria-label="Área" value={valor} onChange={e => onMudar(e.target.value as AreaId)}>
+    <Selecao aria-label="Área" value={valor} onChange={e => onMudar(e.target.value as AreaId)}>
       {AREAS_MANUAIS.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-    </select>
+    </Selecao>
   );
 }
 
@@ -48,13 +49,13 @@ export function Lancamentos(p: Props) {
             onClick={() => muda({ kind: k, ...(k === "income" ? { area: "" } : {}) })}>{l}</button>
         ))}
       </div>
-      <label>Área<select name="area" disabled={f.kind === "income"} value={f.area} onChange={e => muda({ area: e.target.value })}>
-        <option value="">Todas</option>{opcoes(AREAS_MANUAIS.map(a => [a.id, a.name]))}</select></label>
-      <label>Meio<select name="method" value={f.method} onChange={e => muda({ method: e.target.value })}><option value="">Todos</option>{opcoes(meios)}</select></label>
-      <label>De<input type="date" name="from" value={f.from} onChange={e => muda({ from: e.target.value })} /></label>
-      <label>Até<input type="date" name="to" value={f.to} onChange={e => muda({ to: e.target.value })} /></label>
-      <label className="b-q">Buscar<input type="search" name="q" placeholder="Descrição" value={f.q} onChange={e => muda({ q: e.target.value })} /></label>
-      <label>Ordenar<select name="sort" value={f.sort} onChange={e => muda({ sort: e.target.value })}>{opcoes(ORDENS)}</select></label>
+      <label>Área<Selecao name="area" disabled={f.kind === "income"} value={f.area} onChange={e => muda({ area: e.target.value })}>
+        <option value="">Todas</option>{opcoes(AREAS_MANUAIS.map(a => [a.id, a.name]))}</Selecao></label>
+      <label>Meio<Selecao name="method" value={f.method} onChange={e => muda({ method: e.target.value })}><option value="">Todos</option>{opcoes(meios)}</Selecao></label>
+      <label>De<Entrada type="date" name="from" value={f.from} onChange={e => muda({ from: e.target.value })} /></label>
+      <label>Até<Entrada type="date" name="to" value={f.to} onChange={e => muda({ to: e.target.value })} /></label>
+      <label className="b-q">Buscar<Entrada type="search" name="q" placeholder="Descrição" value={f.q} onChange={e => muda({ q: e.target.value })} /></label>
+      <label>Ordenar<Selecao name="sort" value={f.sort} onChange={e => muda({ sort: e.target.value })}>{opcoes(ORDENS)}</Selecao></label>
       <button type="button" className="link" hidden={!filtroAtivo(f)} onClick={() => { setFiltro({ ...FILTRO_PADRAO, sort: f.sort }); p.setMostrarTodos(false); }}>Limpar filtros</button>
     </div>
     <div><Tabela {...p} /></div>
@@ -154,13 +155,13 @@ function FormLancamento({ dados, mes, tipoForm: kind, editando, setEditando, foc
 
   return (
     <form className="w-add rf-form b-form" ref={ref} onSubmit={salvar}>
-      <label>Data{isExpense ? " da compra" : ""}<input name="date" type="date" required value={v.date} onChange={e => muda({ date: e.target.value })} /></label>
-      <label>Descrição<input name="description" maxLength={120} required placeholder={isExpense ? "Ex.: Supermercado" : "Ex.: Salário"} value={v.description} onChange={e => muda({ description: e.target.value })} /></label>
-      {isExpense && <label>Área<select name="area" value={v.area} onChange={e => muda({ area: e.target.value as AreaId })}>
-        {AREAS_MANUAIS.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>}
-      <label>Meio<select name="method" value={v.method} onChange={e => muda({ method: e.target.value })}><option value="">—</option>
-        {Object.entries(MEIOS).map(([id, n]) => <option key={id} value={id}>{n}</option>)}</select></label>
-      <label>Valor (R$)<input name="amount" type="number" step="0.01" min="0.01" required value={v.amount} onChange={e => muda({ amount: e.target.value })} /></label>
+      <label>Data{isExpense ? " da compra" : ""}<Entrada name="date" type="date" required value={v.date} onChange={e => muda({ date: e.target.value })} /></label>
+      <label>Descrição<Entrada name="description" maxLength={120} required placeholder={isExpense ? "Ex.: Supermercado" : "Ex.: Salário"} value={v.description} onChange={e => muda({ description: e.target.value })} /></label>
+      {isExpense && <label>Área<Selecao name="area" value={v.area} onChange={e => muda({ area: e.target.value as AreaId })}>
+        {AREAS_MANUAIS.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</Selecao></label>}
+      <label>Meio<Selecao name="method" value={v.method} onChange={e => muda({ method: e.target.value })}><option value="">—</option>
+        {Object.entries(MEIOS).map(([id, n]) => <option key={id} value={id}>{n}</option>)}</Selecao></label>
+      <label>Valor (R$)<Entrada name="amount" type="number" step="0.01" min="0.01" required value={v.amount} onChange={e => muda({ amount: e.target.value })} /></label>
       <div className="pair">{atual
         ? <><button className="primary" type="submit">Salvar alteração</button><button type="button" onClick={() => setEditando(null)}>Cancelar</button></>
         : <button className="primary" type="submit">Adicionar</button>}</div>

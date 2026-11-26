@@ -6,7 +6,7 @@ import { big, brl, money, pct, signCls } from "../../lib/formato";
 import { aliqIR, fatorIpca, fatorPre, ipcaEquilibrio, ipcaVsPre } from "../../motor";
 import { configLinha, css } from "../../lib/graficos";
 import { Grafico } from "../../componentes/Grafico";
-import { Legenda, Num } from "../../componentes/Campos";
+import { Legenda, Num, Entrada } from "../../componentes/Campos";
 
 type Cfg = { valor?: number; anos?: number; pre?: number; real?: number; ipca?: number };
 
@@ -30,7 +30,7 @@ export function IpcaPre() {
         <Num rotulo="Prefixado (% a.a.)" min="0" step="0.01" valor={cfg.pre} onValor={campo("pre")} aoDigitar />
         <Num rotulo="IPCA+: juro real (% a.a.)" min="0" step="0.01" valor={cfg.real} onValor={campo("real")} aoDigitar />
         <label className="ip-slider">Inflação média que você espera (IPCA % a.a.): <b>{brl(cfg.ipca)}%</b>
-          <input type="range" min="0" max="15" step="0.01" value={cfg.ipca} onChange={e => campo("ipca")(Number(e.target.value))} />
+          <Entrada type="range" min="0" max="15" step="0.01" value={cfg.ipca} onChange={e => campo("ipca")(Number(e.target.value))} />
         </label>
         <div className="quick">
           {[1, 2, 5, 10, 20].map(a => <button key={a} type="button" onClick={() => setIpCfg({ anos: a })}>{a} ano{a > 1 ? "s" : ""}</button>)}

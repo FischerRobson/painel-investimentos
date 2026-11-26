@@ -12,7 +12,8 @@ import { big, brl, money, pct, signCls } from "../../lib/formato";
 import { FX_SYM } from "../../lib/cambio";
 import { configLinha, css } from "../../lib/graficos";
 import { Grafico } from "../../componentes/Grafico";
-import { Legenda } from "../../componentes/Campos";
+import { Legenda, Selecao, Campo } from "../../componentes/Campos";
+import { EsqueletoLinhas } from "../../componentes/Esqueleto";
 
 type Foto = { t: number; i: number; stale?: { asset: string; since?: string }[]; missing?: string[] };
 
@@ -89,12 +90,10 @@ export function Historico({ hist: bruto, tipos }: { hist: Record<string, unknown
         <ul className="hint" style={{ margin: "4px 0 0 18px" }}>{flagged.map(d => <li key={d}>{isoBR(d)}: {notaDaFoto(hist[d])}</li>)}</ul>
       </>}
       <div className="w-add" style={{ marginTop: 12 }}>
-        <label className="status">Posições do dia{" "}
-          <select value={dia ?? ""} onChange={e => setDia(e.target.value || null)} aria-label="Posições do dia">
+        <Campo inline rotulo="Posições do dia"><Selecao value={dia ?? ""} onChange={e => setDia(e.target.value || null)} aria-label="Posições do dia">
             <option value="">{comPosicoes.length ? "escolha um dia" : "nenhum dia salvo ainda"}</option>
             {comPosicoes.map(d => <option key={d} value={d}>{isoBR(d)}</option>)}
-          </select>
-        </label>
+          </Selecao></Campo>
         {!dia && <span className="status">ou clique num ponto do gráfico.</span>}
       </div>
       {dia && <Posicoes dia={dia} tipos={tipos} primeiraComPosicoes={datas.data?.[0]} onFechar={() => setDia(null)} />}
@@ -121,7 +120,7 @@ function Posicoes({ dia, tipos, primeiraComPosicoes, onFechar }: { dia: string; 
       {onFechar && <button type="button" className="link" onClick={onFechar}>Fechar</button>}
     </div>
   );
-  if (q.isPending) return <>{cabecalho}<div className="status">Carregando as posições…</div></>;
+  if (q.isPending) return <>{cabecalho}<EsqueletoLinhas n={5} texto="Carregando as posições…" /></>;
   if (q.isError) return <>{cabecalho}<div className="hint">Sem posições salvas neste dia{primeiraComPosicoes && primeiraComPosicoes > dia ? ` (o painel guarda as posições desde ${isoBR(primeiraComPosicoes)})` : ""}.</div></>;
   return <>{cabecalho}<TabelaPosicoes d={q.data} anterior={anterior.data} tipos={tipos} /></>;
 }

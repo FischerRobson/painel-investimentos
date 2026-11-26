@@ -2,6 +2,7 @@
 import { money } from "../../lib/formato";
 import { CLASSES_META, METAS_PADRAO, NOME_META, type ClasseMeta } from "../../motor";
 import type { PrefSaude, Saude } from "../../lib/saude";
+import { Entrada, Campo } from "../../componentes/Campos";
 
 export function Metas({ saude: s, prefs, setPrefs }: { saude: Saude; prefs: PrefSaude; setPrefs: (m: Partial<PrefSaude>) => void }) {
   const soma = CLASSES_META.reduce((a, c) => a + (prefs.metas[c] || 0), 0);
@@ -15,7 +16,7 @@ export function Metas({ saude: s, prefs, setPrefs }: { saude: Saude; prefs: Pref
         <tbody>{s.linhas.map(l => (
           <tr key={l.classe}>
             <td>{NOME_META[l.classe]}</td><td>{money(l.valor)}</td><td>{l.pct.toFixed(1).replace(".", ",")}%</td>
-            <td><input type="number" min="0" max="100" step="1" value={prefs.metas[l.classe]} onChange={e => muda(l.classe, e.target.value)} aria-label={`Meta de ${NOME_META[l.classe]}`} /></td>
+            <td><Entrada type="number" min="0" max="100" step="1" value={prefs.metas[l.classe]} onChange={e => muda(l.classe, e.target.value)} aria-label={`Meta de ${NOME_META[l.classe]}`} /></td>
             <td className={Math.abs(l.desvio) < 3 ? "" : l.desvio > 0 ? "muted" : "down"}>{(l.desvio > 0 ? "+" : "") + l.desvio.toFixed(1).replace(".", ",")} p.p.</td>
             <td>{l.falta > 0.5 ? money(l.falta) : "—"}</td>
           </tr>
@@ -23,7 +24,7 @@ export function Metas({ saude: s, prefs, setPrefs }: { saude: Saude; prefs: Pref
       </table></div>
       <div className="w-head" style={{ marginTop: 8 }}>
         <span className="status">Soma das metas: {soma}%{soma !== 100 && " (proporcional)"} · <button type="button" className="link" onClick={() => setPrefs({ metas: METAS_PADRAO })}>Restaurar padrão</button></span>
-        <label className="status">Reserva de emergência (meses de custos fixos) <input type="number" min="1" max="24" step="1" value={prefs.meses} onChange={e => setPrefs({ meses: Math.max(1, Number(e.target.value) || 6) })} style={{ width: 70 }} /></label>
+        <Campo inline rotulo="Reserva de emergência (meses de custos fixos)"><Entrada type="number" min="1" max="24" step="1" value={prefs.meses} onChange={e => setPrefs({ meses: Math.max(1, Number(e.target.value) || 6) })} style={{ width: 70 }} /></Campo>
       </div>
       <div className="status">Moedas e bens ficam fora das metas. A coluna “Aportar para chegar” é o que cada classe precisa para atingir a meta sem vender nada.</div>
     </div>

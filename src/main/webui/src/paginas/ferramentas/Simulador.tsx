@@ -6,7 +6,7 @@ import { big, brl, money } from "../../lib/formato";
 import { nominalParaReal, PREMISSA_REAL, simulate } from "../../motor";
 import { configLinha, css } from "../../lib/graficos";
 import { Grafico } from "../../componentes/Grafico";
-import { Legenda, Num } from "../../componentes/Campos";
+import { Legenda, Num, Entrada } from "../../componentes/Campos";
 import { ErroCarteira } from "../../componentes/ErroCarteira";
 
 type Cfg = { inicial?: number | null; aporte?: number | null; taxa?: number | null; inflacao?: number | null; meta?: number | null; renda?: number | null; real?: boolean };
@@ -49,7 +49,7 @@ export function Simulador() {
         <Num rotulo="Inflação (% a.a.)" step="0.1" valor={c.inflacao} onValor={campo("inflacao")} />
         <Num rotulo="Meta de patrimônio (R$)" min="0" step="1000" valor={c.meta} onValor={campo("meta")} />
         <Num rotulo="Renda mensal desejada (R$)" min="0" step="100" valor={c.renda} onValor={campo("renda")} />
-        <label className="chk"><input type="checkbox" checked={c.real} onChange={e => setSimCfg({ real: e.target.checked })} /> Mostrar em reais de hoje (descontando a inflação)</label>
+        <label className="chk"><Entrada type="checkbox" checked={c.real} onChange={e => setSimCfg({ real: e.target.checked })} /> Mostrar em reais de hoje (descontando a inflação)</label>
         <div className="quick">
           <button type="button" title="Volta valor inicial, rentabilidade e inflação para os valores atuais" onClick={() => setSimCfg({ inicial: null, taxa: null, inflacao: null })}>Usar valores atuais</button>
           <button type="button" title="Rentabilidade que entrega 8% acima da inflação informada, em reais de hoje"

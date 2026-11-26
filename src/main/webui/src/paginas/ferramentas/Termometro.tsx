@@ -6,13 +6,14 @@ import { acumulado12, cdiAnual, juroReal } from "../../motor";
 import { configLinha, css, type SerieLinha } from "../../lib/graficos";
 import { Grafico } from "../../componentes/Grafico";
 import { Legenda } from "../../componentes/Campos";
+import { EsqueletoPainel } from "../../componentes/Esqueleto";
 
 const xy = (pares: [string, number][]) => pares.map(([d, v]) => ({ x: new Date(d + "T12:00:00").getTime(), y: v }));
 const mesAnoIso = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
 
 export function Termometro() {
   const q = useTermometro();
-  if (q.isPending) return <div className="panel"><h2>Termômetro econômico</h2><div className="hint">Carregando as taxas do Banco Central…</div></div>;
+  if (q.isPending) return <EsqueletoPainel tiles={4} grafico linhas={3} texto="Carregando as taxas do Banco Central…" />;
   if (!q.data || !q.data.ipca?.length) return <div className="panel err">{q.error?.message || "Sem dados de inflação no Banco Central agora."}</div>;
   return <Conteudo termo={q.data} />;
 }

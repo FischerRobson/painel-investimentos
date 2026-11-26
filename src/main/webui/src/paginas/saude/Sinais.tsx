@@ -2,6 +2,7 @@
 import { money } from "../../lib/formato";
 import type { Troca } from "../../motor";
 import type { PrefSaude, Saude } from "../../lib/saude";
+import { Entrada, Campo } from "../../componentes/Campos";
 
 const COR = { alta: "down", media: "", info: "muted" } as const;
 const NOME = { alta: "Atenção", media: "Revisar", info: "Informação" } as const;
@@ -31,7 +32,7 @@ export function Sinais({ saude: s, prefs, setPrefs }: { saude: Saude; prefs: Pre
     <div className="panel">
       <h2>Trocas</h2>
       <div className="hint">Para cada ação ou FII fraco (nota abaixo de 50, ou abaixo do CDI com nota abaixo de 60), procura um substituto do mesmo setor (ações) ou tipo (FIIs) com nota pelo menos 15 pontos maior. O veredicto compara o IR da venda com a renda extra em proventos do substituto.</div>
-      <label className="status">Outros ativos para considerar (separe por vírgula) <input value={prefs.candidatos} onChange={e => setPrefs({ candidatos: e.target.value })} style={{ width: 260 }} placeholder="Ex.: BBAS3, KNCR11, HGLG11" /></label>
+      <Campo inline rotulo="Outros ativos para considerar (separe por vírgula)"><Entrada value={prefs.candidatos} onChange={e => setPrefs({ candidatos: e.target.value })} style={{ width: 260 }} placeholder="Ex.: BBAS3, KNCR11, HGLG11" /></Campo>
       {s.trocas.length === 0 ? <div className="hint" style={{ marginTop: 8 }}>Nenhuma troca a sugerir: nenhum ativo fraco tem um substituto claramente melhor.</div> : (
         <div className="table-wrap" style={{ marginTop: 10 }}><table className="w-table">
           <thead><tr><th className="txt-sm">Sair de</th><th className="txt-sm">Entrar em</th><th>Notas</th><th>IR da troca</th><th className="txt-sm">Veredicto</th><th className="txt">Por quê</th></tr></thead>

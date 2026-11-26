@@ -6,6 +6,7 @@ import { ErroApi, getJson } from "../lib/api";
 import { useCambio } from "../lib/cambio";
 import { configBarras } from "../lib/graficos";
 import { Grafico } from "../componentes/Grafico";
+import { EsqueletoPainel } from "../componentes/Esqueleto";
 
 type Custos = {
   aviso?: string; fetchedAt: number; previsaoMes: number | null;
@@ -32,7 +33,7 @@ export function Custos() {
 
   let corpo;
   if (custos.isError) corpo = <div className="panel err">{msg(custos.error, "Não consegui carregar os custos agora.")}</div>;
-  else if (!custos.data) corpo = <div className="panel muted">Carregando custos…</div>;
+  else if (!custos.data) corpo = <EsqueletoPainel tiles={3} grafico texto="Carregando os custos…" />;
   else {
     const c = custos.data, meses = c.meses || [], atual = meses[meses.length - 1], anterior = meses[meses.length - 2];
     corpo = <>

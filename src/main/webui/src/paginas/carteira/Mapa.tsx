@@ -5,6 +5,7 @@ import { brl, money, pct, signCls } from "../../lib/formato";
 import { treemap } from "../../lib/treemap";
 import type { Comparativo, SerieAtivo } from "../../lib/comparativo";
 import { NOME_SERIE } from "./Desempenho";
+import { EsqueletoGrafico } from "../../componentes/Esqueleto";
 
 // A cor chega no máximo em ±10% no período: variações maiores ficam na mesma intensidade
 const COR_CHEIA = 10;
@@ -19,7 +20,7 @@ export function Mapa({ d, erro }: { d: Comparativo | null; erro: string | null }
     <div className="panel">
       <h2>Mapa da carteira</h2>
       <div className="hint">Cada retângulo é um ativo: o tamanho é quanto ele vale hoje, e a cor é a variação nos últimos 30 dias. Toque num retângulo para ver os detalhes.</div>
-      {erro ? <div className="err">{erro}</div> : !d ? <div className="status">Buscando históricos…</div>
+      {erro ? <div className="err">{erro}</div> : !d ? <EsqueletoGrafico altura={380} texto="Buscando os históricos…" />
         : !d.ativos.length ? <div className="hint">Sem ativos com histórico para desenhar.</div> : <Retangulos d={d} />}
     </div>
   );

@@ -19,6 +19,7 @@ import { Metas } from "./Metas";
 import { Rebalancear } from "./Rebalancear";
 import { HistoricoSaude } from "./HistoricoSaude";
 import type { TaxasBCB } from "../../motor";
+import { EsqueletoSaude } from "../../componentes/Esqueleto";
 
 type ResumoMes = { month: string; expenses: number; areas?: Record<string, number> };
 
@@ -84,11 +85,11 @@ export function Saude() {
   }, [saude]);
 
   if (carteira.erro) return <ErroCarteira msg={carteira.erro} />;
-  if (!doc || !prefs) return <div className="panel muted">Carregando sua carteira…</div>;
+  if (!doc || !prefs) return <EsqueletoSaude />;
   if (!acoes.length && !criptoW.length && !(doc.rendaFixa ?? []).length) {
     return <div className="panel"><h2>Saúde da carteira</h2><div className="hint" style={{ margin: 0 }}>Adicione ativos em Carteira para ver a análise.</div></div>;
   }
-  if (!saude) return <div className="panel muted">Calculando a saúde da carteira…</div>;
+  if (!saude) return <EsqueletoSaude />;
 
   const avisos = [
     dados.isError && "Não consegui as cotações e os indicadores agora: as notas dos ativos podem estar incompletas.",
